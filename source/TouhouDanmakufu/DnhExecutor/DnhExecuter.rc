@@ -55,7 +55,8 @@ END
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 
-IDI_ICON                ICON    DISCARDABLE     "th_dnh_sx-z.ico"
+IDI_ICON                ICON    DISCARDABLE     "bha4_nbh.ico"
+//IDI_ICON                ICON    DISCARDABLE     "th_dnh_sx-z.ico"
 //IDI_ICON                ICON    DISCARDABLE     "th_sp_icon.ico"
 //IDI_ICON                ICON    DISCARDABLE     "th_tcl_icon.ico"
 
