@@ -773,7 +773,27 @@ DxSoundObject::~DxSoundObject() {
 
 bool DxSoundObject::Load(const std::wstring& path) {
 	DirectSoundManager* manager = DirectSoundManager::GetBase();
-	player_ = manager->GetPlayer(path, true);
+
+	player_ = nullptr;
+
+	auto itrFind = mapCachedPlayers_.find(path);
+	bool bFound = itrFind != mapCachedPlayers_.end();
+	if (bFound) {
+		weak_ptr<SoundPlayer> pWeakPlayer = itrFind->second;
+		if (!pWeakPlayer.expired())
+			player_ = pWeakPlayer.lock();
+		else
+			mapCachedPlayers_.erase(itrFind);
+	}
+
+	if (player_ == nullptr) {
+		shared_ptr<SoundSourceData> newSource = manager->GetSoundSource(path, true);
+		if (newSource)
+			player_ = manager->CreatePlayer(newSource);
+	}
+
+	if (player_ && !bFound)
+		mapCachedPlayers_[path] = player_;
 	return player_ != nullptr;
 }
 void DxSoundObject::Play() {
