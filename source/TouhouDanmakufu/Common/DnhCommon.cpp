@@ -475,10 +475,10 @@ bool DnhConfiguration::_LoadDefinitionFile() {
 	screenWidth_ = prop.GetInteger(L"screen.width", 640);
 	// screenWidth_ = std::clamp(screenWidth_, 320L, 1920L);
 
-	screenHeight_ = prop.GetInteger(L"screen.height", 480);
+	screenHeight_ = prop.GetInteger(L"screen.height", 360);
 	// screenHeight_ = std::clamp(screenHeight_, 240L, 1200L);
 
-	fastModeSpeed_ = prop.GetInteger(L"skip.rate", 20);
+	fastModeSpeed_ = prop.GetInteger(L"skip.rate", 50);
 	// fastModeSpeed_ = std::clamp(fastModeSpeed_, 1, 50);
 
 	{
@@ -512,7 +512,7 @@ bool DnhConfiguration::_LoadDefinitionFile() {
 			}
 		}
 		if (windowSizeList_.size() == 0)
-			windowSizeList_ = { { 640, 480 }, { 800, 600 }, { 960, 720 }, { 1280, 960 } };
+			windowSizeList_ = { { 640, 360 }, { 1280, 720 }, { 1920, 1080 } };
 	}
 
 	return true;

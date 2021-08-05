@@ -32,7 +32,7 @@ bool EApplication::_Initialize() {
 		appName = configWindowTitle;
 	}
 	else {
-		appName = L"東方弾幕風 ph3sx-zlabel " + DNH_VERSION;
+		appName = L"Nameless Bullet Hell (Bullet Hell Artistry #4)";
 	}
 #ifdef _DEBUG
 	appName = L"[ph3sx_DEBUG]" + appName;
