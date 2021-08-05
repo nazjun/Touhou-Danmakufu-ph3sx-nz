@@ -1,4 +1,4 @@
-#include "source/GcLib/pch.h"
+﻿#include "source/GcLib/pch.h"
 
 #include "GcLibImpl.hpp"
 #include "System.hpp"

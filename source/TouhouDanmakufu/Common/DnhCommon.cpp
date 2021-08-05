@@ -418,9 +418,9 @@ DnhConfiguration::DnhConfiguration() {
 	modeScreen_ = ScreenMode::SCREENMODE_WINDOW;
 	modeColor_ = ColorMode::COLOR_MODE_32BIT;
 	fpsType_ = FPS_NORMAL;
-	fastModeSpeed_ = 20;
+	fastModeSpeed_ = 50;
 
-	windowSizeList_ = { { 640, 480 }, { 800, 600 }, { 960, 720 }, { 1280, 960 } };
+	windowSizeList_ = { { 640, 360 }, { 1280, 720 }, { 1920, 1080 } };
 	sizeWindow_ = 0;
 
 	bVSync_ = true;
@@ -453,10 +453,14 @@ DnhConfiguration::DnhConfiguration() {
 	bMouseVisible_ = true;
 
 	screenWidth_ = 640;
-	screenHeight_ = 480;
+	screenHeight_ = 360;
+
+	windowTitle_ = L"Nameless Bullet Hell (Bullet Hell Artistry #4)";
+	// bDynamicScaling_ = true;
+	// pathPackageScript_ = PathProperty::GetModuleDirectory() + L"script/vs_naudiz.dnh";
 
 	LoadConfigFile();
-	_LoadDefinitionFile();
+	// _LoadDefinitionFile();
 }
 DnhConfiguration::~DnhConfiguration() {}
 
