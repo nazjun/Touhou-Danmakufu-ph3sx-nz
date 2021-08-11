@@ -408,8 +408,8 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjEnemy_AddIntersectionCircleA", StgStageScript::Func_ObjEnemy_AddIntersectionCircleA, 4 },
 	{ "ObjEnemy_SetIntersectionCircleToShot", StgStageScript::Func_ObjEnemy_SetIntersectionCircleToShot, 4 },
 	{ "ObjEnemy_SetIntersectionCircleToPlayer", StgStageScript::Func_ObjEnemy_SetIntersectionCircleToPlayer, 4 },
-	{ "ObjEnemy_GetIntersectionCircleListToShot", StgStageScript::Func_ObjEnemy_GetIntersectionCircleToShot, 1 },
-	{ "ObjEnemy_GetIntersectionCircleListToPlayer", StgStageScript::Func_ObjEnemy_GetIntersectionCircleToPlayer, 1 },
+	{ "ObjEnemy_GetIntersectionCircleListToShot", StgStageScript::Func_ObjEnemy_GetIntersectionCircleListToShot, 1 },
+	{ "ObjEnemy_GetIntersectionCircleListToPlayer", StgStageScript::Func_ObjEnemy_GetIntersectionCircleListToPlayer, 1 },
 	{ "ObjEnemy_SetEnableIntersectionPositionFetching", StgStageScript::Func_ObjEnemy_SetEnableIntersectionPositionFetching, 2 },
 
 	//STG共通関数：敵ボスシーンオブジェクト操作
@@ -497,6 +497,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjCrLaser_GetNodePosition", StgStageScript::Func_ObjCrLaser_GetNodePosition, 2 },
 	{ "ObjCrLaser_GetNodeAngle", StgStageScript::Func_ObjCrLaser_GetNodeAngle, 2 },
 	{ "ObjCrLaser_GetNodeColor", StgStageScript::Func_ObjCrLaser_GetNodeColor, 2 },
+	{ "ObjCrLaser_GetNodeColorHex", StgStageScript::Func_ObjCrLaser_GetNodeColorHex, 2 },
 	{ "ObjCrLaser_SetNode", StgStageScript::Func_ObjCrLaser_SetNode, 6 },
 	{ "ObjCrLaser_SetNodePosition", StgStageScript::Func_ObjCrLaser_SetNodePosition, 4 },
 	{ "ObjCrLaser_SetNodeAngle", StgStageScript::Func_ObjCrLaser_SetNodeAngle, 3 },
@@ -540,6 +541,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjItem_SetAutoDelete", StgStageScript::Func_ObjItem_SetAutoDelete, 2 },
 	{ "ObjItem_SetIntersectionRadius", StgStageScript::Func_ObjItem_SetIntersectionRadius, 2 },
 	{ "ObjItem_SetIntersectionEnable", StgStageScript::Func_ObjItem_SetIntersectionEnable, 2 },
+	{ "ObjItem_GetIntersectionEnable", StgStageScript::Func_ObjItem_GetIntersectionEnable, 1 },
 	{ "ObjItem_SetDefaultCollectMovement", StgStageScript::Func_ObjItem_SetDefaultCollectMovement, 2 },
 	{ "ObjItem_SetPositionRounding", StgStageScript::Func_ObjItem_SetPositionRounding, 2 },
 
@@ -3199,7 +3201,7 @@ gstd::value StgStageScript::Func_ObjEnemy_SetIntersectionCircleToPlayer(gstd::sc
 	}
 	return value();
 }
-gstd::value StgStageScript::Func_ObjEnemy_GetIntersectionCircleToShot(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+gstd::value StgStageScript::Func_ObjEnemy_GetIntersectionCircleListToShot(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 
 	std::vector<gstd::value> listRes;
@@ -3222,7 +3224,7 @@ gstd::value StgStageScript::Func_ObjEnemy_GetIntersectionCircleToShot(gstd::scri
 
 	return script->CreateValueArrayValue(listRes);
 }
-gstd::value StgStageScript::Func_ObjEnemy_GetIntersectionCircleToPlayer(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+gstd::value StgStageScript::Func_ObjEnemy_GetIntersectionCircleListToPlayer(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 
 	std::vector<gstd::value> listRes;
@@ -4330,6 +4332,21 @@ gstd::value StgStageScript::Func_ObjCrLaser_GetNodeColor(gstd::script_machine* m
 	ColorAccess::ToByteArray(color, listColor);
 	return script->CreateIntArrayValue(listColor, 3U);
 }
+gstd::value StgStageScript::Func_ObjCrLaser_GetNodeColorHex(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+
+	D3DCOLOR color = 0xffffffff;
+	int id = argv[0].as_int();
+	StgCurveLaserObject* obj = script->GetObjectPointerAs<StgCurveLaserObject>(id);
+	if (obj) {
+		StgCurveLaserObject::LaserNode* ptr = (StgCurveLaserObject::LaserNode*)argv[1].as_int();
+		if (ptr) {
+			color = ptr->color;
+		}
+	}
+
+	return script->CreateIntValue(color & 0xffffff);
+}
 gstd::value StgStageScript::Func_ObjCrLaser_SetNode(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
@@ -4867,6 +4884,15 @@ gstd::value StgStageScript::Func_ObjItem_SetIntersectionEnable(gstd::script_mach
 		obj->SetIntersectionEnable(bEnable);
 	}
 	return value();
+}
+gstd::value StgStageScript::Func_ObjItem_GetIntersectionEnable(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgItemObject* obj = script->GetObjectPointerAs<StgItemObject>(id);
+	bool res = false;
+	if (obj)
+		res = obj->IsIntersectionEnable();
+	return script->CreateBooleanValue(res);
 }
 gstd::value StgStageScript::Func_ObjItem_SetDefaultCollectMovement(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;

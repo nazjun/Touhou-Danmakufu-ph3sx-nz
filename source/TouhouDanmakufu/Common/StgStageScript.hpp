@@ -350,8 +350,8 @@ public:
 	static gstd::value Func_ObjEnemy_AddIntersectionCircleA(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjEnemy_SetIntersectionCircleToShot(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjEnemy_SetIntersectionCircleToPlayer(gstd::script_machine* machine, int argc, const gstd::value* argv);
-	DNH_FUNCAPI_DECL_(Func_ObjEnemy_GetIntersectionCircleToShot);
-	DNH_FUNCAPI_DECL_(Func_ObjEnemy_GetIntersectionCircleToPlayer);
+	DNH_FUNCAPI_DECL_(Func_ObjEnemy_GetIntersectionCircleListToShot);
+	DNH_FUNCAPI_DECL_(Func_ObjEnemy_GetIntersectionCircleListToPlayer);
 	DNH_FUNCAPI_DECL_(Func_ObjEnemy_SetEnableIntersectionPositionFetching);
 
 	//STG共通関数：敵ボスシーンオブジェクト操作
@@ -437,6 +437,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_GetNodePosition);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_GetNodeAngle);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_GetNodeColor);
+	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_GetNodeColorHex);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_SetNode);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_SetNodePosition);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_SetNodeAngle);
@@ -480,6 +481,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjItem_SetAutoDelete);
 	DNH_FUNCAPI_DECL_(Func_ObjItem_SetIntersectionRadius);
 	DNH_FUNCAPI_DECL_(Func_ObjItem_SetIntersectionEnable);
+	DNH_FUNCAPI_DECL_(Func_ObjItem_GetIntersectionEnable);
 	DNH_FUNCAPI_DECL_(Func_ObjItem_SetDefaultCollectMovement);
 	DNH_FUNCAPI_DECL_(Func_ObjItem_SetPositionRounding);
 
