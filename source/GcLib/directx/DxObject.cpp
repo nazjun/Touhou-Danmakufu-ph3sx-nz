@@ -774,27 +774,40 @@ DxSoundObject::~DxSoundObject() {
 bool DxSoundObject::Load(const std::wstring& path) {
 	DirectSoundManager* manager = DirectSoundManager::GetBase();
 
-	player_ = nullptr;
+	{
+		Lock lock(manager->GetLock());
 
-	//A very ugly hack
-	auto itrFind = mapCachedPlayers_.find(path);
-	bool bFound = itrFind != mapCachedPlayers_.end();
-	if (bFound) {
-		weak_ptr<SoundPlayer> pWeakPlayer = itrFind->second;
-		if (!pWeakPlayer.expired())
-			player_ = pWeakPlayer.lock();
-		else
-			mapCachedPlayers_.erase(itrFind);
-	}
-	
-	if (player_ == nullptr) {
 		shared_ptr<SoundSourceData> newSource = manager->GetSoundSource(path, true);
-		if (newSource)
-			player_ = manager->CreatePlayer(newSource);
-	}
+		bool bFoundCached = false;
 
-	if (player_ && !bFound)
-		mapCachedPlayers_[path] = player_;
+		//A very ugly hack
+		player_ = nullptr;
+		if (newSource) {
+			for (auto itr = mapCachedPlayers_.begin(); itr != mapCachedPlayers_.end();) {
+				SoundSourceData* pSource = itr->first;
+				weak_ptr<SoundPlayer> pWeakPlayer = itr->second;
+				if (pWeakPlayer.expired()) {
+					itr = mapCachedPlayers_.erase(itr);
+				}
+				else {
+					if (pSource == newSource.get()) {
+						player_ = pWeakPlayer.lock();
+						bFoundCached = true;
+						break;
+					}
+					++itr;
+				}
+			}
+		}
+
+		if (player_ == nullptr) {
+			player_ = manager->CreatePlayer(newSource);
+		}
+
+		if (player_ && !bFoundCached) {
+			mapCachedPlayers_[newSource.get()] = player_;
+		}
+	}
 	return player_ != nullptr;
 }
 void DxSoundObject::Play() {
@@ -1273,16 +1286,12 @@ DWORD DxBinaryFileObject::Write(LPVOID data, size_t size) {
 //****************************************************************************
 //DxScriptObjectManager
 //****************************************************************************
+DxScriptObjectManager::FogData DxScriptObjectManager::fogData_ = { false, 0xffffffff, 0, 0 };
 DxScriptObjectManager::DxScriptObjectManager() {
 	SetMaxObject(DEFAULT_CONTAINER_CAPACITY);
 	SetRenderBucketCapacity(101);
 
 	totalObjectCreateCount_ = 0U;
-
-	bFogEnable_ = false;
-	fogColor_ = D3DCOLOR_ARGB(255, 255, 255, 255);
-	fogStart_ = 0;
-	fogEnd_ = 0;
 }
 DxScriptObjectManager::~DxScriptObjectManager() {
 }
@@ -1447,7 +1456,7 @@ void DxScriptObjectManager::RenderObject() {
 	PrepareRenderObject();
 
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-	graphics->SetVertexFog(bFogEnable_, fogColor_, fogStart_, fogEnd_);
+	graphics->SetVertexFog(fogData_.enable, fogData_.color, fogData_.start, fogData_.end);
 
 	for (size_t iPri = 0; iPri < listObjRender_.size(); ++iPri) {
 		ID3DXEffect* effect = nullptr;
@@ -1546,8 +1555,8 @@ shared_ptr<SoundPlayer> DxScriptObjectManager::GetReservedSound(shared_ptr<Sound
 }
 
 void DxScriptObjectManager::SetFogParam(bool bEnable, D3DCOLOR fogColor, float start, float end) {
-	bFogEnable_ = bEnable;
-	fogColor_ = fogColor;
-	fogStart_ = start;
-	fogEnd_ = end;
+	fogData_.enable = bEnable;
+	fogData_.color = fogColor;
+	fogData_.start = start;
+	fogData_.end = end;
 }
