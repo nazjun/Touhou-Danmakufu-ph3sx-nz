@@ -29,8 +29,9 @@ namespace directx {
 		int priRender_;
 		bool bVisible_;
 		bool bDeleted_;
+		bool bQueuedToDelete_;
 		bool bActive_;
-		bool bDeleteWhenOrphaned_;
+		bool bAutoDeleteEnable_;
 
 		std::unordered_map<size_t, gstd::value> mapObjectValue_;
 	public:
@@ -50,6 +51,8 @@ namespace directx {
 		int GetObjectID() { return idObject_; }
 		TypeObject GetObjectType() { return typeObject_; }
 		int64_t GetScriptID() { return idScript_; }
+		void QueueDelete() { bQueuedToDelete_ = true; }
+		bool IsQueuedForDeletion() { return bQueuedToDelete_; }
 		bool IsDeleted() { return bDeleted_; }
 		bool IsActive() { return bActive_; }
 		void SetActive(bool bActive) { bActive_ = bActive; }
@@ -59,8 +62,8 @@ namespace directx {
 		int GetRenderPriorityI() { return priRender_; }
 		void SetRenderPriority(double pri);
 		void SetRenderPriorityI(int pri) { priRender_ = pri; }
-		void SetDeleteWhenOrphaned(bool del) { bDeleteWhenOrphaned_ = del; }
-		bool IsDeleteWhenOrphaned() { return bDeleteWhenOrphaned_; }
+		void SetAutoDeleteEnable(bool del) { bAutoDeleteEnable_ = del; }
+		bool IsAutoDeleteEnable() { return bAutoDeleteEnable_; }
 
 		bool IsObjectValueExists(size_t hash) { return mapObjectValue_.find(hash) != mapObjectValue_.end(); }
 		gstd::value GetObjectValue(size_t hash) { return mapObjectValue_[hash]; }

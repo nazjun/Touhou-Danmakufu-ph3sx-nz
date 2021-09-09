@@ -233,6 +233,7 @@ static const std::vector<function> dxFunction = {
 	//Base object functions
 	{ "Obj_Create", DxScript::Func_Obj_Create, 0 },
 	{ "Obj_Delete", DxScript::Func_Obj_Delete, 1 },
+	{ "Obj_QueueDelete", DxScript::Func_Obj_QueueDelete, 1 },
 	{ "Obj_IsDeleted", DxScript::Func_Obj_IsDeleted, 1 },
 	{ "Obj_IsExists", DxScript::Func_Obj_IsExists, 1 },
 	{ "Obj_SetVisible", DxScript::Func_Obj_SetVisible, 2 },
@@ -2382,6 +2383,14 @@ value DxScript::Func_Obj_Delete(script_machine* machine, int argc, const value* 
 	script->DeleteObject(id);
 	return value();
 }
+value DxScript::Func_Obj_QueueDelete(script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	script->CheckRunInMainThread();
+	int id = argv[0].as_int();
+	DxScriptObjectBase* obj = script->GetObjectPointer(id);
+	if (obj) obj->QueueDelete();
+	return value();
+}
 value DxScript::Func_Obj_IsDeleted(script_machine* machine, int argc, const value* argv) {
 	DxScript* script = (DxScript*)machine->data;
 	int id = argv[0].as_int();
@@ -2667,7 +2676,7 @@ value DxScript::Func_Obj_SetAutoDelete(script_machine* machine, int argc, const 
 	bool del = argv[1].as_boolean();
 
 	DxScriptObjectBase* obj = script->GetObjectPointerAs<DxScriptObjectBase>(id);
-	if (obj) obj->SetDeleteWhenOrphaned(del);
+	if (obj) obj->SetAutoDeleteEnable(del);
 
 	return value();
 }
