@@ -343,6 +343,33 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjMove_SetProcessMovement);
 	DNH_FUNCAPI_DECL_(Func_ObjMove_GetProcessMovement);
 
+	// Move object + move parent
+	DNH_FUNCAPI_DECL_(Func_ObjMove_GetParent);
+	DNH_FUNCAPI_DECL_(Func_ObjMove_RemoveParent);
+	DNH_FUNCAPI_DECL_(Func_ObjMove_SetRelativePosition);
+	DNH_FUNCAPI_DECL_(Func_ObjMove_GetDistanceFromParent);
+	DNH_FUNCAPI_DECL_(Func_ObjMove_GetAngleFromParent);
+
+	// Move parents
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_Create);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetParentObject);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetAutoDelete);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_AddChild);
+	// DNH_FUNCAPI_DECL_(Func_ObjMoveParent_AddChildren);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetChildren);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_RemoveChildren);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetPositionOffset);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetPositionOffsetCircle);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformScale);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformAngle);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildAngleMode);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildMotionEnable);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetLaserRotationEnable);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetAutoUpdateRelativePosition);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformOrder);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_ApplyTransformation);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_ResetTransformation);
+
 	//STG共通関数：敵オブジェクト操作
 	static gstd::value Func_ObjEnemy_Create(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjEnemy_Regist(gstd::script_machine* machine, int argc, const gstd::value* argv);

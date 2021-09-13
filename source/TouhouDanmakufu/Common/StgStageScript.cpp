@@ -398,6 +398,33 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjMove_SetSpeedXY", StgStageScript::Func_ObjMove_SetSpeedXY, 3 },
 	{ "ObjMove_SetProcessMovement", StgStageScript::Func_ObjMove_SetProcessMovement, 2 },
 	{ "ObjMove_GetProcessMovement", StgStageScript::Func_ObjMove_GetProcessMovement, 1 },
+	
+	// Move object + move parent
+	{ "ObjMove_GetParent", StgStageScript::Func_ObjMove_GetParent, 1 },
+	{ "ObjMove_RemoveParent", StgStageScript::Func_ObjMove_RemoveParent, 1 },
+	{ "ObjMove_SetRelativePosition", StgStageScript::Func_ObjMove_SetRelativePosition, 1 },
+	{ "ObjMove_GetDistanceFromParent", StgStageScript::Func_ObjMove_GetDistanceFromParent, 1 },
+	{ "ObjMove_GetAngleFromParent", StgStageScript::Func_ObjMove_GetAngleFromParent, 1 },
+
+	// Move parents
+	{ "ObjMoveParent_Create", StgStageScript::Func_ObjMoveParent_Create, 0 },
+	{ "ObjMoveParent_SetParentObject", StgStageScript::Func_ObjMoveParent_SetParentObject, 2 },
+	{ "ObjMoveParent_SetAutoDelete", StgStageScript::Func_ObjMoveParent_SetAutoDelete, 2 },
+	{ "ObjMoveParent_AddChild", StgStageScript::Func_ObjMoveParent_AddChild, 2 },
+	{ "ObjMoveParent_GetChildren", StgStageScript::Func_ObjMoveParent_GetChildren, 1 },
+	{ "ObjMoveParent_RemoveChildren", StgStageScript::Func_ObjMoveParent_RemoveChildren, 1 },
+	{ "ObjMoveParent_SetPositionOffset", StgStageScript::Func_ObjMoveParent_SetPositionOffset, 3 },
+	{ "ObjMoveParent_SetPositionOffsetCircle", StgStageScript::Func_ObjMoveParent_SetPositionOffsetCircle, 3 },
+	{ "ObjMoveParent_SetTransformScale", StgStageScript::Func_ObjMoveParent_SetTransformScale, 3 },
+	{ "ObjMoveParent_SetTransformScale", StgStageScript::Func_ObjMoveParent_SetTransformScale, 2 }, // Overloaded
+	{ "ObjMoveParent_SetTransformAngle", StgStageScript::Func_ObjMoveParent_SetTransformAngle , 2 },
+	{ "ObjMoveParent_SetChildAngleMode", StgStageScript::Func_ObjMoveParent_SetChildAngleMode, 2 },
+	{ "ObjMoveParent_SetChildMotionEnable", StgStageScript::Func_ObjMoveParent_SetChildMotionEnable, 2 },
+	{ "ObjMoveParent_SetLaserRotationEnable", StgStageScript::Func_ObjMoveParent_SetLaserRotationEnable, 2 },
+	{ "ObjMoveParent_SetAutoUpdateRelativePosition", StgStageScript::Func_ObjMoveParent_SetAutoUpdateRelativePosition, 2 },
+	{ "ObjMoveParent_SetTransformOrder", StgStageScript::Func_ObjMoveParent_SetTransformOrder, 2 },
+	{ "ObjMoveParent_ApplyTransformation", StgStageScript::Func_ObjMoveParent_ApplyTransformation, 1 },
+	{ "ObjMoveParent_ResetTransformation", StgStageScript::Func_ObjMoveParent_ResetTransformation, 1 },
 
 	//STG共通関数：敵オブジェクト操作
 	{ "ObjEnemy_Create", StgStageScript::Func_ObjEnemy_Create, 1 },
@@ -642,6 +669,7 @@ static const std::vector<constant> stgStageConstant = {
 	constant("OBJ_STRAIGHT_LASER", (int)TypeObject::StraightLaser),
 	constant("OBJ_CURVE_LASER", (int)TypeObject::CurveLaser),
 	constant("OBJ_SHOT_PATTERN", (int)TypeObject::ShotPattern),
+	constant("OBJ_MOVE_PARENT", (int)TypeObject::MoveParent),
 	constant("OBJ_ITEM", (int)TypeObject::Item),
 
 	//ObjEnemy_GetInfo info types
@@ -722,6 +750,18 @@ static const std::vector<constant> stgStageConstant = {
 	//AddPattern constants
 	constant("TOPLAYER_CHANGE", StgMovePattern::TOPLAYER_CHANGE),
 	constant("NO_CHANGE", StgMovePattern::NO_CHANGE),
+
+	//Move parent constants
+	constant("ANGLE_FIXED", StgMoveParent::ANGLE_FIXED),
+	constant("ANGLE_ROTATE", StgMoveParent::ANGLE_ROTATE),
+	constant("ANGLE_FOLLOW", StgMoveParent::ANGLE_FOLLOW),
+	constant("ANGLE_ABSOLUTE", StgMoveParent::ANGLE_ABSOLUTE),
+	constant("ANGLE_RELATIVE", StgMoveParent::ANGLE_RELATIVE),
+	constant("ANGLE_OUTWARD", StgMoveParent::ANGLE_OUTWARD),
+	constant("ANGLE_INWARD", StgMoveParent::ANGLE_INWARD),
+	constant("ORDER_ANGLE_SCALE", StgMoveParent::ORDER_ANGLE_SCALE),
+	constant("ORDER_SCALE_ANGLE", StgMoveParent::ORDER_SCALE_ANGLE),
+	
 };
 
 StgStageScript::StgStageScript(StgStageController* stageController) : StgControlScript(stageController->GetSystemController()) {
@@ -2497,6 +2537,10 @@ gstd::value StgStageScript::Func_ObjMove_SetX(gstd::script_machine* machine, int
 		DxScriptRenderObject* objR = dynamic_cast<DxScriptRenderObject*>(obj);
 		if (objR)
 			objR->SetX(pos);
+
+		if (auto parent = obj->GetParent()) {
+			if (parent->GetAutoUpdateRelativePosition()) obj->UpdateRelativePosition();
+		}
 	}
 	return value();
 }
@@ -2511,6 +2555,10 @@ gstd::value StgStageScript::Func_ObjMove_SetY(gstd::script_machine* machine, int
 		DxScriptRenderObject* objR = dynamic_cast<DxScriptRenderObject*>(obj);
 		if (objR)
 			objR->SetY(pos);
+
+		if (auto parent = obj->GetParent()) {
+			if (parent->GetAutoUpdateRelativePosition()) obj->UpdateRelativePosition();
+		}
 	}
 	return value();
 }
@@ -2528,6 +2576,10 @@ gstd::value StgStageScript::Func_ObjMove_SetPosition(gstd::script_machine* machi
 		if (objR) {
 			objR->SetX(posX);
 			objR->SetY(posY);
+		}
+
+		if (auto parent = obj->GetParent()) {
+			if (parent->GetAutoUpdateRelativePosition()) obj->UpdateRelativePosition();
 		}
 	}
 	return value();
@@ -3035,6 +3087,266 @@ gstd::value StgStageScript::Func_ObjMove_GetProcessMovement(gstd::script_machine
 	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
 	bool res = obj ? obj->IsEnableMovement() : true;
 	return script->CreateBooleanValue(res);
+}
+
+// Move object + move parent
+gstd::value StgStageScript::Func_ObjMove_GetParent(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	int idPar = DxScript::ID_INVALID;
+	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
+
+	if (obj) {
+		if (auto& objParent = obj->GetParent()) {
+			idPar = objParent->GetObjectID();
+		}
+	}
+		
+
+	return script->CreateIntValue(idPar);
+}
+gstd::value StgStageScript::Func_ObjMove_RemoveParent(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
+	if (obj)
+		obj->RemoveParent();
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMove_SetRelativePosition(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	double x = argv[1].as_real();
+	double y = argv[2].as_real();
+	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
+	if (obj)
+		obj->SetRelativePosition(x, y);
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMove_GetDistanceFromParent(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
+
+	double dist = 0;
+	if (obj) {
+		double x0 = 0, y0 = 0;
+		double x1 = obj->GetPositionX();
+		double y1 = obj->GetPositionY();
+		if (auto& objParent = obj->GetParent()) {
+			x0 = objParent->GetX();
+			y0 = objParent->GetY();
+		}
+		dist = hypot(x1 - x0, y1 - y0);
+	}
+
+	return script->CreateRealValue(dist);
+}
+gstd::value StgStageScript::Func_ObjMove_GetAngleFromParent(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
+
+	double angle = 0;
+	if (obj) {
+		double x0 = 0, y0 = 0;
+		double x1 = obj->GetPositionX();
+		double y1 = obj->GetPositionY();
+		if (auto& objParent = obj->GetParent()) {
+			x0 = objParent->GetX();
+			y0 = objParent->GetY();
+		}
+		angle = Math::NormalizeAngleDeg(Math::RadianToDegree(atan2(y1 - y0, x1 - x0)));
+	}
+
+	return script->CreateRealValue(angle);
+}
+
+// Move parent
+gstd::value StgStageScript::Func_ObjMoveParent_Create(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	script->CheckRunInMainThread();
+	StgStageController* stageController = script->stageController_;
+
+	ref_unsync_ptr<StgMoveParent> obj = new StgMoveParent(stageController);
+
+	int id = script->AddObject(obj);
+	return script->CreateIntValue(id);
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetParentObject(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	int idP = argv[1].as_int();
+	ref_unsync_ptr<StgMoveParent> obj = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(id));
+
+	if (obj) {
+		ref_unsync_ptr<StgMoveObject> objP = ref_unsync_ptr<StgMoveObject>::Cast(script->GetObject(idP));
+		if (objP)
+			obj->SetParentObject(obj, objP);
+	}
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetAutoDelete(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	bool enable = argv[1].as_boolean();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->SetAutoDelete(enable);
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_AddChild(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	int idC = argv[1].as_int();
+	auto obj = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(id));
+
+	if (obj) {
+		auto objC = ref_unsync_ptr<StgMoveObject>::Cast(script->GetObject(idC));
+		if (objC)
+			obj->AddChild(obj, objC);
+	}
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_GetChildren(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	std::vector<int> list;
+	auto obj = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(id));
+	if (obj) {
+		for (auto& iObj : obj->GetChildren()) {
+			if (iObj) list.push_back(dynamic_cast<DxScriptObjectBase*>(iObj.get())->GetObjectID());
+		}
+	}
+	return script->CreateIntArrayValue(list);
+}
+gstd::value StgStageScript::Func_ObjMoveParent_RemoveChildren(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->RemoveChildren();
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetPositionOffset(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj) {
+		double x = argv[1].as_real();
+		double y = argv[2].as_real();
+		obj->SetPositionOffset(x, y);
+	}
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetPositionOffsetCircle(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+
+	int id = argv[0].as_int();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj) {
+		float angle = Math::DegreeToRadian(argv[1].as_real());
+		float radius = argv[2].as_real();
+		obj->SetPositionOffset(radius * cos(angle), radius * sin(angle));
+	}
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetTransformScale(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj) {
+		double x = argv[1].as_real();
+		double y = (argc == 3) ? argv[2].as_real() : x;
+		obj->SetTransformScale(x, y);
+	}
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetTransformAngle(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	double z = argv[1].as_real();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->SetTransformAngle(z);
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetChildAngleMode(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	int mode = argv[1].as_int();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->SetChildAngleMode(mode);
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetChildMotionEnable(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	bool enable = argv[1].as_boolean();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->SetChildMotionEnable(enable);
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetLaserRotationEnable(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	bool enable = argv[1].as_boolean();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->SetLaserRotationEnable(enable);
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetAutoUpdateRelativePosition(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	bool enable = argv[1].as_boolean();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->SetAutoUpdateRelativePosition(enable);
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetTransformOrder(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	int order = argv[1].as_int();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->SetTransformOrder(order);
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_ApplyTransformation(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->ApplyTransformation();
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_ResetTransformation(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->ResetTransformation();
+
+	return value();
 }
 
 //STG共通関数：敵オブジェクト操作
