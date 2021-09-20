@@ -425,7 +425,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjMoveParent_GetTransformScaleX", StgStageScript::Func_ObjMoveParent_GetTransformScaleX, 1 },
 	{ "ObjMoveParent_GetTransformScaleY", StgStageScript::Func_ObjMoveParent_GetTransformScaleY, 1 },
 	{ "ObjMoveParent_GetTransformAngle", StgStageScript::Func_ObjMoveParent_GetTransformAngle , 1 },
-	{ "ObjMoveParent_GetRadiusAtAngle", StgStageScript::Func_ObjMoveParent_GetRadiusAtAngle , 2 },
+	// { "ObjMoveParent_GetRadiusAtAngle", StgStageScript::Func_ObjMoveParent_GetRadiusAtAngle , 2 },
 	{ "ObjMoveParent_SetChildAngleMode", StgStageScript::Func_ObjMoveParent_SetChildAngleMode, 2 },
 	{ "ObjMoveParent_SetChildMotionEnable", StgStageScript::Func_ObjMoveParent_SetChildMotionEnable, 2 },
 	{ "ObjMoveParent_SetLaserRotationEnable", StgStageScript::Func_ObjMoveParent_SetLaserRotationEnable, 2 },
@@ -529,6 +529,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjStLaser_SetPermitExpand", StgStageScript::Func_ObjStLaser_SetPermitExpand, 2 },
 	{ "ObjStLaser_GetPermitExpand", StgStageScript::Func_ObjStLaser_GetPermitExpand, 1 },
 	{ "ObjCrLaser_SetTipDecrement", StgStageScript::Func_ObjCrLaser_SetTipDecrement, 2 },
+	{ "ObjCrLaser_SetMappingMode", StgStageScript::Func_ObjCrLaser_SetMappingMode, 2 },
 	{ "ObjCrLaser_GetNodePointer", StgStageScript::Func_ObjCrLaser_GetNodePointer, 2 },
 	{ "ObjCrLaser_GetNodePointerList", StgStageScript::Func_ObjCrLaser_GetNodePointerList, 1 },
 	{ "ObjCrLaser_GetNodePosition", StgStageScript::Func_ObjCrLaser_GetNodePosition, 2 },
@@ -769,6 +770,9 @@ static const std::vector<constant> stgStageConstant = {
 	constant("ORDER_ANGLE_SCALE", StgMoveParent::ORDER_ANGLE_SCALE),
 	constant("ORDER_SCALE_ANGLE", StgMoveParent::ORDER_SCALE_ANGLE),
 	
+	//Curve laser UV mapping modes
+	constant("MAP_NORMAL", StgCurveLaserObject::MAP_NORMAL),
+	constant("MAP_CAPPED", StgCurveLaserObject::MAP_CAPPED),
 };
 
 StgStageScript::StgStageScript(StgStageController* stageController) : StgControlScript(stageController->GetSystemController()) {
@@ -3134,16 +3138,8 @@ gstd::value StgStageScript::Func_ObjMove_GetDistanceFromParent(gstd::script_mach
 	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
 
 	double dist = 0;
-	if (obj) {
-		double x0 = 0, y0 = 0;
-		double x1 = obj->GetPositionX();
-		double y1 = obj->GetPositionY();
-		if (auto& objParent = obj->GetParent()) {
-			x0 = objParent->GetX();
-			y0 = objParent->GetY();
-		}
-		dist = hypot(x1 - x0, y1 - y0);
-	}
+	if (obj)
+		dist = obj->GetDistanceFromParent();
 
 	return script->CreateRealValue(dist);
 }
@@ -3153,16 +3149,8 @@ gstd::value StgStageScript::Func_ObjMove_GetAngleFromParent(gstd::script_machine
 	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
 
 	double angle = 0;
-	if (obj) {
-		double x0 = 0, y0 = 0;
-		double x1 = obj->GetPositionX();
-		double y1 = obj->GetPositionY();
-		if (auto& objParent = obj->GetParent()) {
-			x0 = objParent->GetX();
-			y0 = objParent->GetY();
-		}
-		angle = Math::NormalizeAngleDeg(Math::RadianToDegree(atan2(y1 - y0, x1 - x0)));
-	}
+	if (obj)
+		angle = obj->GetAngleFromParent();
 
 	return script->CreateRealValue(angle);
 }
@@ -3349,6 +3337,7 @@ gstd::value StgStageScript::Func_ObjMoveParent_GetTransformAngle(gstd::script_ma
 
 	return script->CreateRealValue(z);
 }
+/*
 gstd::value StgStageScript::Func_ObjMoveParent_GetRadiusAtAngle(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
@@ -3360,6 +3349,7 @@ gstd::value StgStageScript::Func_ObjMoveParent_GetRadiusAtAngle(gstd::script_mac
 
 	return script->CreateRealValue(rad);
 }
+*/
 gstd::value StgStageScript::Func_ObjMoveParent_SetChildAngleMode(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
@@ -4675,6 +4665,16 @@ gstd::value StgStageScript::Func_ObjCrLaser_SetTipDecrement(gstd::script_machine
 		float dec = argv[1].as_real();
 		//dec = std::clamp(dec, 0.0f, 1.0f);
 		obj->SetTipDecrement(dec);
+	}
+	return value();
+}
+gstd::value StgStageScript::Func_ObjCrLaser_SetMappingMode(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgCurveLaserObject* obj = script->GetObjectPointerAs<StgCurveLaserObject>(id);
+	if (obj) {
+		int mode = argv[1].as_int();
+		obj->SetMappingMode(mode);
 	}
 	return value();
 }

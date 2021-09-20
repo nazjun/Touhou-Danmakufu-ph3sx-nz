@@ -404,9 +404,12 @@ StgShotDataList::~StgShotDataList() {
 bool StgShotDataList::AddShotDataList(const std::wstring& path, bool bReload) {
 	if (!bReload && listReadPath_.find(path) != listReadPath_.end()) return true;
 
+	std::wstring pathReduce = PathProperty::ReduceModuleDirectory(path);
+
 	shared_ptr<FileReader> reader = FileManager::GetBase()->GetFileReader(path);
 	if (reader == nullptr || !reader->Open())
-		throw gstd::wexception(L"AddShotDataList: " + ErrorUtility::GetFileNotFoundErrorMessage(path, true));
+		throw gstd::wexception(L"AddShotDataList: " + ErrorUtility::GetFileNotFoundErrorMessage(pathReduce, true));
+
 	std::string source = reader->ReadAllString();
 
 	bool res = false;
@@ -515,16 +518,18 @@ bool StgShotDataList::AddShotDataList(const std::wstring& path, bool bReload) {
 		}
 
 		listReadPath_.insert(path);
-		Logger::WriteTop(StringUtility::Format(L"Loaded shot data: %s", path.c_str()));
+		Logger::WriteTop(StringUtility::Format(L"Loaded shot data: %s", pathReduce.c_str()));
 		res = true;
 	}
 	catch (gstd::wexception& e) {
-		std::wstring log = StringUtility::Format(L"Failed to load shot data: [Line=%d] (%s)", scanner.GetCurrentLine(), e.what());
+		std::wstring log = StringUtility::Format(L"Failed to load shot data: %s\r\n\t[Line=%d] (%s)", 
+			pathReduce.c_str(), scanner.GetCurrentLine(), e.what());
 		Logger::WriteTop(log);
 		res = false;
 	}
 	catch (...) {
-		std::string log = StringUtility::Format("Failed to load shot data: [Line=%d] (Unknown error.)", scanner.GetCurrentLine());
+		std::string log = StringUtility::Format("Failed to load shot data: %s\r\n\t[Line=%d] (Unknown error.)",
+			pathReduce.c_str(), scanner.GetCurrentLine());
 		Logger::WriteTop(log);
 		res = false;
 	}
@@ -1729,8 +1734,9 @@ void StgLaserObject::_AddIntersectionRelativeTarget() {
 
 	StgIntersectionManager* intersectionManager = stageController_->GetIntersectionManager();
 	std::vector<ref_unsync_ptr<StgIntersectionTarget>> listTarget = GetIntersectionTargetList();
-	for (auto& iTarget : listTarget)
+	for (auto& iTarget : listTarget) {
 		intersectionManager->AddTarget(iTarget);
+	}
 }
 void StgLaserObject::_ExtendLength() {
 	if (extendRate_ != 0) {
@@ -2365,6 +2371,8 @@ StgCurveLaserObject::StgCurveLaserObject(StgStageController* stageController) : 
 
 	itemDistance_ = 6.0f;
 
+	mapMode_ = 0;
+
 	pShotIntersectionTarget_ = nullptr;
 }
 void StgCurveLaserObject::Work() {
@@ -2626,10 +2634,60 @@ void StgCurveLaserObject::RenderOnShotManager() {
 		D3DXVECTOR2 texSizeInv = D3DXVECTOR2(1.0f / textureSize->x, 1.0f / textureSize->y);
 
 		DxRect<LONG>* rcSrcOrg = anime->GetSource();
-		float rcInc = ((rcSrcOrg->bottom - rcSrcOrg->top) / (float)countRect) * texSizeInv.y;
+
+		float rcLen = rcSrcOrg->bottom - rcSrcOrg->top;
+		float rcLenH = rcLen * 0.5f;
+
+		float renWid = std::max((float)widthRender_, 0.5f);
+
+		float rcInc = (rcLen / (float)countRect) * texSizeInv.y;
+
+		float rcHeigh = rcLen * texSizeInv.y;
+		float rcMidPt = rcLenH * texSizeInv.y;
+			
 		float rectV = rcSrcOrg->top * texSizeInv.y;
 
 		LONG* ptrSrc = reinterpret_cast<LONG*>(rcSrcOrg);
+
+		std::vector<float> arrInc(countPos);
+
+		bool bFailCap = false;
+		if (mapMode_ == MAP_CAPPED) {
+			// :WHAT:
+			size_t iPos = 0;
+			float remLen = rcMidPt;
+			for (auto itr = listPosition_.begin(); remLen > 0 && itr != --listPosition_.end() && !bFailCap; ++itr, ++iPos) {
+				if (iPos > halfPos)
+					bFailCap = true;
+
+				auto itrNext = std::next(itr);
+				D3DXVECTOR2* pos = &itr->pos;
+				D3DXVECTOR2* posNext = &itrNext->pos;
+				float incDist = hypotf(posNext->x - pos->x, posNext->y - pos->y) * rcHeigh / renWid;
+				arrInc[iPos] = std::min(incDist, remLen);			
+				remLen -= incDist;
+			}
+
+			iPos = countPos - 2; // ?????????
+			remLen = rcMidPt;
+			for (auto itr = listPosition_.rbegin(); remLen > 0 && itr != --listPosition_.rend() && !bFailCap; ++itr, --iPos) {
+				auto itrNext = std::next(itr);
+				D3DXVECTOR2* pos = &itr->pos;
+				D3DXVECTOR2* posNext = &itrNext->pos;
+				float incDist = hypotf(posNext->x - pos->x, posNext->y - pos->y) * rcHeigh / renWid;
+
+				if (arrInc[iPos] == 0)
+					arrInc[iPos] = std::min(incDist, remLen);
+				else
+					bFailCap = true;
+
+				remLen -= incDist;
+			}
+		}
+
+		if (mapMode_ != MAP_CAPPED || bFailCap) {
+			std::fill(arrInc.begin(), arrInc.end(), rcInc);
+		}
 
 		size_t iPos = 0U;
 		for (auto itr = listPosition_.begin(); itr != listPosition_.end(); ++itr, ++iPos) {
@@ -2660,7 +2718,7 @@ void StgCurveLaserObject::RenderOnShotManager() {
 			}
 			renderer->AddSquareVertex_CurveLaser(verts, std::next(itr) != listPosition_.end());
 
-			rectV += rcInc;
+			rectV += arrInc[iPos];
 		}
 	}
 }
@@ -2718,7 +2776,6 @@ void StgCurveLaserObject::_ConvertToItemAndSendEvent(bool flgPlayerCollision) {
 		}
 	}
 }
-
 
 //****************************************************************************
 //StgPatternShotObjectGenerator (ECL-style bullets firing)
