@@ -2371,7 +2371,8 @@ StgCurveLaserObject::StgCurveLaserObject(StgStageController* stageController) : 
 
 	itemDistance_ = 6.0f;
 
-	mapMode_ = 0;
+	bCap_ = false;
+	bSmoothAngle_ = false;
 
 	pShotIntersectionTarget_ = nullptr;
 }
@@ -2410,15 +2411,15 @@ void StgCurveLaserObject::_Move() {
 		}
 		D3DXVECTOR2 newNodePos(posX_, posY_);
 		D3DXVECTOR2 newNodeVertF(-move_.y, move_.x);	//90 degrees rotation
-		PushNode(CreateNode(newNodePos, newNodeVertF));
+		PushNode(CreateNode(newNodePos, newNodeVertF, widthRender_));
 	}
 }
 
-StgCurveLaserObject::LaserNode StgCurveLaserObject::CreateNode(const D3DXVECTOR2& pos, const D3DXVECTOR2& rFac, D3DCOLOR col) {
+StgCurveLaserObject::LaserNode StgCurveLaserObject::CreateNode(const D3DXVECTOR2& pos, const D3DXVECTOR2& rFac, int width, D3DCOLOR col) {
 	LaserNode node;
 	node.pos = pos;
 	{
-		float wRender = widthRender_ / 2.0f;
+		float wRender = width / 2.0f;
 
 		float nx = wRender * rFac.x;
 		float ny = wRender * rFac.y;
@@ -2638,7 +2639,7 @@ void StgCurveLaserObject::RenderOnShotManager() {
 		float rcLen = rcSrcOrg->bottom - rcSrcOrg->top;
 		float rcLenH = rcLen * 0.5f;
 
-		float renWid = std::max((float)widthRender_, 0.5f);
+		float renWid = std::max((float)widthRender_, 0.001f);
 
 		float rcInc = (rcLen / (float)countRect) * texSizeInv.y;
 
@@ -2651,46 +2652,70 @@ void StgCurveLaserObject::RenderOnShotManager() {
 
 		std::vector<float> arrInc(countPos);
 
-		bool bFailCap = false;
-		if (mapMode_ == MAP_CAPPED) {
+		bool bCappable = false;
+		if (bCap_) {
 			// :WHAT:
+
+			size_t i = 0;
 			size_t iPos = 0;
 			float remLen = rcMidPt;
-			for (auto itr = listPosition_.begin(); remLen > 0 && itr != --listPosition_.end() && !bFailCap; ++itr, ++iPos) {
-				if (iPos > halfPos)
-					bFailCap = true;
+
+			auto tryCap = [&](auto itr) -> bool {
+				if (i > halfPos) // Auto-fails if cap crosses the half-way point
+					return false;
 
 				auto itrNext = std::next(itr);
 				D3DXVECTOR2* pos = &itr->pos;
 				D3DXVECTOR2* posNext = &itrNext->pos;
-				float incDist = hypotf(posNext->x - pos->x, posNext->y - pos->y) * rcHeigh / renWid;
-				arrInc[iPos] = std::min(incDist, remLen);			
-				remLen -= incDist;
-			}
-
-			iPos = countPos - 2; // ?????????
-			remLen = rcMidPt;
-			for (auto itr = listPosition_.rbegin(); remLen > 0 && itr != --listPosition_.rend() && !bFailCap; ++itr, --iPos) {
-				auto itrNext = std::next(itr);
-				D3DXVECTOR2* pos = &itr->pos;
-				D3DXVECTOR2* posNext = &itrNext->pos;
+				// D3DXVECTOR2* off = &itr->vertOff[0];
+				// float wid = std::max(hypotf(off->x, off->y) * 2, 1.0f);
 				float incDist = hypotf(posNext->x - pos->x, posNext->y - pos->y) * rcHeigh / renWid;
 
-				if (arrInc[iPos] == 0)
-					arrInc[iPos] = std::min(incDist, remLen);
+				float& ref = arrInc[iPos];
+				if (ref == 0) // Fails if element was already written to
+					ref = std::min(incDist, remLen);
 				else
-					bFailCap = true;
-
+					return false;
+					
 				remLen -= incDist;
-			}
+				return true;
+			};
+
+			bCappable = true;
+			for (auto itr = listPosition_.begin(); remLen > 0 && itr != --listPosition_.end() && bCappable; ++itr, ++i, ++iPos)
+				bCappable = tryCap(itr);
+
+			i = 0;
+			iPos = countPos - 2; // Ends straight up do not work otherwise?
+			remLen = rcMidPt;
+			for (auto itr = listPosition_.rbegin(); remLen > 0 && itr != --listPosition_.rend() && bCappable; ++itr, ++i, --iPos)
+				bCappable = tryCap(itr);
 		}
 
-		if (mapMode_ != MAP_CAPPED || bFailCap) {
+		if (!bCappable) // If capping fails (or is disabled), just use the regular increment
 			std::fill(arrInc.begin(), arrInc.end(), rcInc);
-		}
 
 		size_t iPos = 0U;
+		int range = 2;
 		for (auto itr = listPosition_.begin(); itr != listPosition_.end(); ++itr, ++iPos) {
+			D3DXVECTOR2 pos = itr->pos;
+			D3DXVECTOR2 vertOff[2]{ itr->vertOff[0], itr->vertOff[1] };
+
+			if (bSmoothAngle_ && countPos > 1 && iPos > 1 && iPos < countPos - 2) {
+				auto itrNext = listPosition_.begin();
+				auto itrPrev = listPosition_.begin();
+				std::advance(itrNext, std::clamp((int)iPos + range, 0, (int)countPos - 1));
+				std::advance(itrPrev, std::clamp((int)iPos - range, 0, (int)countPos - 1));
+				D3DXVECTOR2* posNext = &itrNext->pos;
+				D3DXVECTOR2* posPrev = &itrPrev->pos;
+
+				float arc = atan2f(posNext->y - posPrev->y, posNext->x - posPrev->x);
+
+				D3DXVECTOR2 vecNew(sinf(arc) * widthRender_ / 2.0f, -cosf(arc) * widthRender_ / 2.0f);
+				vertOff[0] = vecNew;
+				vertOff[1] = -vecNew;
+			}
+
 			float nodeAlpha = baseAlpha;
 			if (iPos > halfPos)
 				nodeAlpha = Math::Lerp::Linear(baseAlpha, tipAlpha, (iPos - halfPos + 1) / (float)halfPos);
@@ -2710,8 +2735,8 @@ void StgCurveLaserObject::RenderOnShotManager() {
 				VERTEX_TLX vt;
 
 				_SetVertexUV(vt, ptrSrc[(iVert & 1) << 1] * texSizeInv.x, rectV);
-				_SetVertexPosition(vt, itr->pos.x + itr->vertOff[iVert].x,
-					itr->pos.y + itr->vertOff[iVert].y, position_.z);
+				_SetVertexPosition(vt, pos.x + vertOff[iVert].x,
+					pos.y + vertOff[iVert].y, position_.z);
 				_SetVertexColorARGB(vt, thisColor);
 
 				verts[iVert] = vt;
