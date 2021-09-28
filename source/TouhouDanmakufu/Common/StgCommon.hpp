@@ -14,12 +14,14 @@ class StgPackageController;
 class StgStageInformation;
 class StgSystemInformation;
 class StgMovePattern;
+class StgMoveParent;
 
 //*******************************************************************
 //StgMoveObject
 //*******************************************************************
 class StgMoveObject {
 	friend StgMovePattern;
+	friend StgMoveParent;
 private:
 	StgStageController* stageController_;
 protected:
@@ -27,8 +29,14 @@ protected:
 	double posY_;
 
 	ref_unsync_ptr<StgMovePattern> pattern_;
+	ref_unsync_ptr<StgMovePattern> patternBak_;
 
 	bool bEnableMovement_;
+
+	ref_unsync_weak_ptr<StgMoveParent> parent_;
+	double offX_;
+	double offY_;
+	std::vector<ref_unsync_weak_ptr<StgMoveParent>> listOwnedParent_;
 
 	int framePattern_;
 	std::map<int, std::list<ref_unsync_ptr<StgMovePattern>>> mapPattern_;
@@ -37,6 +45,8 @@ protected:
 public:
 	StgMoveObject(StgStageController* stageController);
 	virtual ~StgMoveObject();
+
+	void Move();
 
 	void SetEnableMovement(bool b) { bEnableMovement_ = b; }
 	bool IsEnableMovement() { return bEnableMovement_; }
@@ -51,14 +61,114 @@ public:
 	double GetDirectionAngle();
 	void SetDirectionAngle(double angle);
 
+	double GetSpeedX();
+	double GetSpeedY();
 	void SetSpeedX(double speedX);
 	void SetSpeedY(double speedY);
+
+	void SetParent(ref_unsync_weak_ptr<StgMoveParent> parent) { parent_ = parent; }
+	ref_unsync_weak_ptr<StgMoveParent> GetParent() { return parent_; }
+	std::vector<ref_unsync_weak_ptr<StgMoveParent>>& GetOwnedParentList() { return listOwnedParent_; }
+	void RemoveParent() { parent_ = nullptr; }
+	void SetRelativePosition(float x, float y) { offX_ = x; offY_ = y; }
+	void UpdateRelativePosition();
+	double GetDistanceFromParent();
+	double GetAngleFromParent();
 
 	ref_unsync_ptr<StgMovePattern> GetPattern() { return pattern_; }
 	void SetPattern(ref_unsync_ptr<StgMovePattern> pattern) {
 		pattern_ = pattern;
 	}
 	void AddPattern(int frameDelay, ref_unsync_ptr<StgMovePattern> pattern, bool bForceMap = false);
+};
+
+//*******************************************************************
+//StgMoveParent
+//*******************************************************************
+class StgMoveParent : public DxScriptObjectBase {
+	friend StgMoveObject;
+public:
+	enum {
+		ANGLE_FIXED,		// Angle is untouched, only changed via move pattern if applicable
+		ANGLE_ROTATE,		// Increment angle only when transform angle is changed
+		ANGLE_FOLLOW,		// Match angle to that of the target move object (same as ANGLE_FIXED if no target is set)
+		ANGLE_ABSOLUTE,		// Get absolute angle from last position
+		ANGLE_RELATIVE,		// Get angle from last position relative to base point
+		ANGLE_OUTWARD,		// Face outwards from base point
+		ANGLE_INWARD,		// Face inwards from base point
+	};
+	enum {
+		ORDER_ANGLE_SCALE,
+		ORDER_SCALE_ANGLE
+	};
+private:
+	StgStageController* stageController_;
+protected:
+	ref_unsync_weak_ptr<StgMoveObject> target_;
+	int typeAngle_;
+	int transOrder_;
+	bool bAutoDelete_;
+	bool bMoveChild_;
+	bool bRotateLaser_;
+	bool bTransformMove_;
+
+	double posX_;
+	double posY_;
+	double offX_;
+	double offY_;
+	double scaX_;
+	double scaY_;
+	double rotZ_;
+	double lastX_;
+	double lastY_;
+	std::vector<ref_unsync_weak_ptr<StgMoveObject>> listChild_;
+
+public:
+	StgMoveParent(StgStageController* stageController);
+	~StgMoveParent();
+
+	virtual void Work();
+	virtual void Render() {}
+	virtual void SetRenderState() {}
+	virtual void CleanUp();
+
+	void SetParentObject(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveObject> parent);
+	ref_unsync_weak_ptr<StgMoveParent> GetParentObject() { return target_;  }
+	void SetAutoDelete(bool enable) { bAutoDelete_ = enable; }
+	void AddChild(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveObject> child);
+	std::vector<ref_unsync_weak_ptr<StgMoveObject>>& GetChildren() { return listChild_; }
+	void RemoveChildren();
+	
+	void SetPositionOffset(double x, double y) { offX_ = x; offY_ = y; }
+	void SetTransformScale(double x, double y) { scaX_ = Unzero(x); scaY_ = Unzero(y); }
+	void SetTransformScaleX(double x) { scaX_ = Unzero(x); }
+	void SetTransformScaleY(double y) { scaY_ = Unzero(y); }
+	void SetTransformAngle(double z);
+	double GetTransformScaleX() { return scaX_; }
+	double GetTransformScaleY() { return scaY_; }
+	double GetTransformAngle() { return rotZ_; }
+	// double GetRadiusAtAngle(double angle);
+	void SetChildAngleMode(int type) { typeAngle_ = type; }
+	int GetChildAngleMode() { return typeAngle_;  }
+	void SetChildMotionEnable(bool enable) { bMoveChild_ = enable; }
+	void SetLaserRotationEnable(bool enable) { bRotateLaser_ = enable; }
+	void SetChildMotionTransformEnable(bool enable) { bTransformMove_ = enable;  }
+	void SetTransformOrder(int order) { transOrder_ = order; }
+	void ApplyTransformation();
+	void ResetTransformation() { scaX_ = 1; scaY_ = 1; rotZ_ = 0; }
+	inline void UpdatePosition() {
+		posX_ = target_ ? target_->posX_ : 0;
+		posY_ = target_ ? target_->posY_ : 0;
+	}
+	inline double GetX() { return posX_ + offX_; }
+	inline double GetY() { return posY_ + offY_; }
+	void MoveChild(StgMoveObject* child);
+
+	void UpdateChildren();
+
+	static inline double Unzero(double s) {
+		return (s >= 0) ? std::max(s, 0.00001) : std::min(s, -0.00001);
+	}
 };
 
 //*******************************************************************
@@ -229,8 +339,8 @@ public:
 	virtual inline double GetSpeed() { return speed_; }
 	virtual inline double GetDirectionAngle() { return angDirection_; }
 
-	virtual double GetSpeedX() { return c_; }
-	virtual double GetSpeedY() { return s_; }
+	virtual double GetSpeedX() { return (speed_ * c_); }
+	virtual double GetSpeedY() { return (speed_ * s_); }
 };
 class StgMovePattern_Line_Speed : public StgMovePattern_Line {
 	friend class StgMoveObject;
@@ -245,7 +355,6 @@ public:
 	using lerp_func = Math::Lerp::funcLerp<double, double>;
 	using lerp_diff_func = Math::Lerp::funcLerpDiff<double>;
 protected:
-	double positionDiff_[2];
 	double speedRate_;
 	lerp_func moveLerpFunc;
 	lerp_diff_func diffLerpFunc;

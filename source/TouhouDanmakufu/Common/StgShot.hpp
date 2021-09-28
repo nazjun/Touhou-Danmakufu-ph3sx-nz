@@ -307,7 +307,8 @@ protected:
 	int frameGrazeInvalid_;
 	int frameGrazeInvalidStart_;
 	int frameFadeDelete_;
-
+	
+	bool bRequestedPlayerDeleteEvent_;
 	double damage_;
 	double life_;
 
@@ -343,6 +344,7 @@ protected:
 
 	virtual void _ConvertToItemAndSendEvent(bool flgPlayerCollision) {}
 	virtual void _SendDeleteEvent(int bit);
+	void _RequestPlayerDeleteEvent(int hitObjectID);
 
 	std::list<StgPatternShotTransform> listTransformationShotAct_;
 	int timerTransform_;
@@ -435,6 +437,7 @@ class StgNormalShotObject : public StgShotObject {
 	friend class StgShotObject;
 protected:
 	double angularVelocity_;
+	bool bFixedAngle_;
 
 	void _AddIntersectionRelativeTarget();
 	virtual void _ConvertToItemAndSendEvent(bool flgPlayerCollision);
@@ -457,6 +460,7 @@ public:
 	virtual void SetShotDataID(int id);
 
 	void SetGraphicAngularVelocity(double agv) { angularVelocity_ = agv; }
+	void SetFixedAngle(bool fix) { bFixedAngle_ = fix; }
 };
 
 //*******************************************************************
@@ -487,13 +491,14 @@ public:
 	void SetLength(int length) { length_ = length; lengthF_ = (float)length; }
 	int GetRenderWidth() { return widthRender_; }
 	void SetRenderWidth(int width) {
+		width = std::max(width, 0);
 		widthRender_ = width;
 		if (widthIntersection_ < 0) widthIntersection_ = width / 4;
 	}
 	void SetExtendRate(float rate) { extendRate_ = rate; }
 	void SetMaxLength(int max) { maxLength_ = max; }
 	int GetIntersectionWidth() { return widthIntersection_; }
-	void SetIntersectionWidth(int width) { widthIntersection_ = width; }
+	void SetIntersectionWidth(int width) { widthIntersection_ = std::max(width, 0); }
 	void SetInvalidLength(float start, float end) { invalidLengthStart_ = start; invalidLengthEnd_ = end; }
 	void SetItemDistance(float dist) { itemDistance_ = std::max(dist, 0.1f); }
 };
@@ -503,8 +508,11 @@ public:
 //*******************************************************************
 class StgLooseLaserObject : public StgLaserObject {
 protected:
-	float posXE_;
-	float posYE_;
+	double posXE_;
+	double posYE_;
+
+	float posXO_;
+	float posYO_;
 
 	virtual void _DeleteInAutoClip();
 	virtual void _Move();
@@ -542,6 +550,7 @@ protected:
 	bool bLaserExpand_;
 
 	virtual void _DeleteInAutoClip();
+	virtual void _AddIntersectionRelativeTarget();
 	virtual void _ConvertToItemAndSendEvent(bool flgPlayerCollision);
 public:
 	StgStraightLaserObject(StgStageController* stageController);
@@ -587,9 +596,17 @@ public:
 		D3DXVECTOR2 vertOff[2];
 		D3DCOLOR color;
 	};
+	enum {
+		MAP_NORMAL,
+		MAP_CAPPED
+	};
 protected:
 	std::list<LaserNode> listPosition_;
 	float tipDecrement_;
+	float posXO_;
+	float posYO_;
+	bool bCap_;
+	bool bSmoothAngle_;
 
 	virtual void _DeleteInAutoClip();
 	virtual void _Move();
@@ -604,8 +621,10 @@ public:
 	}
 	virtual std::vector<ref_unsync_ptr<StgIntersectionTarget>> GetIntersectionTargetList();
 	void SetTipDecrement(float dec) { tipDecrement_ = dec; }
+	void SetTipCapping(bool enable) { bCap_ = enable; }
+	void SetAngleSmoothing(bool enable) { bSmoothAngle_ = enable; }
 
-	LaserNode CreateNode(const D3DXVECTOR2& pos, const D3DXVECTOR2& rFac, D3DCOLOR col = 0xffffffff);
+	LaserNode CreateNode(const D3DXVECTOR2& pos, const D3DXVECTOR2& rFac, int width, D3DCOLOR col = 0xffffffff);
 	bool GetNode(size_t indexNode, std::list<LaserNode>::iterator& res);
 	void GetNodePointerList(std::vector<LaserNode*>* listRes);
 	std::list<LaserNode>::iterator PushNode(const LaserNode& node);
@@ -661,10 +680,10 @@ private:
 	float fireRadiusOffset_;
 	//-----------------------------------------------------------------
 
-	float speedBase_;
-	float speedArgument_;
-	float angleBase_;
-	float angleArgument_;
+	double speedBase_;
+	double speedArgument_;
+	double angleBase_;
+	double angleArgument_;
 
     float extra_;
 
@@ -716,11 +735,11 @@ public:
 	}
 	void SetRadiusFromFirePoint(float r) { fireRadiusOffset_ = r; }
 
-	void SetSpeed(float base, float arg) {
+	void SetSpeed(double base, double arg) {
 		speedBase_ = base;
 		speedArgument_ = arg;
 	}
-	void SetAngle(float base, float arg) {
+	void SetAngle(double base, double arg) {
 		angleBase_ = base;
 		angleArgument_ = arg;
 	}

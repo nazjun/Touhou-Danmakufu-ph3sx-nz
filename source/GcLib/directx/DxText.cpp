@@ -184,7 +184,7 @@ bool DxCharGlyph::Create(UINT code, const Font& winFont, const DxFont* dxFont) {
 							if (minAlphaEnableDist < widthBorder)
 								destAlpha = 255;
 							else if (minAlphaEnableDist == widthBorder)
-								destAlpha = count;
+								destAlpha = static_cast<short>(count);
 							else destAlpha = 0;
 
 							//color = ColorAccess::SetColorA(color, ColorAccess::GetColorA(colorBorder)*count/255);
@@ -1249,8 +1249,8 @@ std::wstring DxTextRenderer::_ReplaceRenderText(std::wstring text) {
 	return text;
 }
 
-void DxTextRenderer::_CreateRenderObject(shared_ptr<DxTextRenderObject> objRender, const POINT& pos, DxFont dxFont,
-	shared_ptr<DxTextLine> textLine)
+void DxTextRenderer::_CreateRenderObject(shared_ptr<DxTextRenderObject> objRender, DxText* pDxText, 
+	const POINT & pos, DxFont dxFont, shared_ptr<DxTextLine> textLine)
 {
 	SetFont(dxFont.GetLogFont());
 
@@ -1323,13 +1323,17 @@ void DxTextRenderer::_CreateRenderObject(shared_ptr<DxTextRenderObject> objRende
 		LONG charWidth = ptrCharSize->x;
 		LONG charHeight = ptrCharSize->y;
 		DxRect<LONG> rcDest(xRender + xOffset, yRender + yOffset,
-			charWidth + xRender + xOffset, charHeight + yRender + yOffset) ;
+			charWidth + xRender + xOffset, charHeight + yRender + yOffset);
 		DxRect<LONG> rcSrc(0, 0, charWidth, charHeight);
 		spriteText->SetVertex(rcSrc, rcDest, colorVertex_);
 		objRender->AddRenderObject(shared_ptr<Sprite2D>(spriteText));
 
-		//次の文字
-		xRender += dxChar->GetSize().x - dxFont.GetBorderWidth() + textLine->GetSidePitch();
+		LONG chrWidth = 0;
+		if (pDxText->GetFixedWidth() > 0)
+			chrWidth = pDxText->GetFixedWidth();
+		else
+			chrWidth = dxChar->GetSize().x - dxFont.GetBorderWidth();
+		xRender += chrWidth + textLine->GetSidePitch();
 	}
 }
 
@@ -1407,7 +1411,7 @@ shared_ptr<DxTextRenderObject> DxTextRenderer::CreateRenderObject(DxText* dxText
 				heightTotal += textLine->height_ + linePitch;
 				if (heightTotal > heightMax) break;
 
-				_CreateRenderObject(objRender, pos, dxFont, textLine);
+				_CreateRenderObject(objRender, dxText, pos, dxFont, textLine);
 
 				pos.y += textLine->height_ + linePitch;
 			}
@@ -1433,16 +1437,18 @@ void DxTextRenderer::Render(DxText* dxText, shared_ptr<DxTextInfo> textInfo) {
 	}
 }
 bool DxTextRenderer::AddFontFromFile(const std::wstring& path) {
+	std::wstring pathReduce = PathProperty::ReduceModuleDirectory(path);
+
 	shared_ptr<FileReader> reader = FileManager::GetBase()->GetFileReader(path);
 	if (reader == nullptr || !reader->Open())
-		throw gstd::wexception(L"AddFontFromFile: " + ErrorUtility::GetFileNotFoundErrorMessage(path, true));
+		throw gstd::wexception(L"AddFontFromFile: " + ErrorUtility::GetFileNotFoundErrorMessage(pathReduce, true));
 
 	std::string source = reader->ReadAllString();
 
 	DWORD count = 0;
 	HANDLE hFont = ::AddFontMemResourceEx((LPVOID)source.c_str(), source.size(), nullptr, &count);
 
-	Logger::WriteTop(StringUtility::Format(L"AddFontFromFile: Font loaded. [%s]", path.c_str()));
+	Logger::WriteTop(StringUtility::Format(L"AddFontFromFile: Font loaded. [%s]", pathReduce.c_str()));
 	return hFont != 0;
 }
 
@@ -1476,6 +1482,7 @@ DxText::DxText() {
 	heightMax_ = INT_MAX;
 	sidePitch_ = 0;
 	linePitch_ = 4;
+	fixedWidth_ = 0;
 	alignmentHorizontal_ = TextAlignment::Left;
 	alignmentVertical_ = TextAlignment::Top;
 
@@ -1493,6 +1500,7 @@ void DxText::Copy(const DxText& src) {
 	heightMax_ = src.heightMax_;
 	sidePitch_ = src.sidePitch_;
 	linePitch_ = src.linePitch_;
+	fixedWidth_ = src.fixedWidth_;
 	margin_ = src.margin_;
 	alignmentHorizontal_ = src.alignmentHorizontal_;
 	alignmentVertical_ = src.alignmentVertical_;

@@ -66,7 +66,9 @@ namespace gstd {
 	//*******************************************************************
 	//ScriptClientBase
 	//*******************************************************************
+	class ScriptLoader;
 	class ScriptClientBase {
+		friend class ScriptLoader;
 		static script_type_manager* pTypeManager_;
 	public:
 		enum {
@@ -84,6 +86,8 @@ namespace gstd {
 
 		std::vector<gstd::function> func_;
 		std::vector<gstd::constant> const_;
+		std::map<std::wstring, std::wstring> definedMacro_;
+
 		shared_ptr<RandProvider> mt_;
 		shared_ptr<RandProvider> mtEffect_;
 
@@ -104,7 +108,7 @@ namespace gstd {
 		void _RaiseError(int line, const std::wstring& message);
 		std::wstring _GetErrorLineSource(int line);
 
-		virtual std::vector<char> _Include(std::vector<char>& source);
+		virtual std::vector<char> _ParsePreprocessors(std::vector<char>& source);
 		virtual bool _CreateEngine();
 
 		std::wstring _ExtendPath(std::wstring path);
@@ -238,6 +242,10 @@ namespace gstd {
 		DNH_FUNCAPI_DECL_(Func_AsecH);
 		DNH_FUNCAPI_DECL_(Func_AcscH);
 		DNH_FUNCAPI_DECL_(Func_AcotH);
+
+		DNH_FUNCAPI_DECL_(Func_Triangular);
+		DNH_FUNCAPI_DECL_(Func_Tetrahedral);
+		DNH_FUNCAPI_DECL_(Func_NSimplex);
 
 		DNH_FUNCAPI_DECL_(Func_Exp);
 		DNH_FUNCAPI_DECL_(Func_Sqrt);
@@ -436,6 +444,42 @@ namespace gstd {
 		return value(type_arr, std::wstring());
 	}
 #pragma endregion ScriptClientBase_impl
+
+	//*******************************************************************
+	//ScriptLoader
+	//*******************************************************************
+	class ScriptLoader {
+	protected:
+		ScriptClientBase* script_;
+
+		std::wstring pathSource_;
+		std::vector<char> src_;
+		Encoding::Type encoding_;
+		size_t charSize_;
+
+		unique_ptr<Scanner> scanner_;
+
+		gstd::ref_count_ptr<ScriptFileLineMap> mapLine_;
+		std::set<std::wstring> setIncludedPath_;
+	protected:
+		void _RaiseError(int line, const std::wstring& err);
+		void _DumpRes();
+
+		void _ResetScanner(size_t iniReadPos);
+		void _AssertNewline();
+		bool _SkipToNextValidLine();
+
+		void _ParseInclude();
+		void _ParseIfElse();
+	public:
+		ScriptLoader(ScriptClientBase* script, const std::wstring& path, std::vector<char>& source);
+		~ScriptLoader();
+
+		void ParsePreprocessors();
+
+		std::vector<char>& GetResult() { return src_; }
+		gstd::ref_count_ptr<ScriptFileLineMap> GetLineMap() { return mapLine_; }
+	};
 
 	//*******************************************************************
 	//ScriptFileLineMap

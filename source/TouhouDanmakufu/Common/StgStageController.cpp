@@ -34,6 +34,7 @@ void StgStageController::Initialize(ref_count_ptr<StgStageStartData> startData) 
 	input->ClearKeyState();
 
 	DirectGraphics* graphics = DirectGraphics::GetBase();
+	/*
 	ref_count_ptr<DxCamera> camera3D = graphics->GetCamera();
 	camera3D->Reset();
 	camera3D->SetPerspectiveWidth(384);
@@ -43,6 +44,7 @@ void StgStageController::Initialize(ref_count_ptr<StgStageStartData> startData) 
 
 	ref_count_ptr<DxCamera2D> camera2D = graphics->GetCamera2D();
 	camera2D->Reset();
+	*/
 
 	ref_count_ptr<StgStageInformation> infoStage = startData->GetStageInformation();
 	ref_count_ptr<ReplayInformation::StageData> replayStageData = startData->GetStageReplayData();
@@ -148,7 +150,8 @@ void StgStageController::Initialize(ref_count_ptr<StgStageStartData> startData) 
 	ref_count_ptr<ScriptInformation> infoMain = infoStage_->GetMainScriptInformation();
 	std::wstring dirInfo = PathProperty::GetFileDirectory(infoMain->GetScriptPath());
 
-	ELogger::WriteTop(StringUtility::Format(L"Main script: [%s]", infoMain->GetScriptPath().c_str()));
+	ELogger::WriteTop(StringUtility::Format(L"Main script: [%s]", 
+		PathProperty::ReduceModuleDirectory(infoMain->GetScriptPath()).c_str()));
 
 	{
 		std::wstring pathSystemScript = infoMain->GetSystemPath();
@@ -156,7 +159,8 @@ void StgStageController::Initialize(ref_count_ptr<StgStageStartData> startData) 
 			pathSystemScript = EPathProperty::GetStgDefaultScriptDirectory() + L"Default_System.txt";
 		if (pathSystemScript.size() > 0) {
 			pathSystemScript = EPathProperty::ExtendRelativeToFull(dirInfo, pathSystemScript);
-			ELogger::WriteTop(StringUtility::Format(L"System script: [%s]", pathSystemScript.c_str()));
+			ELogger::WriteTop(StringUtility::Format(L"System script: [%s]", 
+				PathProperty::ReduceModuleDirectory(pathSystemScript).c_str()));
 
 			auto script = scriptManager_->LoadScript(pathSystemScript, StgStageScript::TYPE_SYSTEM);
 			scriptManager_->StartScript(script);
@@ -168,7 +172,8 @@ void StgStageController::Initialize(ref_count_ptr<StgStageStartData> startData) 
 	const std::wstring& pathPlayerScript = infoPlayer->GetScriptPath();
 
 	if (pathPlayerScript.size() > 0) {
-		ELogger::WriteTop(StringUtility::Format(L"Player script: [%s]", pathPlayerScript.c_str()));
+		ELogger::WriteTop(StringUtility::Format(L"Player script: [%s]", 
+			PathProperty::ReduceModuleDirectory(pathPlayerScript).c_str()));
 		int idPlayer = scriptManager_->GetObjectManager()->CreatePlayerObject();
 		objPlayer = ref_unsync_ptr<StgPlayerObject>::Cast(GetMainRenderObject(idPlayer));
 
@@ -176,7 +181,7 @@ void StgStageController::Initialize(ref_count_ptr<StgStageStartData> startData) 
 			objPlayer->SetEnableStateEnd(false);
 
 		auto script = scriptManager_->LoadScript(pathPlayerScript, StgStageScript::TYPE_PLAYER);
-		_SetupReplayTargetCommonDataArea(script->GetScriptID());
+		_SetupReplayTargetCommonDataArea(script);
 
 		shared_ptr<StgStagePlayerScript> scriptPlayer =
 			std::dynamic_pointer_cast<StgStagePlayerScript>(script);
@@ -205,7 +210,7 @@ void StgStageController::Initialize(ref_count_ptr<StgStageStartData> startData) 
 		const std::wstring& pathMainScript = infoMain->GetScriptPath();
 		if (pathMainScript.size() > 0) {
 			auto script = scriptManager_->LoadScript(pathMainScript, StgStageScript::TYPE_STAGE);
-			_SetupReplayTargetCommonDataArea(script->GetScriptID());
+			_SetupReplayTargetCommonDataArea(script);
 			scriptManager_->StartScript(script);
 		}
 	}
@@ -216,7 +221,8 @@ void StgStageController::Initialize(ref_count_ptr<StgStageStartData> startData) 
 			pathBack = L"";
 		if (pathBack.size() > 0) {
 			pathBack = EPathProperty::ExtendRelativeToFull(dirInfo, pathBack);
-			ELogger::WriteTop(StringUtility::Format(L"Background script: [%s]", pathBack.c_str()));
+			ELogger::WriteTop(StringUtility::Format(L"Background script: [%s]", 
+				PathProperty::ReduceModuleDirectory(pathBack).c_str()));
 			auto script = scriptManager_->LoadScript(pathBack, StgStageScript::TYPE_STAGE);
 			scriptManager_->StartScript(script);
 		}
@@ -228,7 +234,8 @@ void StgStageController::Initialize(ref_count_ptr<StgStageStartData> startData) 
 			pathBGM = L"";
 		if (pathBGM.size() > 0) {
 			pathBGM = EPathProperty::ExtendRelativeToFull(dirInfo, pathBGM);
-			ELogger::WriteTop(StringUtility::Format(L"BGM: [%s]", pathBGM.c_str()));
+			ELogger::WriteTop(StringUtility::Format(L"BGM: [%s]", 
+				PathProperty::ReduceModuleDirectory(pathBGM).c_str()));
 			shared_ptr<SoundPlayer> player = DirectSoundManager::GetBase()->GetPlayer(pathBGM);
 			if (player) {
 				player->SetAutoDelete(true);
@@ -277,9 +284,8 @@ void StgStageController::CloseScene() {
 		replayStageData->SetLastScore(infoStage_->GetScore());
 	}
 }
-void StgStageController::_SetupReplayTargetCommonDataArea(int64_t idScript) {
-	shared_ptr<StgStageScript> script =
-		std::dynamic_pointer_cast<StgStageScript>(scriptManager_->GetScript(idScript));
+void StgStageController::_SetupReplayTargetCommonDataArea(shared_ptr<ManagedScript> pScript) {
+	auto script = std::dynamic_pointer_cast<StgStageScript>(pScript);
 	if (script == nullptr) return;
 
 	const gstd::value& res = script->RequestEvent(StgStageScript::EV_REQUEST_REPLAY_TARGET_COMMON_AREA);

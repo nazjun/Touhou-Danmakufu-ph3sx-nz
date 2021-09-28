@@ -106,6 +106,8 @@ namespace directx {
 		FileText,
 		FileBinary,
 
+		Base,
+
 		//------------------------------
 
 		Player = 128,
@@ -124,6 +126,8 @@ namespace directx {
 		ShotPattern,
 
 		Item,
+
+		MoveParent,
 
 		Invalid = 0xff,
 	};

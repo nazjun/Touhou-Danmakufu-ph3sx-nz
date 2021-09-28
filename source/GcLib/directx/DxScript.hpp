@@ -233,6 +233,7 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_ColorARGBToHex);
 		DNH_FUNCAPI_DECL_(Func_ColorHexToARGB);
 		DNH_FUNCAPI_DECL_(Func_ColorRGBtoHSV);
+		DNH_FUNCAPI_DECL_(Func_ColorHexRGBtoHSV);
 		DNH_FUNCAPI_DECL_(Func_ColorHSVtoRGB);
 		DNH_FUNCAPI_DECL_(Func_ColorHSVtoHexRGB);
 
@@ -240,7 +241,9 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_SetInvalidPositionReturn);
 
 		//Dx関数：オブジェクト操作(共通)
+		static gstd::value Func_Obj_Create(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_Delete(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		static gstd::value Func_Obj_QueueDelete(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_IsDeleted(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_IsExists(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_SetVisible(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -250,17 +253,18 @@ namespace directx {
 		static gstd::value Func_Obj_GetRenderPriority(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_GetRenderPriorityI(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_GetValue(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_Obj_GetValueD(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_SetValue(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_DeleteValue(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_IsValueExists(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		DNH_FUNCAPI_DECL_(Func_Obj_GetValueI);
-		DNH_FUNCAPI_DECL_(Func_Obj_GetValueDI);
 		DNH_FUNCAPI_DECL_(Func_Obj_SetValueI);
 		DNH_FUNCAPI_DECL_(Func_Obj_DeleteValueI);
 		DNH_FUNCAPI_DECL_(Func_Obj_IsValueExistsI);
 		DNH_FUNCAPI_DECL_(Func_Obj_CopyValueTable);
 		static gstd::value Func_Obj_GetType(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		static gstd::value Func_Obj_GetParentScriptID(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		static gstd::value Func_Obj_Reparent(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		static gstd::value Func_Obj_SetAutoDelete(gstd::script_machine* machine, int argc, const gstd::value* argv);
 
 		//Dx関数：オブジェクト操作(RenderObject)
 		static gstd::value Func_ObjRender_SetX(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -409,6 +413,7 @@ namespace directx {
 		static gstd::value Func_ObjText_SetMaxHeight(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_SetLinePitch(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_SetSidePitch(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		DNH_FUNCAPI_DECL_(Func_ObjText_SetFixedWidth);
 		static gstd::value Func_ObjText_SetVertexColor(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_SetTransCenter(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_SetAutoTransCenter(gstd::script_machine* machine, int argc, const gstd::value* argv);

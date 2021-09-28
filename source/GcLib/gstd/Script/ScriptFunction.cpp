@@ -1162,6 +1162,8 @@ namespace gstd {
 		size_t length = argv[0].length_as_array();
 		int insertPos = argv[1].as_int();
 
+		if (insertPos < 0) insertPos += length;
+
 		if (insertPos < 0 || (length > 0 && insertPos > length) || (length == 0 && insertPos > 0)) {
 			std::string error = StringUtility::Format("Array index out of bounds. (inserting=%d, size=%u)\r\n",
 				insertPos, length);
@@ -1220,6 +1222,8 @@ namespace gstd {
 		size_t length = argv[0].length_as_array();
 		int index_1 = argv[1].as_int();
 
+		if (index_1 < 0) index_1 += length;
+
 		if (index_1 < 0 || index_1 >= length) {
 			std::string error = StringUtility::Format("Array index out of bounds. (erasing=%d, size=%u)\r\n",
 				index_1, length);
@@ -1267,6 +1271,7 @@ namespace gstd {
 	}
 
 	bool __chk_concat(script_machine* machine, type_data* type_l, type_data* type_r) {
+		/*
 		if (type_l->get_kind() != type_data::tk_array) {
 			BaseFunction::_raise_error_unsupported(machine, type_l, "array concatenate");
 			return false;
@@ -1275,8 +1280,8 @@ namespace gstd {
 			BaseFunction::_raise_error_unsupported(machine, type_r, "array concatenate");
 			return false;
 		}
-		//if (type_l != type_r && !(type_l->get_element() == nullptr || type_r->get_element() == nullptr)) {
-		if (!BaseFunction::__type_assign_check(type_l, type_r)) {
+		*/
+		if (type_l->get_kind() != type_data::tk_array || !BaseFunction::__type_assign_check(type_l, type_r)) {
 			std::string error = StringUtility::Format("Invalid value type for concatenate: %s ~ %s\r\n",
 				type_data::string_representation(type_l).c_str(),
 				type_data::string_representation(type_r).c_str());
@@ -1287,34 +1292,36 @@ namespace gstd {
 	}
 	value BaseFunction::concatenate(script_machine* machine, int argc, const value* argv) {
 		_null_check(machine, argv, argc);
-		__chk_concat(machine, argv[0].get_type(), argv[1].get_type());
+		if (__chk_concat(machine, argv[0].get_type(), argv[1].get_type())) {
+			value result = argv[0];
+			result.make_unique();
 
-		value result = argv[0];
-		result.make_unique();
+			value concat = argv[1];
+			if (concat.get_type() != result.get_type()) {
+				concat.make_unique();
+				BaseFunction::_value_cast(&concat, result.get_type());
+			}
+			result.concatenate(concat);
 
-		value concat = argv[1];
-		if (concat.get_type() != result.get_type()) {
-			concat.make_unique();
-			BaseFunction::_value_cast(&concat, result.get_type());
+			return result;
 		}
-		result.concatenate(concat);
-
-		return result;
+		else return value();
 	}
 	value BaseFunction::concatenate_direct(script_machine* machine, int argc, const value* argv) {
 		_null_check(machine, argv, argc);
-		__chk_concat(machine, argv[0].get_type(), argv[1].get_type());
+		if (__chk_concat(machine, argv[0].get_type(), argv[1].get_type())) {
+			value result = argv[0];
 
-		value result = argv[0];
+			value concat = argv[1];
+			if (concat.get_type() != result.get_type()) {
+				concat.make_unique();
+				BaseFunction::_value_cast(&concat, result.get_type());
+			}
+			result.concatenate(concat);
 
-		value concat = argv[1];
-		if (concat.get_type() != result.get_type()) {
-			concat.make_unique();
-			BaseFunction::_value_cast(&concat, result.get_type());
+			return result;
 		}
-		result.concatenate(concat);
-
-		return result;
+		else return value();
 	}
 
 	value BaseFunction::round(script_machine* machine, int argc, const value* argv) {

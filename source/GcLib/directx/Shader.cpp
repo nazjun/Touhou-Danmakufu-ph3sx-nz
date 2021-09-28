@@ -31,12 +31,35 @@ void ShaderData::RestoreDxResource() {
 //*******************************************************************
 //ShaderParameter
 //*******************************************************************
-ShaderParameter::ShaderParameter() {
+ShaderParameter::ShaderParameter(D3DXHANDLE handle) {
+	handle_ = handle;
 	type_ = ShaderParameterType::Unknown;
 	texture_ = nullptr;
 }
 ShaderParameter::~ShaderParameter() {
 }
+
+void ShaderParameter::SubmitData(ID3DXEffect* effect) {
+	if (effect == nullptr) return;
+	switch (type_) {
+	case ShaderParameterType::Float:
+		effect->SetFloat(handle_, *GetFloat());
+		break;
+	case ShaderParameterType::Texture:
+		if (texture_)
+			effect->SetTexture(handle_, texture_->GetD3DTexture());
+		else
+			effect->SetTexture(handle_, nullptr);
+		break;
+	case ShaderParameterType::FloatArray:
+	case ShaderParameterType::Vector:
+	case ShaderParameterType::Matrix:
+	case ShaderParameterType::MatrixArray:
+		effect->SetRawValue(handle_, value_.data(), 0, value_.size());
+		break;
+	}
+}
+
 void ShaderParameter::SetMatrix(D3DXMATRIX& matrix) {
 	type_ = ShaderParameterType::Matrix;
 
@@ -179,6 +202,27 @@ bool Shader::CreateFromData(shared_ptr<ShaderData> data) {
 	return res;
 }
 
+bool Shader::LoadTechnique() {
+	ID3DXEffect* effect = GetEffect();
+	if (effect == nullptr) return false;
+
+	D3DXHANDLE hTechnique = effect->GetTechniqueByName(technique_.c_str());
+
+	HRESULT hr = effect->SetTechnique(hTechnique);
+	if (FAILED(hr)) {
+		hr = effect->ValidateTechnique(hTechnique);
+		if (FAILED(hr)) {
+			const char* err = DXGetErrorStringA(hr);
+			const char* desc = DXGetErrorDescriptionA(hr);
+			std::string log = StringUtility::Format("Shader: Invalid technique. [%s]\r\n\t%s",
+				err, desc);
+			Logger::WriteTop(log);
+		}
+		return false;
+	}
+
+	return true;
+}
 bool Shader::LoadParameter() {
 	ID3DXEffect* effect = GetEffect();
 	if (effect == nullptr) return false;
@@ -186,69 +230,31 @@ bool Shader::LoadParameter() {
 	HRESULT hr = S_OK;
 
 	for (auto itrParam = mapParam_.begin(); itrParam != mapParam_.end(); ++itrParam) {
-		D3DXHANDLE name = itrParam->first.c_str();
+		D3DXHANDLE name = itrParam->first;
 		shared_ptr<ShaderParameter> param = itrParam->second;
 
-		switch (param->GetType()) {
-		case ShaderParameterType::Float:
-		{
-			FLOAT* flt = param->GetFloat();
-			hr = effect->SetFloat(name, *flt);
-			break;
-		}
-		case ShaderParameterType::FloatArray:
-		{
-			std::vector<byte>* raw = param->GetRaw();
-			hr = effect->SetFloatArray(name,
-				(FLOAT*)raw->data(), raw->size() / sizeof(FLOAT));
-			break;
-		}
-		case ShaderParameterType::Vector:
-		{
-			D3DXVECTOR4* vect = param->GetVector();
-			hr = effect->SetVector(name, vect);
-			break;
-		}
-		case ShaderParameterType::Matrix:
-		{
-			D3DXMATRIX* matrix = param->GetMatrix();
-			hr = effect->SetMatrix(name, matrix);
-			break;
-		}
-		case ShaderParameterType::MatrixArray:
-		{
-			std::vector<byte>* raw = param->GetRaw();
-			hr = effect->SetMatrixArray(name,
-				(D3DXMATRIX*)raw->data(), raw->size() / sizeof(D3DXMATRIX));
-			break;
-		}
-		case ShaderParameterType::Texture:
-		{
-			IDirect3DTexture9* pTex = param->GetTexture()->GetD3DTexture();
-			hr = effect->SetTexture(name, pTex);
-			break;
-		}
-		}
+		param->SubmitData(effect);
 	}
-
-	hr = effect->SetTechnique(technique_.c_str());
-	if (FAILED(hr)) return false;
 
 	return true;
 }
 shared_ptr<ShaderParameter> Shader::_GetParameter(const std::string& name, bool bCreate) {
-	auto itr = mapParam_.find(name);
-	bool bFind = itr != mapParam_.end();
-	if (!bFind && !bCreate) return nullptr;
+	D3DXHANDLE handle = data_->effect_->GetParameterByName(nullptr, name.c_str());
+	if (handle) {
+		auto itr = mapParam_.find(handle);
+		bool bFind = itr != mapParam_.end();
+		if (!bFind && !bCreate) return nullptr;
 
-	if (!bFind) {
-		shared_ptr<ShaderParameter> res(new ShaderParameter());
-		mapParam_[name] = res;
-		return res;
+		if (!bFind) {
+			shared_ptr<ShaderParameter> res(new ShaderParameter(handle));
+			mapParam_[handle] = res;
+			return res;
+		}
+		else {
+			return itr->second;
+		}
 	}
-	else {
-		return itr->second;
-	}
+	return nullptr;
 }
 
 bool Shader::SetTechnique(const std::string& name) {
@@ -257,32 +263,38 @@ bool Shader::SetTechnique(const std::string& name) {
 }
 bool Shader::SetMatrix(const std::string& name, D3DXMATRIX& matrix) {
 	shared_ptr<ShaderParameter> param = _GetParameter(name, true);
-	param->SetMatrix(matrix);
+	if (param)
+		param->SetMatrix(matrix);
 	return true;
 }
 bool Shader::SetMatrixArray(const std::string& name, std::vector<D3DXMATRIX>& matrix) {
 	shared_ptr<ShaderParameter> param = _GetParameter(name, true);
-	param->SetMatrixArray(matrix);
+	if (param)
+		param->SetMatrixArray(matrix);
 	return true;
 }
 bool Shader::SetVector(const std::string& name, D3DXVECTOR4& vector) {
 	shared_ptr<ShaderParameter> param = _GetParameter(name, true);
-	param->SetVector(vector);
+	if (param)
+		param->SetVector(vector);
 	return true;
 }
 bool Shader::SetFloat(const std::string& name, FLOAT value) {
 	shared_ptr<ShaderParameter> param = _GetParameter(name, true);
-	param->SetFloat(value);
+	if (param)
+		param->SetFloat(value);
 	return true;
 }
 bool Shader::SetFloatArray(const std::string& name, std::vector<FLOAT>& values) {
 	shared_ptr<ShaderParameter> param = _GetParameter(name, true);
-	param->SetFloatArray(values);
+	if (param)
+		param->SetFloatArray(values);
 	return true;
 }
 bool Shader::SetTexture(const std::string& name, shared_ptr<Texture> texture) {
 	shared_ptr<ShaderParameter> param = _GetParameter(name, true);
-	param->SetTexture(texture);
+	if (param)
+		param->SetTexture(texture);
 	return true;
 }
 
@@ -320,15 +332,8 @@ void ShaderManager::Clear() {
 	}
 }
 void ShaderManager::_ReleaseShaderData(const std::wstring& name) {
-	{
-		Lock lock(lock_);
-		auto itr = mapShaderData_.find(name);
-		if (itr != mapShaderData_.end()) {
-			itr->second->bLoad_ = false;
-			mapShaderData_.erase(itr);
-			Logger::WriteTop(StringUtility::Format(L"ShaderManager: Shader released. [%s]", name.c_str()));
-		}
-	}
+	auto itr = mapShaderData_.find(name);
+	_ReleaseShaderData(itr);
 }
 void ShaderManager::_ReleaseShaderData(std::map<std::wstring, shared_ptr<ShaderData>>::iterator itr) {
 	{
@@ -337,11 +342,13 @@ void ShaderManager::_ReleaseShaderData(std::map<std::wstring, shared_ptr<ShaderD
 			const std::wstring& name = itr->second->name_;
 			itr->second->bLoad_ = false;
 			mapShaderData_.erase(itr);
-			Logger::WriteTop(StringUtility::Format(L"ShaderManager: Shader released. [%s]", name.c_str()));
+			Logger::WriteTop(StringUtility::Format(L"ShaderManager: Shader released. [%s]", 
+				PathProperty::ReduceModuleDirectory(name).c_str()));
 		}
 	}
 }
 bool ShaderManager::_CreateFromFile(const std::wstring& path, shared_ptr<ShaderData>& dest) {
+	DirectGraphics* graphics = DirectGraphics::GetBase();
 	lastError_ = L"";
 
 	auto itr = mapShaderData_.find(path);
@@ -351,52 +358,60 @@ bool ShaderManager::_CreateFromFile(const std::wstring& path, shared_ptr<ShaderD
 	}
 
 	//path = PathProperty::GetUnique(path);
-	shared_ptr<FileReader> reader = FileManager::GetBase()->GetFileReader(path);
-	if (reader == nullptr || !reader->Open()) {
-		std::wstring log = StringUtility::Format(L"ShaderManager: Shader compile failed. [%s]", path.c_str());
-		Logger::WriteTop(log);
-		lastError_ = log;
+	std::wstring pathReduce = PathProperty::ReduceModuleDirectory(path);
+
+	try {
+		shared_ptr<FileReader> reader = FileManager::GetBase()->GetFileReader(path);
+		if (reader == nullptr || !reader->Open()) {
+			std::wstring err = ErrorUtility::GetFileNotFoundErrorMessage(path, true);
+			throw wexception(err);
+		}
+
+		std::string source = reader->ReadAllString();
+
+		ID3DXBuffer* pErr = nullptr;
+		HRESULT hr = D3DXCreateEffect(graphics->GetDevice(), source.c_str(), source.size(),
+			nullptr, nullptr, 0, nullptr, &dest->effect_, &pErr);
+
+		if (FAILED(hr)) {
+			std::wstring compileError = L"unknown error";
+			if (pErr) {
+				char* cText = (char*)pErr->GetBufferPointer();
+				compileError = StringUtility::ConvertMultiToWide(cText);
+			}
+
+			ptr_release(dest->effect_);
+
+			std::wstring err = StringUtility::Format(L"%s\r\n\t%s",
+				DXGetErrorStringW(hr), compileError.c_str());
+			throw wexception(err);
+		}
+		else {
+			dest->manager_ = this;
+			dest->name_ = path;
+			dest->bLoad_ = true;
+
+			mapShaderData_[path] = dest;
+
+			std::wstring log = StringUtility::Format(L"ShaderManager: Shader loaded. [%s]", pathReduce.c_str());
+			Logger::WriteTop(log);
+		}
+	}
+	catch (gstd::wexception& e) {
+		std::wstring err = StringUtility::Format(L"ShaderManager: Shader compile failed. [%s]\r\n\t%s",
+			pathReduce.c_str(), e.what());
+		Logger::WriteTop(err);
+		lastError_ = err;
+
+		dest = nullptr;
+
 		return false;
 	}
 
-	std::string source = reader->ReadAllString();
-
-	shared_ptr<ShaderData> data(new ShaderData());
-
-	DirectGraphics* graphics = DirectGraphics::GetBase();
-	ID3DXBuffer* pErr = nullptr;
-	HRESULT hr = D3DXCreateEffect(graphics->GetDevice(), source.c_str(), source.size(), 
-		nullptr, nullptr, 0, nullptr, &data->effect_, &pErr);
-
-	bool res = true;
-	if (FAILED(hr)) {
-		res = false;
-		std::wstring err = L"unknown error";
-		if (pErr) {
-			char* cText = (char*)pErr->GetBufferPointer();
-			err = StringUtility::ConvertMultiToWide(cText);
-		}
-		std::wstring log = StringUtility::Format(
-			L"ShaderManager: Shader compile failed. [%s]\r\n\t%s\r\n\t%s", 
-			path.c_str(), DXGetErrorStringW(hr), err.c_str());
-		Logger::WriteTop(log);
-		lastError_ = log;
-	}
-	else {
-		std::wstring log = StringUtility::Format(L"ShaderManager: Shader loaded. [%s]", path.c_str());
-		Logger::WriteTop(log);
-
-		mapShaderData_[path] = data;
-		data->manager_ = this;
-		data->name_ = path;
-		data->bLoad_ = true;
-
-		dest = data;
-	}
-
-	return res;
+	return true;
 }
 bool ShaderManager::_CreateFromText(const std::string& source, shared_ptr<ShaderData>& dest) {
+	DirectGraphics* graphics = DirectGraphics::GetBase();
 	lastError_ = L"";
 
 	std::wstring id = _GetTextSourceID(source);
@@ -406,76 +421,88 @@ bool ShaderManager::_CreateFromText(const std::string& source, shared_ptr<Shader
 		return true;
 	}
 
-	bool res = true;
-	DirectGraphics* graphics = DirectGraphics::GetBase();
+	try {
+		ID3DXBuffer* pErr = nullptr;
+		HRESULT hr = D3DXCreateEffect(graphics->GetDevice(), source.c_str(), source.size(),
+			nullptr, nullptr, 0, nullptr, &dest->effect_, &pErr);
 
-	shared_ptr<ShaderData> data(new ShaderData());
+		if (FAILED(hr)) {
+			char* compileError = "unknown error";
+			if (pErr) {
+				compileError = (char*)pErr->GetBufferPointer();
+			}
 
-	ID3DXBuffer* pErr = nullptr;
-	HRESULT hr = D3DXCreateEffect(graphics->GetDevice(), source.c_str(), source.size(),
-		nullptr, nullptr, 0, nullptr, &data->effect_, &pErr);
+			ptr_release(dest->effect_);
 
-	std::string tStr = StringUtility::Slice(source, 128);
-	if (FAILED(hr)) {
-		res = false;
-		char* err = "unknown error";
-		if (pErr)
-			err = (char*)pErr->GetBufferPointer();
-		std::string log = StringUtility::Format(
-			"ShaderManager: Shader compile failed. [%s]\r\n\t%s\r\n\t%s",
-			tStr.c_str(), DXGetErrorStringA(hr), err);
-		Logger::WriteTop(log);
-		lastError_ = StringUtility::ConvertMultiToWide(log);
+			std::string err = StringUtility::Format("%s\r\n\t%s",
+				DXGetErrorStringA(hr), compileError);
+			throw wexception(err);
+		}
+		else {
+			dest->manager_ = this;
+			dest->name_ = id;
+			dest->bLoad_ = true;
+			dest->bText_ = true;
+
+			mapShaderData_[id] = dest;
+
+			std::wstring log = StringUtility::Format(L"ShaderManager: Shader loaded. [%s]", id.c_str());
+			Logger::WriteTop(log);
+		}
 	}
-	else {
-		std::wstring log = StringUtility::Format(L"ShaderManager: Shader loaded. [%s]", tStr.c_str());
-		Logger::WriteTop(log);
+	catch (gstd::wexception& e) {
+		std::wstring err = StringUtility::Format(L"ShaderManager: Shader compile failed. [%s]\r\n\t%s",
+			id.c_str(), e.what());
+		Logger::WriteTop(err);
+		lastError_ = err;
 
-		mapShaderData_[id] = data;
-		data->manager_ = this;
-		data->name_ = id;
-		data->bLoad_ = true;
-		data->bText_ = true;
+		dest = nullptr;
 
-		dest = data;
+		return false;
 	}
 
-	return res;
+	return true;
 }
 bool ShaderManager::_CreateUnmanagedFromEffect(ID3DXEffect* effect, shared_ptr<ShaderData>& dest) {
-	lastError_ = L"";
-
-	shared_ptr<ShaderData> data(new ShaderData());
-
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-	HRESULT hr = effect->CloneEffect(graphics->GetDevice(), &data->effect_);
+	lastError_ = L"";
 
 	std::string shaderID = StringUtility::Format("%08x", (int)effect);
 
-	bool res = true;
-	if (FAILED(hr)) {
-		res = false;
-		std::string err = DXGetErrorStringA(hr);
-		std::string log = StringUtility::Format("ShaderManager: Shader clone failed. [%s]\r\n\t%s", 
-			shaderID.c_str(), err.c_str());
-		Logger::WriteTop(log);
-		lastError_ = StringUtility::ConvertMultiToWide(log);
+	try {
+		HRESULT hr = effect->CloneEffect(graphics->GetDevice(), &dest->effect_);
+
+		if (FAILED(hr)) {
+			const char* err = DXGetErrorStringA(hr);
+
+			ptr_release(dest->effect_);
+
+			throw wexception(err);
+		}
+		else {
+			dest->name_ = L"";
+			dest->bLoad_ = true;
+
+			std::string log = StringUtility::Format("ShaderManager: Shader cloned. [%s]", shaderID.c_str());
+			Logger::WriteTop(log);
+		}
 	}
-	else {
-		std::string log = StringUtility::Format("ShaderManager: Shader cloned. [%s]", shaderID.c_str());
-		Logger::WriteTop(log);
+	catch (gstd::wexception& e) {
+		std::wstring err = StringUtility::Format(L"ShaderManager: Shader clone failed. [%s]\r\n\t%s",
+			shaderID.c_str(), e.what());
+		Logger::WriteTop(err);
+		lastError_ = err;
 
-		data->name_ = L"";
-		data->bLoad_ = true;
+		dest = nullptr;
 
-		dest = data;
+		return false;
 	}
 
-	return res;
+	return true;
 }
 std::wstring ShaderManager::_GetTextSourceID(const std::string& source) {
 	std::wstring res = StringUtility::ConvertMultiToWide(source);
-	res = StringUtility::Slice(res, 64);
+	res = StringUtility::Slice(res, 128);
 	return res;
 }
 
@@ -537,10 +564,8 @@ shared_ptr<Shader> ShaderManager::CreateFromFile(const std::wstring& path) {
 	{
 		Lock lock(lock_);
 
-		shared_ptr<ShaderData> data = nullptr;
-		_CreateFromFile(path, data);
-
-		if (data) {
+		shared_ptr<ShaderData> data(new ShaderData());
+		if (_CreateFromFile(path, data)) {
 			res = std::make_shared<Shader>();
 			res->data_ = data;
 		}
@@ -552,10 +577,8 @@ shared_ptr<Shader> ShaderManager::CreateFromText(const std::string& source) {
 	{
 		Lock lock(lock_);
 
-		shared_ptr<ShaderData> data = nullptr;
-		_CreateFromText(source, data);
-
-		if (data) {
+		shared_ptr<ShaderData> data(new ShaderData());
+		if (_CreateFromText(source, data)) {
 			res = std::make_shared<Shader>();
 			res->data_ = data;
 		}
@@ -579,7 +602,7 @@ shared_ptr<Shader> ShaderManager::CreateUnmanagedFromEffect(ID3DXEffect* effect)
 	{
 		Lock lock(lock_);
 
-		shared_ptr<ShaderData> data = nullptr;
+		shared_ptr<ShaderData> data(new ShaderData());
 		if (_CreateUnmanagedFromEffect(effect, data)) {
 			res = std::make_shared<Shader>();
 			res->data_ = data;
