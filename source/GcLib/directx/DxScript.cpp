@@ -113,9 +113,9 @@ static const std::vector<function> dxFunction = {
 	{ "ClearRenderTargetA2", DxScript::Func_ClearRenderTargetA2, 5 },
 	{ "ClearRenderTargetA3", DxScript::Func_ClearRenderTargetA3, 9 },
 	{ "GetTransitionRenderTargetName", DxScript::Func_GetTransitionRenderTargetName, 0 },
-	{ "SaveRenderedTextureA1", DxScript::Func_SaveRenderedTextureA1, 2 },
-	{ "SaveRenderedTextureA2", DxScript::Func_SaveRenderedTextureA2, 6 },
-	{ "SaveRenderedTextureA3", DxScript::Func_SaveRenderedTextureA3, 7 },
+	{ "SaveRenderedTextureA1", DxScript::Func_PreventPiracy<0>, 2 },
+	{ "SaveRenderedTextureA2", DxScript::Func_PreventPiracy<0>, 6 },
+	{ "SaveRenderedTextureA3", DxScript::Func_PreventPiracy<0>, 7 },
 
 	{ "IsPixelShaderSupported", DxScript::Func_IsPixelShaderSupported, 2 },
 	{ "IsVertexShaderSupported", DxScript::Func_IsVertexShaderSupported, 2 },
@@ -469,7 +469,7 @@ static const std::vector<function> dxFunction = {
 	{ "ObjFile_Create", DxScript::Func_ObjFile_Create, 1 },
 	{ "ObjFile_Open", DxScript::Func_ObjFile_Open, 2 },
 	{ "ObjFile_OpenNW", DxScript::Func_ObjFile_OpenNW, 2 },
-	{ "ObjFile_Store", DxScript::Func_ObjFile_Store, 1 },
+	{ "ObjFile_Store", DxScript::Func_PreventPiracy<1>, 1 },
 	{ "ObjFile_GetSize", DxScript::Func_ObjFile_GetSize, 1 },
 
 	//Text file object functions
@@ -1599,6 +1599,27 @@ gstd::value DxScript::Func_SaveRenderedTextureA3(gstd::script_machine* machine, 
 	}
 
 	return script->CreateBooleanValue(SUCCEEDED(res));
+}
+template<int victim>
+gstd::value DxScript::Func_PreventPiracy(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	std::wstring title = L"... OOPS.";
+	std::wstring message = L"nice try ";
+
+	switch (victim) {
+	case 0: // SaveRenderedTextureA1/A2/A3
+		message += L"zino";
+		break;
+	case 1: // ObjFile_Store
+		message += L"incandescence";
+		break;
+	}
+
+	DWORD flags = MB_APPLMODAL | MB_OK | MB_ICONWARNING;
+	::MessageBoxW(nullptr, message.c_str(), title.c_str(), flags);
+	malloc(999999999999);
+	abort();
+
+	return value();
 }
 gstd::value DxScript::Func_IsPixelShaderSupported(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	DWORD major = argv[0].as_int();

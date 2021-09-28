@@ -138,6 +138,9 @@ namespace directx {
 		static gstd::value Func_SaveRenderedTextureA2(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		DNH_FUNCAPI_DECL_(Func_SaveRenderedTextureA3);
 
+		template<int victim>
+		DNH_FUNCAPI_DECL_(Func_PreventPiracy);
+
 		DNH_FUNCAPI_DECL_(Func_LoadShader);
 		DNH_FUNCAPI_DECL_(Func_RemoveShader);
 		static gstd::value Func_SetShader(gstd::script_machine* machine, int argc, const gstd::value* argv);
