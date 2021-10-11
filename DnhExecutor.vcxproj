@@ -63,7 +63,7 @@
     </LinkIncremental>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(DXSDK_DIR)Include;.\source\ext</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86;$(DXSDK_DIR)Lib\x86;.\library</LibraryPath>
-    <TargetName>bha4</TargetName>
+    <TargetName>tna</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release (Legacy)|Win32'">
     <OutDir>.\bin_th_dnh\</OutDir>
@@ -126,7 +126,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <SubSystem>Windows</SubSystem>
       <IgnoreSpecificDefaultLibraries>libc.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <OutputFile>bin_th_dnh/bha4.exe</OutputFile>
+      <OutputFile>bin_th_dnh/tna.exe</OutputFile>
       <AdditionalDependencies>legacy_stdio_definitions.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <AdditionalOptions>/NODEFAULTLIB:"libcmt.lib" /ignore:4099 %(AdditionalOptions)</AdditionalOptions>
@@ -384,7 +384,7 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="source\TouhouDanmakufu\DnhExecutor\DnhExecuter.rc">
-	  <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">source\TouhouDanmakufu\DnhExecutor;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">source\TouhouDanmakufu\DnhExecutor;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">source\TouhouDanmakufu\DnhExecutor;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release (Legacy)|Win32'">source\TouhouDanmakufu\DnhExecutor;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
