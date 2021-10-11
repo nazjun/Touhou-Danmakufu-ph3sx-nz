@@ -457,7 +457,7 @@ DnhConfiguration::DnhConfiguration() {
 
 	windowTitle_ = L"The Nameless Avatar (BHA4 trial)";
 	// bDynamicScaling_ = true;
-	// pathPackageScript_ = PathProperty::GetModuleDirectory() + L"script/tna.dnh";
+	pathPackageScript_ = PathProperty::GetModuleDirectory() + L"script/tna.dnh";
 
 	LoadConfigFile();
 	// _LoadDefinitionFile();

@@ -60,6 +60,31 @@ IDI_ICON                ICON    DISCARDABLE     "tna.ico"
 //IDI_ICON                ICON    DISCARDABLE     "th_sp_icon.ico"
 //IDI_ICON                ICON    DISCARDABLE     "th_tcl_icon.ico"
 
+/////////////////////////////////////////////////////////////////////////////
+// Stuff
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     0, 0, 1, 0
+PRODUCTVERSION  0, 0, 1, 0
+{
+    BLOCK "StringFileInfo"
+    {
+        BLOCK "040904b0"
+        {
+            VALUE "CompanyName",        "DOGSDAY\0"
+            VALUE "FileDescription",    "The Nameless Avatar\0"
+            VALUE "FileVersion",        "0.1.0"
+            VALUE "FileDescription",    "The Nameless Avatar\0"
+            VALUE "FileVersion",        "0.1.0\0"   
+        }
+    }
+    BLOCK "VarFileInfo"
+    {
+        VALUE "Translation", 0x409, 1200
+    }
+}
+
+
 #endif    // ���{�� resources
 /////////////////////////////////////////////////////////////////////////////
 
