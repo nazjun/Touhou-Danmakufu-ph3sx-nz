@@ -1744,7 +1744,7 @@ void StgLaserObject::_ExtendLength() {
 
 		if (extendRate_ > 0)
 			lengthF_ = std::min(lengthF_, (float)maxLength_);
-		if (extendRate_ < 0)
+		else
 			lengthF_ = std::max(lengthF_, (float)maxLength_);
 
 		length_ = (int)lengthF_;
@@ -1775,15 +1775,16 @@ void StgLooseLaserObject::Work() {
 			--(delay_.time);
 			delay_.angle += delay_.spin;
 		}
-		else _ExtendLength();
 	}
 
 	_CommonWorkTask();
 	//	_AddIntersectionRelativeTarget();
 }
 void StgLooseLaserObject::_Move() {
-	if (delay_.time == 0 || bEnableMotionDelay_)
+	if (delay_.time == 0 || bEnableMotionDelay_) {
 		StgMoveObject::_Move();
+		_ExtendLength();
+	}
 	DxScriptRenderObject::SetX(posX_);
 	DxScriptRenderObject::SetY(posY_);
 
@@ -2389,16 +2390,17 @@ void StgCurveLaserObject::Work() {
 		if (delay_.time > 0) {
 			--(delay_.time);
 			delay_.angle += delay_.spin;
-		}
-		// else _ExtendLength();
+		}	
 	}
 
 	_CommonWorkTask();
 	//	_AddIntersectionRelativeTarget();
 }
 void StgCurveLaserObject::_Move() {
-	if (delay_.time == 0 || bEnableMotionDelay_)
+	if (delay_.time == 0 || bEnableMotionDelay_) {
 		StgMoveObject::_Move();
+		_ExtendLength();
+	}
 	DxScriptRenderObject::SetX(posX_);
 	DxScriptRenderObject::SetY(posY_);
 
@@ -2448,7 +2450,7 @@ void StgCurveLaserObject::GetNodePointerList(std::vector<LaserNode*>* listRes) {
 }
 std::list<StgCurveLaserObject::LaserNode>::iterator StgCurveLaserObject::PushNode(const LaserNode& node) {
 	listPosition_.push_front(node);
-	if (listPosition_.size() > length_)
+	while (listPosition_.size() > length_)
 		listPosition_.pop_back();
 	return listPosition_.begin();
 }
@@ -2805,8 +2807,10 @@ void StgCurveLaserObject::_ConvertToItemAndSendEvent(bool flgPlayerCollision) {
 //****************************************************************************
 //StgPatternShotObjectGenerator (ECL-style bullets firing)
 //****************************************************************************
-StgPatternShotObjectGenerator::StgPatternShotObjectGenerator() {
+StgPatternShotObjectGenerator::StgPatternShotObjectGenerator(StgStageController* stageController) {
+	stageController_ = stageController;
 	typeObject_ = TypeObject::ShotPattern;
+	bAutoDelete_ = false;
 
 	idShotData_ = -1;
 	typeOwner_ = StgShotObject::OWNER_ENEMY;
@@ -2839,9 +2843,17 @@ StgPatternShotObjectGenerator::StgPatternShotObjectGenerator() {
 StgPatternShotObjectGenerator::~StgPatternShotObjectGenerator() {
 }
 
+void StgPatternShotObjectGenerator::CleanUp() {
+	if (parent_ == nullptr && bAutoDelete_) {
+		auto objectManager = stageController_->GetMainObjectManager();
+		objectManager->DeleteObject(this);
+	}
+}
+
 void StgPatternShotObjectGenerator::CopyFrom(StgPatternShotObjectGenerator* other) {
 	parent_ = other->parent_;
 	listTransformation_ = other->listTransformation_;
+	bAutoDelete_ = other->bAutoDelete_;
 
 	idShotData_ = other->idShotData_;
 	//typeOwner_ = other->typeOwner_;

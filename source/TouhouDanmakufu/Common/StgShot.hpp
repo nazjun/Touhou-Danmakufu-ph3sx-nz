@@ -572,7 +572,9 @@ public:
 	void SetEndGraphic(int gr) { idImageEnd_ = gr; }
 	void SetEndPosition(float x, float y) {
 		SetLength(hypotf(x - position_.x, y - position_.y));
-		SetLaserAngle(atan2f(y - position_.y, x - position_.x));
+		extendRate_ = 0;
+		maxLength_ = 0;
+		angLaser_ = atan2f(y - position_.y, x - position_.x);
 	}
 	
 	D3DXVECTOR2 GetEndPosition() {
@@ -658,7 +660,9 @@ public:
 		BASEPOINT_RESET = -256 * 256,
 	};
 private:
+	StgStageController* stageController_;
 	ref_unsync_weak_ptr<StgMoveObject> parent_;
+	bool bAutoDelete_;
 
 	int idShotData_;
 	int typeOwner_;
@@ -695,11 +699,12 @@ private:
 
 	std::vector<StgPatternShotTransform> listTransformation_;
 public:
-	StgPatternShotObjectGenerator();
+	StgPatternShotObjectGenerator(StgStageController* stageController);
 	~StgPatternShotObjectGenerator();
 
 	virtual void Render() {}
 	virtual void SetRenderState() {}
+	virtual void CleanUp();
 
 	void CopyFrom(ref_unsync_ptr<StgPatternShotObjectGenerator> other) {
 		StgPatternShotObjectGenerator::CopyFrom(other.get());
@@ -711,6 +716,7 @@ public:
 	void ClearTransformation() { listTransformation_.clear(); }
 
 	void SetParent(ref_unsync_ptr<StgMoveObject> obj) { parent_ = obj; }
+	void SetAutoDelete(bool enable) { bAutoDelete_ = enable; }
 
 	void FireSet(void* scriptData, StgStageController* controller, std::vector<int>* idVector);
 
