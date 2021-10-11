@@ -455,9 +455,9 @@ DnhConfiguration::DnhConfiguration() {
 	screenWidth_ = 640;
 	screenHeight_ = 360;
 
-	windowTitle_ = L"Nameless Bullet Hell (Bullet Hell Artistry #4)";
+	windowTitle_ = L"The Nameless Avatar (BHA4 trial)";
 	// bDynamicScaling_ = true;
-	// pathPackageScript_ = PathProperty::GetModuleDirectory() + L"script/vs_naudiz.dnh";
+	// pathPackageScript_ = PathProperty::GetModuleDirectory() + L"script/tna.dnh";
 
 	LoadConfigFile();
 	// _LoadDefinitionFile();
