@@ -403,10 +403,12 @@ bool WindowLogger::AddPanel(shared_ptr<Panel> panel, const std::wstring& name) {
 }
 void WindowLogger::ShowLogWindow() {
 	//if (!bEnable_) return;
+	return;
 	windowState_ = STATE_RUNNING;
 	ShowWindow(hWnd_, SW_SHOW);
 }
 void WindowLogger::InsertOpenCommandInSystemMenu(HWND hWnd) {
+	return;
 	HMENU hMenu = GetSystemMenu(hWnd, FALSE);
 
 	MENUITEMINFO mii;

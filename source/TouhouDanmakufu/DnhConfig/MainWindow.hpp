@@ -15,7 +15,7 @@ protected:
 	shared_ptr<WTabControll> wndTab_;
 	shared_ptr<DevicePanel> panelDevice_;
 	shared_ptr<KeyPanel> panelKey_;
-	shared_ptr<OptionPanel> panelOption_;
+	// shared_ptr<OptionPanel> panelOption_;
 
 	void _RunExecutor();
 	virtual LRESULT _WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);

@@ -575,11 +575,12 @@ bool DnhConfiguration::LoadConfigFile() {
 			}
 		}
 	}
-
+	/*
 	bLogWindow_ = record.GetRecordAsBoolean("bLogWindow");
 	bLogFile_ = record.GetRecordAsBoolean("bLogFile");
 	if (record.IsExists("bMouseVisible"))
 		bMouseVisible_ = record.GetRecordAsBoolean("bMouseVisible");
+	*/
 
 	return res;
 }
@@ -620,10 +621,11 @@ bool DnhConfiguration::SaveConfigFile() {
 		record.SetRecordAsInteger("mapKey_size", bufKey.GetSize());
 		record.SetRecord("mapKey", bufKey.GetPointer(), bufKey.GetSize());
 	}
-
+	/*
 	record.SetRecordAsBoolean("bLogWindow", bLogWindow_);
 	record.SetRecordAsBoolean("bLogFile", bLogFile_);
 	record.SetRecordAsBoolean("bMouseVisible", bMouseVisible_);
+	*/
 
 	record.WriteToFile(path, GAME_VERSION_NUM, "DNHCNFG\0", 8U);
 	return true;
