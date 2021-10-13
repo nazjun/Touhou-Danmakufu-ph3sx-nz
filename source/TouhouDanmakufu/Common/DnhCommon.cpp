@@ -456,7 +456,7 @@ DnhConfiguration::DnhConfiguration() {
 	screenHeight_ = 360;
 
 	windowTitle_ = L"The Nameless Avatar (BHA4 trial)";
-	// bDynamicScaling_ = true;
+	bDynamicScaling_ = false;
 	pathPackageScript_ = PathProperty::GetModuleDirectory() + L"script/tna.dnh";
 
 	LoadConfigFile();
