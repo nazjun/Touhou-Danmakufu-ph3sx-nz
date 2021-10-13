@@ -37,9 +37,11 @@ bool MainWindow::Initialize() {
 	wndTab_->AddTab(L"Key", panelKey_);
 
 	//OptionPanel
+	/*
 	panelOption_.reset(new OptionPanel());
 	panelOption_->Initialize(hTab);
 	wndTab_->AddTab(L"Option", panelOption_);
+	*/
 
 	//初期化完了
 	ReadConfiguration();
@@ -114,7 +116,7 @@ void MainWindow::_RunExecutor() {
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(STARTUPINFO);
 
-	BOOL res = ::CreateProcessW(nullptr, (wchar_t*)panelOption_->GetExecutablePath().c_str(),
+	BOOL res = ::CreateProcessW(nullptr, (wchar_t*)DNH_EXE_NAME.c_str(),
 		nullptr, nullptr, true, 0, nullptr, nullptr,
 		&si, &infoProcess);
 	/*
@@ -160,12 +162,12 @@ void MainWindow::UpdateKeyAssign() {
 void MainWindow::ReadConfiguration() {
 	panelDevice_->ReadConfiguration();
 	panelKey_->ReadConfiguration();
-	panelOption_->ReadConfiguration();
+	// panelOption_->ReadConfiguration();
 }
 void MainWindow::WriteConfiguration() {
 	panelDevice_->WriteConfiguration();
 	panelKey_->WriteConfiguration();
-	panelOption_->WriteConfiguration();
+	// panelOption_->WriteConfiguration();
 }
 
 //*******************************************************************
