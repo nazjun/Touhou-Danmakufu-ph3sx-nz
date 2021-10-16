@@ -168,6 +168,8 @@ bool WindowLogger::Initialize(bool bEnable) {
 	return true;
 }
 void WindowLogger::SaveState() {
+	return;
+
 	std::wstring path = PathProperty::GetModuleDirectory() + L"LogWindow.dat";
 	RecordBuffer recordMain;
 	bool bRecordExists = recordMain.ReadFromFile(path, 0, HEADER_RECORDFILE);
