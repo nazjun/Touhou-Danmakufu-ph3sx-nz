@@ -266,9 +266,10 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_Obj_CopyValueTable);
 		DNH_FUNCAPI_DECL_(Func_Obj_GetValueCount);
 		DNH_FUNCAPI_DECL_(Func_Obj_GetValueCountI);
+		static gstd::value Func_Obj_GetExistFrame(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_GetType(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_GetParentScriptID(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_Obj_Reparent(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		static gstd::value Func_Obj_SetNewParentScript(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_SetAutoDelete(gstd::script_machine* machine, int argc, const gstd::value* argv);
 
 		//Dx関数：オブジェクト操作(RenderObject)
