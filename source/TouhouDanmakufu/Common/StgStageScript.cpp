@@ -398,6 +398,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjMove_SetSpeedXY", StgStageScript::Func_ObjMove_SetSpeedXY, 3 },
 	{ "ObjMove_SetProcessMovement", StgStageScript::Func_ObjMove_SetProcessMovement, 2 },
 	{ "ObjMove_GetProcessMovement", StgStageScript::Func_ObjMove_GetProcessMovement, 1 },
+	{ "ObjMove_GetMoveFrame", StgStageScript::Func_ObjMove_GetMoveFrame, 1 },
 	
 	// Move object + move parent
 	{ "ObjMove_GetParent", StgStageScript::Func_ObjMove_GetParent, 1 },
@@ -2197,19 +2198,22 @@ gstd::value StgStageScript::Func_GetShotDataInfoA1(gstd::script_machine* machine
 			return script->CreateIntValue(shotData->GetRenderType());
 		case INFO_COLLISION:
 		{
-			float radius = 0;
-			DxCircle* listCircle = shotData->GetIntersectionCircleList();
-			if (listCircle->GetR() > 0) {
-				radius = listCircle->GetR();
-			}
+			auto& listCircle = shotData->GetIntersectionCircleList();
+			float radius = listCircle.size() > 0 ? listCircle[0].GetR() : 0;
 			return script->CreateRealValue(radius);
 		}
 		case INFO_COLLISION_LIST:
 		{
-			DxCircle* listCircle = shotData->GetIntersectionCircleList();
+			auto& listCircle = shotData->GetIntersectionCircleList();
+
 			std::vector<gstd::value> listValue;
-			float list[3] = { listCircle->GetR(), listCircle->GetX(), listCircle->GetY() };
-			listValue.push_back(script->CreateRealArrayValue(list, 3U));
+			float listData[3];
+			for (auto& iCircle : listCircle) {
+				listData[0] = iCircle.GetR();
+				listData[1] = iCircle.GetX();
+				listData[2] = iCircle.GetY();
+				listValue.push_back(script->CreateRealArrayValue(listData, 3U));
+			}
 			return script->CreateValueArrayValue(listValue);
 		}
 		case INFO_IS_FIXED_ANGLE:
@@ -2522,13 +2526,15 @@ gstd::value StgStageScript::Func_IsIntersected_Obj_Obj(gstd::script_machine* mac
 	StgIntersectionObject* obj2 = script->GetObjectPointerAs<StgIntersectionObject>(id2);
 	if (obj2 == nullptr) return script->CreateBooleanValue(false);
 
-	std::vector<ref_unsync_ptr<StgIntersectionTarget>> listTarget1 = obj1->GetIntersectionTargetList();
-	std::vector<ref_unsync_ptr<StgIntersectionTarget>> listTarget2 = obj2->GetIntersectionTargetList();
+	StgIntersectionObject::IntersectionListType listTarget1 = obj1->GetIntersectionTargetList();
+	StgIntersectionObject::IntersectionListType listTarget2 = obj2->GetIntersectionTargetList();
 
 	bool res = false;
 	for (auto& target1 : listTarget1) {
+		if (!target1.first) continue;
 		for (auto& target2 : listTarget2) {
-			res = StgIntersectionManager::IsIntersected(target1.get(), target2.get());
+			if (!target1.first) continue;
+			res = StgIntersectionManager::IsIntersected(target1.second.get(), target2.second.get());
 			if (res && PARTIAL) goto chk_skip;
 		}
 	}
@@ -3088,6 +3094,13 @@ gstd::value StgStageScript::Func_ObjMove_GetProcessMovement(gstd::script_machine
 	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
 	bool res = obj ? obj->IsEnableMovement() : true;
 	return script->CreateBooleanValue(res);
+}
+gstd::value StgStageScript::Func_ObjMove_GetMoveFrame(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
+	int res = obj ? obj->GetMoveFrame() : 0;
+	return script->CreateIntValue(res);
 }
 
 // Move object + move parent
@@ -4050,7 +4063,7 @@ gstd::value StgStageScript::Func_ObjShot_SetSourceBlendType(gstd::script_machine
 	StgShotObject* obj = script->GetObjectPointerAs<StgShotObject>(id);
 	if (obj) {
 		int typeBlend = argv[1].as_int();
-		obj->SetSourceBlendType((BlendMode)typeBlend);
+		obj->SetDelayBlendType((BlendMode)typeBlend);
 	}
 	return value();
 }

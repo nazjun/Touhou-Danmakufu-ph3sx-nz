@@ -117,6 +117,9 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_GetWindowedWidth);
 		DNH_FUNCAPI_DECL_(Func_GetWindowedHeight);
 		DNH_FUNCAPI_DECL_(Func_IsFullscreenMode);
+		DNH_FUNCAPI_DECL_(Func_GetCoordinateScalingFactor);
+		DNH_FUNCAPI_DECL_(Func_SetCoordinateScalingFactor);
+
 		static gstd::value Func_LoadTexture(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_LoadTextureInLoadThread(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		DNH_FUNCAPI_DECL_(Func_LoadTextureEx);
@@ -266,9 +269,10 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_Obj_CopyValueTable);
 		DNH_FUNCAPI_DECL_(Func_Obj_GetValueCount);
 		DNH_FUNCAPI_DECL_(Func_Obj_GetValueCountI);
+		static gstd::value Func_Obj_GetExistFrame(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_GetType(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_GetParentScriptID(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_Obj_Reparent(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		static gstd::value Func_Obj_SetNewParentScript(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_SetAutoDelete(gstd::script_machine* machine, int argc, const gstd::value* argv);
 
 		//Dx関数：オブジェクト操作(RenderObject)
