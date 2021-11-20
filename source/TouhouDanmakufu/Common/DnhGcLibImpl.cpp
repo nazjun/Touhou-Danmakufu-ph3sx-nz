@@ -38,11 +38,11 @@ const std::wstring& EPathProperty::GetPlayerScriptRootDirectory() {
 }
 std::wstring EPathProperty::GetReplaySaveDirectory(const std::wstring& scriptPath) {
 	std::wstring scriptName = PathProperty::GetFileNameWithoutExtension(scriptPath);
-	std::wstring dir = PathProperty::GetFileDirectory(scriptPath) + L"replay/";
+	std::wstring dir = PathProperty::GetModuleDirectory() + L"replay/";
 	return dir;
 }
 std::wstring EPathProperty::GetCommonDataPath(const std::wstring& scriptPath, const std::wstring& area) {
-	std::wstring dirSave = PathProperty::GetFileDirectory(scriptPath) + L"data/";
+	std::wstring dirSave = PathProperty::GetModuleDirectory() + L"data/";
 	std::wstring nameMain = PathProperty::GetFileNameWithoutExtension(scriptPath);
 	std::wstring path = dirSave + nameMain + StringUtility::Format(L"_common_%s.dat", area.c_str());
 	return path;

@@ -294,7 +294,7 @@ void DevicePanel::WriteConfiguration() {
 		config->SetMultiSampleType(mapIndexSample[multiSample]);
 	}
 
-	int fpsType = DnhConfiguration::FPS_NORMAL;
+	int fpsType = DnhConfiguration::FPS_AUTO;
 	if (SendDlgItemMessage(hWnd_, IDC_RADIO_FPS_1, BM_GETCHECK, 0, 0))
 		fpsType = DnhConfiguration::FPS_NORMAL;
 	else if (SendDlgItemMessage(hWnd_, IDC_RADIO_FPS_2, BM_GETCHECK, 0, 0))

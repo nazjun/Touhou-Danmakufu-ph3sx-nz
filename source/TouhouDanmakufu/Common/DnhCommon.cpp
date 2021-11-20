@@ -417,7 +417,7 @@ bool ErrorDialog::ShowModal(std::wstring msg) {
 DnhConfiguration::DnhConfiguration() {
 	modeScreen_ = ScreenMode::SCREENMODE_WINDOW;
 	modeColor_ = ColorMode::COLOR_MODE_32BIT;
-	fpsType_ = FPS_NORMAL;
+	fpsType_ = FPS_AUTO;
 	fastModeSpeed_ = 50;
 
 	windowSizeList_ = { { 640, 360 }, { 1280, 720 }, { 1920, 1080 } };
@@ -456,7 +456,7 @@ DnhConfiguration::DnhConfiguration() {
 
 	windowTitle_ = L"The Nameless Avatar";
 	bDynamicScaling_ = false;
-	pathPackageScript_ = PathProperty::GetModuleDirectory() + L"tna.dat";
+	pathPackageScript_ = PathProperty::GetModuleDirectory() + L"script/tna.dat";
 
 	LoadConfigFile();
 	// _LoadDefinitionFile();
