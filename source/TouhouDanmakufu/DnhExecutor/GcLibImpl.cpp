@@ -32,7 +32,8 @@ bool EApplication::_Initialize() {
 		appName = configWindowTitle;
 	}
 	else {
-		appName = L"東方弾幕風 ph3sx-zlabel " + DNH_VERSION;
+		// appName = L"東方弾幕風 ph3sx-zlabel " + DNH_VERSION;
+		appName = L"東方宝天京　～ Treasure Castle Labyrinth.";
 	}
 #ifdef _DEBUG
 	appName = L"[ph3sx_DEBUG]" + appName;
