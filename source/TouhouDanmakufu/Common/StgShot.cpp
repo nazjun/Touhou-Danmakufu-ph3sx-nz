@@ -1097,6 +1097,10 @@ StgShotData* StgShotObject::_GetShotData(int id) {
 
 void StgShotObject::_SetVertexPosition(VERTEX_TLX* vertex, float x, float y, float z, float w) {
 	constexpr float bias = -0.5f;
+
+	x *= DirectGraphics::g_dxCoordsMul_;
+	y *= DirectGraphics::g_dxCoordsMul_;
+
 	vertex->position.x = x + bias;
 	vertex->position.y = y + bias;
 	vertex->position.z = z;
@@ -1773,6 +1777,21 @@ void StgLaserObject::_AddIntersectionRelativeTarget() {
 				intersectionManager->AddTarget(iTarget.second);
 		}
 	}
+}
+StgIntersectionObject::IntersectionListType StgLaserObject::GetIntersectionTargetList() {
+	if ((IsDeleted() || (delay_.time > 0 && !bEnableMotionDelay_) || frameFadeDelete_ >= 0)
+		|| (bUserIntersectionMode_ || !bIntersectionEnable_)
+		|| pOwnReference_.expired() || widthIntersection_ <= 0)
+		return IntersectionListType();
+
+	StgShotData* shotData = _GetShotData();
+	if (shotData == nullptr)
+		return IntersectionListType();
+
+	bool res = GetIntersectionTargetList_NoVector(shotData);
+	if (res) return listIntersectionTarget_;
+
+	return IntersectionListType();
 }
 
 void StgLaserObject::_ExtendLength() {

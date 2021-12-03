@@ -154,6 +154,7 @@ namespace gstd {
 		static inline value CreateRealValue(double r);
 		static inline value CreateIntValue(int64_t r);
 		static inline value CreateBooleanValue(bool b);
+		static inline value CreateCharValue(wchar_t c);
 		static inline value CreateStringValue(const std::wstring& s);
 		static inline value CreateStringValue(const std::string& s);
 		template<typename T> static inline value CreateRealArrayValue(std::vector<T>& list);
@@ -325,6 +326,10 @@ namespace gstd {
 		DNH_FUNCAPI_DECL_(Func_StringFormat);
 		static value Func_AtoI(script_machine* machine, int argc, const value* argv);
 		static value Func_AtoR(script_machine* machine, int argc, const value* argv);
+		template<wint_t (*func)(wint_t)>
+		static value Func_RecaseString(script_machine* machine, int argc, const value* argv);
+		template<int (*func)(wint_t)>
+		static value Func_ClassifyString(script_machine* machine, int argc, const value* argv);
 		static value Func_TrimString(script_machine* machine, int argc, const value* argv);
 		static value Func_SplitString(script_machine* machine, int argc, const value* argv);
 		DNH_FUNCAPI_DECL_(Func_SplitString2);
@@ -404,6 +409,9 @@ namespace gstd {
 	}
 	value ScriptClientBase::CreateBooleanValue(bool b) {
 		return value(script_type_manager::get_boolean_type(), b);
+	}
+	value ScriptClientBase::CreateCharValue(wchar_t c) {
+		return value(script_type_manager::get_char_type(), c);
 	}
 	value ScriptClientBase::CreateStringValue(const std::wstring& s) {
 		return value(script_type_manager::get_string_type(), s);

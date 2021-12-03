@@ -332,6 +332,7 @@
     <ClInclude Include="source\GcLib\directx\Vertex.hpp" />
     <ClInclude Include="source\GcLib\directx\VertexBuffer.hpp" />
     <ClInclude Include="source\GcLib\GcLib.hpp" />
+    <ClInclude Include="source\GcLib\gstd\GstdConstant.hpp" />
     <ClInclude Include="source\GcLib\gstd\VectorExtension.hpp" />
     <ClInclude Include="source\GcLib\gstd\Script\ValueVector.hpp" />
     <ClInclude Include="source\GcLib\gstd\Script\Parser.hpp" />
