@@ -101,7 +101,7 @@ bool DirectGraphics::Initialize(HWND hWnd, const DirectGraphicsConfig& config) {
 
 	D3DDEVTYPE deviceType = config.bUseRef_ ? D3DDEVTYPE_REF : D3DDEVTYPE_HAL;
 	deviceCaps_ = deviceType == D3DDEVTYPE_REF ? capsRef : capsHal;
-	if (config.bCheckDeviceCaps_)
+	if (config.bCheckDeviceCaps_ && !config.bUseRef_)
 		_VerifyDeviceCaps();
 
 	bool bDeviceVSyncAvailable = (deviceCaps_.PresentationIntervals & D3DPRESENT_INTERVAL_ONE) != 0;
@@ -115,7 +115,8 @@ bool DirectGraphics::Initialize(HWND hWnd, const DirectGraphicsConfig& config) {
 		float coordRateX = dxBackBufferW / (float)config.sizeScreen_.x;
 		float coordRateY = dxBackBufferH / (float)config.sizeScreen_.y;
 
-		g_dxCoordsMul_ = std::min(coordRateX, coordRateY);
+		//g_dxCoordsMul_ = std::min(coordRateX, coordRateY);
+		g_dxCoordsMul_ = 1.0f;
 	}
 
 	//Fullscreen mode settings
@@ -1389,8 +1390,8 @@ DxCamera2D::DxCamera2D() {
 DxCamera2D::~DxCamera2D() {}
 void DxCamera2D::Reset() {
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-	LONG width = graphics->GetScreenWidth();
-	LONG height = graphics->GetScreenHeight();
+	LONG width = graphics->GetRenderScreenWidth();
+	LONG height = graphics->GetRenderScreenHeight();
 	if (posReset_ == nullptr) {
 		pos_.x = width / 2;
 		pos_.y = height / 2;
