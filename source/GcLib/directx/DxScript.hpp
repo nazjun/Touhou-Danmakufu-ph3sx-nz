@@ -124,7 +124,7 @@ namespace directx {
 		static gstd::value Func_LoadTextureInLoadThread(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		DNH_FUNCAPI_DECL_(Func_LoadTextureEx);
 		DNH_FUNCAPI_DECL_(Func_LoadTextureInLoadThreadEx);
-		DNH_FUNCAPI_DECL_(Func_IsLoadThreadInUse);
+		DNH_FUNCAPI_DECL_(Func_IsLoadThreadLoading);
 		static gstd::value Func_RemoveTexture(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_GetTextureWidth(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_GetTextureHeight(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -426,6 +426,7 @@ namespace directx {
 		static gstd::value Func_ObjText_SetTransCenter(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_SetAutoTransCenter(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_SetHorizontalAlignment(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		static gstd::value Func_ObjText_SetVerticalAlignment(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_SetSyntacticAnalysis(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_GetText(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_GetTextLength(gstd::script_machine* machine, int argc, const gstd::value* argv);

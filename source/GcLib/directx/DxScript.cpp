@@ -101,7 +101,7 @@ static const std::vector<function> dxFunction = {
 	{ "LoadTextureEx", DxScript::Func_LoadTextureEx, 3 },
 	{ "LoadTextureInLoadThread", DxScript::Func_LoadTextureInLoadThread, 1 },
 	{ "LoadTextureInLoadThreadEx", DxScript::Func_LoadTextureInLoadThreadEx, 3 },
-	{ "IsLoadThreadInUse", DxScript::Func_IsLoadThreadInUse, 0 },
+	{ "IsLoadThreadLoading", DxScript::Func_IsLoadThreadLoading, 0 },
 	{ "RemoveTexture", DxScript::Func_RemoveTexture, 1 },
 	{ "GetTextureWidth", DxScript::Func_GetTextureWidth, 1 },
 	{ "GetTextureHeight", DxScript::Func_GetTextureHeight, 1 },
@@ -440,6 +440,7 @@ static const std::vector<function> dxFunction = {
 	{ "ObjText_SetTransCenter", DxScript::Func_ObjText_SetTransCenter, 3 },
 	{ "ObjText_SetAutoTransCenter", DxScript::Func_ObjText_SetAutoTransCenter, 2 },
 	{ "ObjText_SetHorizontalAlignment", DxScript::Func_ObjText_SetHorizontalAlignment, 2 },
+	{ "ObjText_SetVerticalAlignment", DxScript::Func_ObjText_SetVerticalAlignment, 2 },
 	{ "ObjText_SetSyntacticAnalysis", DxScript::Func_ObjText_SetSyntacticAnalysis, 2 },
 	{ "ObjText_GetText", DxScript::Func_ObjText_GetText, 1 },
 	{ "ObjText_GetTextLength", DxScript::Func_ObjText_GetTextLength, 1 },
@@ -1301,7 +1302,7 @@ value DxScript::Func_LoadTextureInLoadThreadEx(script_machine* machine, int argc
 	}
 	return script->CreateBooleanValue(res);
 }
-value DxScript::Func_IsLoadThreadInUse(script_machine* machine, int argc, const value* argv) {
+value DxScript::Func_IsLoadThreadLoading(script_machine* machine, int argc, const value* argv) {
 	DxScript* script = (DxScript*)machine->data;
 
 	shared_ptr<FileManager::LoadThread> thread = FileManager::GetBase()->GetLoadThread();
@@ -4434,6 +4435,16 @@ gstd::value DxScript::Func_ObjText_SetHorizontalAlignment(gstd::script_machine* 
 	if (obj) {
 		TextAlignment align = (TextAlignment)argv[1].as_int();
 		obj->SetHorizontalAlignment(align);
+	}
+	return value();
+}
+gstd::value DxScript::Func_ObjText_SetVerticalAlignment(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxScriptTextObject* obj = script->GetObjectPointerAs<DxScriptTextObject>(id);
+	if (obj) {
+		TextAlignment align = (TextAlignment)argv[1].as_int();
+		obj->SetVerticalAlignment(align);
 	}
 	return value();
 }
