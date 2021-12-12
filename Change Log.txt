@@ -1,10 +1,15 @@
 A mostly-complete history log of engine updates can be found here.
 
+1.31b
+	Bug fixes:
+		- Fixed a bug where the game would freeze when compiling a script with a syntax error.
+		- Fixed a minor visual bug where the LogWindow's sub-info fields would all try to display over each other on initialization.
+
 1.31a
 	Changes:
 		- This version breaks replay, common data, and .dat archive backwards compatibility.
 		- Replaced the default script select backgrounds with a radder version. (Thanks to Naudiz)
-		- Renamed GetShotIdAll to GetAllEnemyID.
+		- Renamed GetShotIdAll to GetAllShotID.
 		- Changed the text representation of script value types in error messages.
 			- "real-array-array" -> "real[][]"
 		- Script matrix functions can now take in a 4x4 array instead of only a 1x16 array previously.
