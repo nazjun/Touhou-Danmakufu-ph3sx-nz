@@ -135,8 +135,7 @@ void StgMoveObject::RemoveParent(ref_unsync_weak_ptr<StgMoveObject> self, bool b
 		}
 
 		parent_ = nullptr;
-		offX_ = posX_;
-		offY_ = posY_;
+		UpdateRelativePosition();
 	}
 }
 void StgMoveObject::UpdateRelativePosition() { // Optimize later I guess?
@@ -219,6 +218,7 @@ StgMoveParent::StgMoveParent(StgStageController* stageController) {
 	scaX_ = 1;
 	scaY_ = 1;
 	rotZ_ = 0;
+	wvlZ_ = 0;
 }
 StgMoveParent::~StgMoveParent() {
 	if (listChild_.size() > 0) {
@@ -391,6 +391,10 @@ void StgMoveParent::UpdateChildren() {
 	UpdatePosition();
 	double px1 = posX_;
 	double py1 = posY_;
+
+	// Update angular velocity
+	rotZ_ = Math::NormalizeAngleDeg(rotZ_ + wvlZ_);
+	SetTransformAngle(rotZ_);
 
 	auto& list = listChild_;
 	if (listChild_.size() > 0) {
