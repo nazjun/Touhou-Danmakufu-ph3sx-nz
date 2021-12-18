@@ -301,6 +301,11 @@ protected:
 	int frameGrazeInvalid_;
 	int frameGrazeInvalidStart_;
 	int frameFadeDelete_;
+
+	bool bPenetrateShot_; // Translation: Does The Shot Lose Penetration Points Upon Colliding With Another Shot And Not An Enemy
+
+	int frameEnemyHitInvalid_;
+	std::list<std::pair<ref_unsync_weak_ptr<StgEnemyObject>, int>> listHitEnemy_;
 	
 	bool bRequestedPlayerDeleteEvent_;
 	double damage_;
@@ -379,6 +384,14 @@ public:
 	int GetGrazeInvalidFrame() { return frameGrazeInvalidStart_; }
 	void SetGrazeFrame(int frame) { frameGrazeInvalid_ = frame; }
 	bool IsValidGraze() { return frameGrazeInvalid_ <= 0; }
+
+	void SetPenetrateShotEnable(bool enable) { bPenetrateShot_ = enable; }
+	bool GetPenetrateShotEnable() { return bPenetrateShot_; }
+
+	void SetEnemyIntersectionInvalidFrame(int frame) { frameEnemyHitInvalid_ = frame; }
+	int GetEnemyIntersectionInvalidFrame() { return frameEnemyHitInvalid_;  }
+
+	std::list<std::pair<ref_unsync_weak_ptr<StgEnemyObject>, int>>& GetEnemyIntersectionInvalidFramePairList() { return listHitEnemy_;  }
 
 	int GetDelay() { return delay_.time; }
 	void SetDelay(int delay) { delay_.time = delay; }
@@ -662,6 +675,7 @@ public:
 private:
 	StgStageController* stageController_;
 	ref_unsync_weak_ptr<StgMoveObject> parent_;
+	ref_unsync_weak_ptr<StgMoveParent> shotParent_;
 	bool bAutoDelete_;
 
 	int idShotData_;
@@ -716,6 +730,7 @@ public:
 	void ClearTransformation() { listTransformation_.clear(); }
 
 	void SetParent(ref_unsync_ptr<StgMoveObject> obj) { parent_ = obj; }
+	void SetShotParent(ref_unsync_ptr<StgMoveParent> obj) { shotParent_ = obj; }
 	void SetAutoDelete(bool enable) { bAutoDelete_ = enable; }
 
 	void FireSet(void* scriptData, StgStageController* controller, std::vector<int>* idVector);

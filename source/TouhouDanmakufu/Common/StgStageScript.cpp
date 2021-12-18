@@ -415,6 +415,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjMoveParent_SetParentObject", StgStageScript::Func_ObjMoveParent_SetParentObject, 2 },
 	{ "ObjMoveParent_GetParentObject", StgStageScript::Func_ObjMoveParent_GetParentObject, 1 },
 	{ "ObjMoveParent_SetAutoDelete", StgStageScript::Func_ObjMoveParent_SetAutoDelete, 2 },
+	{ "ObjMoveParent_SetAutoDeleteChildren", StgStageScript::Func_ObjMoveParent_SetAutoDeleteChildren, 2 },
 	{ "ObjMoveParent_AddChild", StgStageScript::Func_ObjMoveParent_AddChild, 2 },
 	{ "ObjMoveParent_GetChildren", StgStageScript::Func_ObjMoveParent_GetChildren, 1 },
 	{ "ObjMoveParent_RemoveChildren", StgStageScript::Func_ObjMoveParent_RemoveChildren, 1 },
@@ -426,10 +427,11 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjMoveParent_SetTransformScaleY", StgStageScript::Func_ObjMoveParent_SetTransformScaleY, 2 },
 	{ "ObjMoveParent_SetTransformAngle", StgStageScript::Func_ObjMoveParent_SetTransformAngle , 2 },
 	{ "ObjMoveParent_SetTransformAngularVelocity", StgStageScript::Func_ObjMoveParent_SetTransformAngularVelocity , 2 },
+	{ "ObjMoveParent_SetTransformAngularAcceleration", StgStageScript::Func_ObjMoveParent_SetTransformAngularAcceleration , 2 },
+	{ "ObjMoveParent_SetTransformAngularMaxVelocity", StgStageScript::Func_ObjMoveParent_SetTransformAngularMaxVelocity , 2 },
 	{ "ObjMoveParent_GetTransformScaleX", StgStageScript::Func_ObjMoveParent_GetTransformScaleX, 1 },
 	{ "ObjMoveParent_GetTransformScaleY", StgStageScript::Func_ObjMoveParent_GetTransformScaleY, 1 },
 	{ "ObjMoveParent_GetTransformAngle", StgStageScript::Func_ObjMoveParent_GetTransformAngle , 1 },
-	{ "ObjMoveParent_GetTransformAngularVelocity", StgStageScript::Func_ObjMoveParent_GetTransformAngularVelocity , 1 },
 	// { "ObjMoveParent_GetRadiusAtAngle", StgStageScript::Func_ObjMoveParent_GetRadiusAtAngle , 2 },
 	{ "ObjMoveParent_SetChildAngleMode", StgStageScript::Func_ObjMoveParent_SetChildAngleMode, 2 },
 	{ "ObjMoveParent_SetChildMotionEnable", StgStageScript::Func_ObjMoveParent_SetChildMotionEnable, 2 },
@@ -509,6 +511,8 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjShot_SetGrazeInvalidFrame", StgStageScript::Func_ObjShot_SetGrazeInvalidFrame, 2 },
 	{ "ObjShot_SetGrazeFrame", StgStageScript::Func_ObjShot_SetGrazeFrame, 2 },
 	{ "ObjShot_IsValidGraze", StgStageScript::Func_ObjShot_IsValidGraze, 1 },
+	{ "ObjShot_SetPenetrateShotEnable", StgStageScript::Func_ObjShot_SetPenetrateShotEnable, 2 },
+	{ "ObjShot_SetEnemyIntersectionInvalidFrame", StgStageScript::Func_ObjShot_SetEnemyIntersectionInvalidFrame, 2 },
 	{ "ObjShot_SetFixedAngle", StgStageScript::Func_ObjShot_SetFixedAngle, 2 },
 	{ "ObjShot_SetSpinAngularVelocity", StgStageScript::Func_ObjShot_SetSpinAngularVelocity, 2 },
 	{ "ObjShot_SetDelayAngularVelocity", StgStageScript::Func_ObjShot_SetDelayAngularVelocity, 2 },
@@ -558,6 +562,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjPatternShot_Fire", StgStageScript::Func_ObjPatternShot_Fire, 1 },
 	{ "ObjPatternShot_FireReturn", StgStageScript::Func_ObjPatternShot_FireReturn, 1 },
 	{ "ObjPatternShot_SetParentObject", StgStageScript::Func_ObjPatternShot_SetParentObject, 2 },
+	{ "ObjPatternShot_SetShotParent", StgStageScript::Func_ObjPatternShot_SetShotParent, 2 },
 	{ "ObjPatternShot_SetAutoDelete", StgStageScript::Func_ObjPatternShot_SetAutoDelete, 2 },
 	{ "ObjPatternShot_SetPatternType", StgStageScript::Func_ObjPatternShot_SetPatternType, 2 },
 	{ "ObjPatternShot_SetShotType", StgStageScript::Func_ObjPatternShot_SetShotType, 2 },
@@ -3257,6 +3262,16 @@ gstd::value StgStageScript::Func_ObjMoveParent_SetAutoDelete(gstd::script_machin
 
 	return value();
 }
+gstd::value StgStageScript::Func_ObjMoveParent_SetAutoDeleteChildren(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	bool enable = argv[1].as_boolean();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->SetAutoDeleteChildren(enable);
+
+	return value();
+}
 gstd::value StgStageScript::Func_ObjMoveParent_AddChild(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
@@ -3363,10 +3378,30 @@ gstd::value StgStageScript::Func_ObjMoveParent_SetTransformAngle(gstd::script_ma
 gstd::value StgStageScript::Func_ObjMoveParent_SetTransformAngularVelocity(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
-	double w = argv[1].as_real();
+	double wv = argv[1].as_real();
 	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
 	if (obj)
-		obj->SetTransformAngularVelocity(w);
+		obj->SetTransformAngularVelocity(wv);
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetTransformAngularAcceleration(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	double wa = argv[1].as_real();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->SetTransformAngularAcceleration(wa);
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetTransformAngularMaxVelocity(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	double wm = argv[1].as_real();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->SetTransformAngularMaxVelocity(wm);
 
 	return value();
 }
@@ -3399,16 +3434,6 @@ gstd::value StgStageScript::Func_ObjMoveParent_GetTransformAngle(gstd::script_ma
 		z = obj->GetTransformAngle();
 
 	return script->CreateRealValue(z);
-}
-gstd::value StgStageScript::Func_ObjMoveParent_GetTransformAngularVelocity(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	StgStageScript* script = (StgStageScript*)machine->data;
-	int id = argv[0].as_int();
-	double w = 0;
-	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
-	if (obj)
-		w = obj->GetTransformAngularVelocity();
-
-	return script->CreateRealValue(w);
 }
 /*
 gstd::value StgStageScript::Func_ObjMoveParent_GetRadiusAtAngle(gstd::script_machine* machine, int argc, const gstd::value* argv) {
@@ -4522,6 +4547,24 @@ gstd::value StgStageScript::Func_ObjShot_IsValidGraze(gstd::script_machine* mach
 
 	return script->CreateBooleanValue(res);
 }
+gstd::value StgStageScript::Func_ObjShot_SetPenetrateShotEnable(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	if (StgShotObject* obj = dynamic_cast<StgShotObject*>(script->GetObjectPointer(id))) {
+		bool enable = argv[1].as_boolean();
+		obj->SetPenetrateShotEnable(enable);
+	}
+	return value();
+}
+gstd::value StgStageScript::Func_ObjShot_SetEnemyIntersectionInvalidFrame(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	if (StgShotObject* obj = dynamic_cast<StgShotObject*>(script->GetObjectPointer(id))) {
+		int frame = argv[1].as_int();
+		obj->SetEnemyIntersectionInvalidFrame(frame);
+	}
+	return value();
+}
 gstd::value StgStageScript::Func_ObjShot_SetFixedAngle(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
@@ -5034,6 +5077,20 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetParentObject(gstd::script_mac
 		ref_unsync_ptr<StgMoveObject> objParent = ref_unsync_ptr<StgMoveObject>::Cast(script->GetObject(idParent));
 		if (objParent)
 			obj->SetParent(objParent);
+	}
+	return value();
+}
+gstd::value StgStageScript::Func_ObjPatternShot_SetShotParent(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	StgStageController* stageController = script->stageController_;
+
+	int id = argv[0].as_int();
+	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	if (obj) {
+		int idParent = argv[1].as_int();
+		ref_unsync_ptr<StgMoveParent> objParent = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(idParent));
+		if (objParent)
+			obj->SetShotParent(objParent);
 	}
 	return value();
 }

@@ -359,6 +359,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetParentObject);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetParentObject);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetAutoDelete);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetAutoDeleteChildren);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_AddChild);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetChildren);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_RemoveChildren);
@@ -369,14 +370,15 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformScaleY);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformAngle);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformAngularVelocity);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformAngularAcceleration);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformAngularMaxVelocity);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetTransformScaleX);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetTransformScaleY);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetTransformAngle);
-	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetTransformAngularVelocity);
 	// DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetRadiusAtAngle);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildAngleMode);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildMotionEnable);
-	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildMotionTransformEnable);
+	// DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildMotionTransformEnable);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetLaserRotationEnable);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformOrder);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_ApplyTransformation);
@@ -452,6 +454,8 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetGrazeInvalidFrame);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetGrazeFrame);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_IsValidGraze);
+	DNH_FUNCAPI_DECL_(Func_ObjShot_SetPenetrateShotEnable);
+	DNH_FUNCAPI_DECL_(Func_ObjShot_SetEnemyIntersectionInvalidFrame);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetFixedAngle);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetSpinAngularVelocity);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetDelayAngularVelocity);
@@ -498,6 +502,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_Fire);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_FireReturn);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetParentObject);
+	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetShotParent);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetAutoDelete);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetPatternType);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetShotType);
