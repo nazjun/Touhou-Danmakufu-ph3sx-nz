@@ -111,9 +111,10 @@ protected:
 	int typeAngle_;
 	int transOrder_;
 	bool bAutoDelete_;
+	bool bAutoDeleteChildren_;
 	bool bMoveChild_;
 	bool bRotateLaser_;
-	bool bTransformMove_;
+	// bool bTransformMove_;
 
 	double posX_;
 	double posY_;
@@ -122,6 +123,9 @@ protected:
 	double scaX_;
 	double scaY_;
 	double rotZ_;
+	double wvlZ_;
+	double accZ_;
+	double maxZ_;
 	double lastX_;
 	double lastY_;
 	std::vector<ref_unsync_weak_ptr<StgMoveObject>> listChild_;
@@ -138,6 +142,7 @@ public:
 	void SetParentObject(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveObject> parent);
 	ref_unsync_weak_ptr<StgMoveParent> GetParentObject() { return target_;  }
 	void SetAutoDelete(bool enable) { bAutoDelete_ = enable; }
+	void SetAutoDeleteChildren(bool enable) { bAutoDeleteChildren_ = enable; }
 	void AddChild(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveObject> child);
 	std::vector<ref_unsync_weak_ptr<StgMoveObject>>& GetChildren() { return listChild_; }
 	void RemoveChildren();
@@ -147,6 +152,9 @@ public:
 	void SetTransformScaleX(double x) { scaX_ = Unzero(x); }
 	void SetTransformScaleY(double y) { scaY_ = Unzero(y); }
 	void SetTransformAngle(double z);
+	void SetTransformAngularVelocity(double wv) { wvlZ_ = wv; }
+	void SetTransformAngularAcceleration(double wa) { accZ_ = wa; }
+	void SetTransformAngularMaxVelocity(double wm) { maxZ_ = wm; }
 	double GetTransformScaleX() { return scaX_; }
 	double GetTransformScaleY() { return scaY_; }
 	double GetTransformAngle() { return rotZ_; }
@@ -155,18 +163,15 @@ public:
 	int GetChildAngleMode() { return typeAngle_;  }
 	void SetChildMotionEnable(bool enable) { bMoveChild_ = enable; }
 	void SetLaserRotationEnable(bool enable) { bRotateLaser_ = enable; }
-	void SetChildMotionTransformEnable(bool enable) { bTransformMove_ = enable;  }
+	// void SetChildMotionTransformEnable(bool enable) { bTransformMove_ = enable;  }
 	void SetTransformOrder(int order) { transOrder_ = order; }
 	void ApplyTransformation();
 	void ResetTransformation() { scaX_ = 1; scaY_ = 1; rotZ_ = 0; }
-	inline void UpdatePosition() {
-		posX_ = target_ ? target_->posX_ : 0;
-		posY_ = target_ ? target_->posY_ : 0;
-	}
 	inline double GetX() { return posX_ + offX_; }
 	inline double GetY() { return posY_ + offY_; }
 	void MoveChild(StgMoveObject* child);
 
+	void UpdatePosition();
 	void UpdateChildren();
 
 	static inline double Unzero(double s) {
@@ -235,11 +240,15 @@ public:
 		SET_AGVEL,
 		SET_SPMAX,
 		SET_SPMAX2,
+		SET_AGACC,
+		SET_AGMAX,
 		ADD_SPEED,
 		ADD_ANGLE,
 		ADD_ACCEL,
 		ADD_AGVEL,
 		ADD_SPMAX,
+		ADD_AGACC,
+		ADD_AGMAX
 	};
 protected:
 	double speed_;
@@ -247,6 +256,8 @@ protected:
 	double acceleration_;
 	double maxSpeed_;
 	double angularVelocity_;
+	double angularAcceleration_;
+	double angularMaxVelocity_;
 
 	ref_unsync_weak_ptr<StgMoveObject> objRelative_;
 
@@ -263,6 +274,8 @@ public:
 	void SetAcceleration(double accel) { acceleration_ = accel; }
 	void SetMaxSpeed(double max) { maxSpeed_ = max; }
 	void SetAngularVelocity(double av) { angularVelocity_ = av; }
+	void SetAngularAcceleration(double aa) { angularAcceleration_ = aa; }
+	void SetAngularMaxVelocity(double am) { angularMaxVelocity_ = am; }
 
 	void SetRelativeObject(ref_unsync_weak_ptr<StgMoveObject> obj) { objRelative_ = obj; }
 	void SetRelativeObject(int id) { objRelative_ = _GetMoveObject(id); }

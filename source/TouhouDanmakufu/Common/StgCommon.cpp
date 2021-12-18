@@ -135,8 +135,7 @@ void StgMoveObject::RemoveParent(ref_unsync_weak_ptr<StgMoveObject> self, bool b
 		}
 
 		parent_ = nullptr;
-		offX_ = posX_;
-		offY_ = posY_;
+		UpdateRelativePosition();
 	}
 }
 void StgMoveObject::UpdateRelativePosition() { // Optimize later I guess?
@@ -209,6 +208,7 @@ StgMoveParent::StgMoveParent(StgStageController* stageController) {
 	typeAngle_ = ANGLE_FIXED;
 	transOrder_ = ORDER_ANGLE_SCALE;
 	bAutoDelete_ = false;
+	bAutoDeleteChildren_ = false;
 	bMoveChild_ = true;
 	bRotateLaser_ = false;
 
@@ -219,6 +219,9 @@ StgMoveParent::StgMoveParent(StgStageController* stageController) {
 	scaX_ = 1;
 	scaY_ = 1;
 	rotZ_ = 0;
+	wvlZ_ = 0;
+	accZ_ = 0;
+	maxZ_ = 0;
 }
 StgMoveParent::~StgMoveParent() {
 	if (listChild_.size() > 0) {
@@ -240,10 +243,21 @@ void StgMoveParent::Work() {
 	UpdateChildren();
 }
 void StgMoveParent::CleanUp() {
-	if (target_ == nullptr && bAutoDelete_) {
-		auto objectManager = stageController_->GetMainObjectManager();
-		objectManager->DeleteObject(this);
-		return;
+	if (target_ == nullptr) {
+		if (bAutoDeleteChildren_) {
+			auto objectManager = stageController_->GetMainObjectManager();
+			for (auto& iChild : listChild_) {
+				if (iChild) {
+					int childID = dynamic_cast<DxScriptObjectBase*>(iChild.get())->GetObjectID();
+					objectManager->DeleteObject(childID);
+				}
+			}
+		}
+		if (bAutoDelete_) {
+			auto objectManager = stageController_->GetMainObjectManager();
+			objectManager->DeleteObject(this);
+			return;
+		}
 	}
 	if (listChild_.size() > 0) {
 		auto iter = listChild_.begin();
@@ -384,6 +398,22 @@ void StgMoveParent::MoveChild(StgMoveObject* child) {
 		}
 	}
 }
+
+void StgMoveParent::UpdatePosition() {
+	posX_ = target_ ? target_->posX_ : 0;
+	posY_ = target_ ? target_->posY_ : 0;
+
+	if (accZ_ != 0) {
+		wvlZ_ += accZ_;
+		if (accZ_ > 0)
+			wvlZ_ = std::min(wvlZ_, maxZ_);
+		if (accZ_ < 0)
+			wvlZ_ = std::max(wvlZ_, maxZ_);
+	}
+	if (wvlZ_ != 0) {
+		rotZ_ = Math::NormalizeAngleDeg(rotZ_ + wvlZ_);
+	}
+}
 void StgMoveParent::UpdateChildren() {
 	// This looks stupid but please have faith in me
 	double px0 = posX_;
@@ -477,6 +507,8 @@ StgMovePattern_Angle::StgMovePattern_Angle(StgMoveObject* target) : StgMovePatte
 	acceleration_ = 0;
 	maxSpeed_ = 0;
 	angularVelocity_ = 0;
+	angularAcceleration_ = 0;
+	angularMaxVelocity_ = 0;
 	objRelative_ = ref_unsync_weak_ptr<StgMoveObject>();
 }
 void StgMovePattern_Angle::Move() {
@@ -488,6 +520,13 @@ void StgMovePattern_Angle::Move() {
 			speed_ = std::min(speed_, maxSpeed_);
 		if (acceleration_ < 0)
 			speed_ = std::max(speed_, maxSpeed_);
+	}
+	if (angularAcceleration_ != 0) {
+		angularVelocity_ += angularAcceleration_;
+		if (angularAcceleration_ > 0)
+			angularVelocity_ = std::min(angularVelocity_, angularMaxVelocity_);
+		if (angularAcceleration_ < 0)
+			angularVelocity_ = std::max(angularVelocity_, angularMaxVelocity_);
 	}
 	if (angularVelocity_ != 0) {
 		SetDirectionAngle(angle + angularVelocity_);
@@ -504,6 +543,8 @@ void StgMovePattern_Angle::_Activate(StgMovePattern* _src) {
 	double newAccel = 0;
 	double newAgVel = 0;
 	double newMaxSp = 0;
+	double newAgAcc = 0;
+	double newAgMax = 0;
 	if (_src->GetType() == TYPE_ANGLE) {
 		StgMovePattern_Angle* src = (StgMovePattern_Angle*)_src;
 		newSpeed = src->speed_;
@@ -511,6 +552,8 @@ void StgMovePattern_Angle::_Activate(StgMovePattern* _src) {
 		newAccel = src->acceleration_;
 		newAgVel = src->angularVelocity_;
 		newMaxSp = src->maxSpeed_;
+		newAgAcc = src->angularAcceleration_;
+		newAgMax = src->angularMaxVelocity_;
 	}
 	else if (_src->GetType() == TYPE_XY) {
 		StgMovePattern_XY* src = (StgMovePattern_XY*)_src;
@@ -528,6 +571,8 @@ void StgMovePattern_Angle::_Activate(StgMovePattern* _src) {
 			newAccel = 0;
 			newAgVel = 0;
 			newMaxSp = 0;
+			newAgAcc = 0;
+			newAgMax = 0;
 			break;
 		case SET_SPEED:
 			newSpeed = arg;
@@ -548,6 +593,12 @@ void StgMovePattern_Angle::_Activate(StgMovePattern* _src) {
 			newMaxSp = arg;
 			bMaxSpeed2 = true;
 			break;
+		case SET_AGACC:
+			newAgAcc = arg;
+			break;
+		case SET_AGMAX:
+			newAgMax = arg;
+			break;
 		case ADD_SPEED:
 			newSpeed += arg;
 			break;
@@ -563,6 +614,12 @@ void StgMovePattern_Angle::_Activate(StgMovePattern* _src) {
 		case ADD_SPMAX:
 			newMaxSp += arg;
 			break;
+		case ADD_AGACC:
+			newAgAcc += arg;
+			break;
+		case ADD_AGMAX:
+			newAgMax += arg;
+			break;
 		}
 	}
 
@@ -577,6 +634,8 @@ void StgMovePattern_Angle::_Activate(StgMovePattern* _src) {
 	acceleration_ = newAccel;
 	angularVelocity_ = newAgVel;
 	maxSpeed_ = newMaxSp + (bMaxSpeed2 ? speed_ : 0);
+	angularAcceleration_ = newAgAcc;
+	angularMaxVelocity_ = newAgMax;
 }
 void StgMovePattern_Angle::SetDirectionAngle(double angle) {
 	if (angle != StgMovePattern::NO_CHANGE) {

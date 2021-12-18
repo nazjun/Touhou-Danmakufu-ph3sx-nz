@@ -257,6 +257,7 @@ public:
 	static gstd::value Func_GetEnemyIntersectionPosition(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_GetEnemyIntersectionPositionByIdA1(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_GetEnemyIntersectionPositionByIdA2(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_SetEnemyAutoDeleteClip(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_LoadEnemyShotData(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ReloadEnemyShotData(gstd::script_machine* machine, int argc, const gstd::value* argv);
 
@@ -265,9 +266,7 @@ public:
 	static gstd::value Func_DeleteShotInCircle(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_DeleteShotInRegularPolygon(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_CreateShotA1(gstd::script_machine* machine, int argc, const gstd::value* argv);
-	static gstd::value Func_CreateShotPA1(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_CreateShotA2(gstd::script_machine* machine, int argc, const gstd::value* argv);
-	static gstd::value Func_CreateShotPA2(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_CreateShotOA1(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_CreateShotB1(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_CreateShotB2(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -300,6 +299,7 @@ public:
 	static gstd::value Func_SetDefaultBonusItemEnable(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_LoadItemData(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ReloadItemData(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	DNH_FUNCAPI_DECL_(Func_GetAllItemID);
 	DNH_FUNCAPI_DECL_(Func_GetItemIdInCircleA1);
 	DNH_FUNCAPI_DECL_(Func_GetItemIdInCircleA2);
 	DNH_FUNCAPI_DECL_(Func_SetItemAutoDeleteClip);
@@ -320,6 +320,8 @@ public:
 	static gstd::value Func_ObjMove_SetAcceleration(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_SetMaxSpeed(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_SetAngularVelocity(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_ObjMove_SetAngularAcceleration(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_ObjMove_SetAngularMaxVelocity(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_SetDestAtSpeed(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_SetDestAtFrame(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_SetDestAtWeight(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -327,6 +329,7 @@ public:
 	static gstd::value Func_ObjMove_AddPatternA2(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_AddPatternA3(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_AddPatternA4(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_ObjMove_AddPatternA5(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_AddPatternB1(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_AddPatternB2(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_AddPatternB3(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -348,7 +351,6 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjMove_GetParent);
 	DNH_FUNCAPI_DECL_(Func_ObjMove_RemoveParent);
 	DNH_FUNCAPI_DECL_(Func_ObjMove_SetRelativePosition);
-	DNH_FUNCAPI_DECL_(Func_ObjMove_UpdateRelativePosition);
 	DNH_FUNCAPI_DECL_(Func_ObjMove_GetDistanceFromParent);
 	DNH_FUNCAPI_DECL_(Func_ObjMove_GetAngleFromParent);
 
@@ -357,6 +359,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetParentObject);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetParentObject);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetAutoDelete);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetAutoDeleteChildren);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_AddChild);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetChildren);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_RemoveChildren);
@@ -366,13 +369,16 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformScaleX);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformScaleY);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformAngle);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformAngularVelocity);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformAngularAcceleration);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformAngularMaxVelocity);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetTransformScaleX);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetTransformScaleY);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetTransformAngle);
 	// DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetRadiusAtAngle);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildAngleMode);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildMotionEnable);
-	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildMotionTransformEnable);
+	// DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildMotionTransformEnable);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetLaserRotationEnable);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformOrder);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_ApplyTransformation);
@@ -381,6 +387,8 @@ public:
 	//STG共通関数：敵オブジェクト操作
 	static gstd::value Func_ObjEnemy_Create(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjEnemy_Regist(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_ObjEnemy_SetAutoDelete(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_ObjEnemy_SetDeleteFrame(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjEnemy_GetInfo(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjEnemy_SetLife(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	template<bool CHECK_MAX_DMG>
@@ -446,6 +454,8 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetGrazeInvalidFrame);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetGrazeFrame);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_IsValidGraze);
+	DNH_FUNCAPI_DECL_(Func_ObjShot_SetPenetrateShotEnable);
+	DNH_FUNCAPI_DECL_(Func_ObjShot_SetEnemyIntersectionInvalidFrame);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetFixedAngle);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetSpinAngularVelocity);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetDelayAngularVelocity);
@@ -473,7 +483,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjStLaser_GetPermitExpand);
 	static gstd::value Func_ObjCrLaser_SetTipDecrement(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_SetTipCapping);
-	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_SetAngleSmoothing);
+	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_SetAngleSmoothness);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_GetNodePointer);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_GetNodePointerList);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_GetNodePosition);
@@ -492,6 +502,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_Fire);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_FireReturn);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetParentObject);
+	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetShotParent);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetAutoDelete);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetPatternType);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetShotType);

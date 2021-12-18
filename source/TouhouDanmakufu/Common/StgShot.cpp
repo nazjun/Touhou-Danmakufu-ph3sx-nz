@@ -292,7 +292,7 @@ std::vector<int> StgShotManager::GetShotIdInCircle(int typeOwner, int cx, int cy
 
 		bool bInCircle = radius == nullptr;
 		if (!bInCircle) {
-			bool bPassAABB = (sx > rect_x1 && sy > rect_y1) && (sx < rect_x2&& sy < rect_y2);
+			bool bPassAABB = (sx > rect_x1 && sy > rect_y1) && (sx < rect_x2 && sy < rect_y2);
 			bInCircle = bPassAABB && Math::HypotSq<int64_t>(cx - sx, cy - sy) <= rr;
 		}
 		if (bInCircle)
@@ -892,6 +892,9 @@ StgShotObject::StgShotObject(StgStageController* stageController) : StgMoveObjec
 	frameGrazeInvalid_ = 0;
 	frameGrazeInvalidStart_ = -1;
 
+	bPenetrateShot_ = true;
+	frameEnemyHitInvalid_ = 0;
+
 	frameFadeDelete_ = -1;
 	frameAutoDelete_ = INT_MAX;
 
@@ -1005,6 +1008,18 @@ void StgShotObject::_CommonWorkTask() {
 		_DeleteInFadeDelete();
 	}
 	--frameGrazeInvalid_;
+
+	if (listHitEnemy_.size() > 0) {
+		auto& itr = listHitEnemy_.begin();
+		while (itr != listHitEnemy_.end()) {
+			--itr->second;
+			if (itr->second <= 0)
+				itr = listHitEnemy_.erase(itr);
+			else
+				++itr;
+		}
+	}
+
 }
 void StgShotObject::_SendDeleteEvent(int bit) {
 	if (typeOwner_ != OWNER_ENEMY) return;
@@ -1072,10 +1087,25 @@ void StgShotObject::Intersect(StgIntersectionTarget* ownTarget, StgIntersectionT
 		break;
 	}
 	case StgIntersectionTarget::TYPE_ENEMY:
-	case StgIntersectionTarget::TYPE_ENEMY_SHOT:
 	{
 		//Don't reduce penetration with lasers
 		if (!bSpellResist_ && dynamic_cast<StgLaserObject*>(this) == nullptr) {
+			bool bHit = listHitEnemy_.size() == 0 || std::find_if(listHitEnemy_.begin(), listHitEnemy_.end(),
+				[&obj](const std::pair<ref_unsync_weak_ptr<StgEnemyObject>, int>& element) { return element.first == obj; }) == listHitEnemy_.end();
+
+			if (bHit) {
+				--life_;
+				if (life_ == 0) {
+					_RequestPlayerDeleteEvent(obj.IsExists() ? obj->GetDxScriptObjectID() : DxScript::ID_INVALID);
+				}
+			}
+		}
+		break;
+	}
+	case StgIntersectionTarget::TYPE_ENEMY_SHOT:
+	{
+		//Don't reduce penetration with lasers
+		if (!bSpellResist_ && dynamic_cast<StgLaserObject*>(this) == nullptr && bPenetrateShot_) {
 			--life_;
 			if (life_ == 0) {
 				_RequestPlayerDeleteEvent(obj.IsExists() ? obj->GetDxScriptObjectID() : DxScript::ID_INVALID);
@@ -2398,7 +2428,7 @@ StgCurveLaserObject::StgCurveLaserObject(StgStageController* stageController) : 
 	posOrigin_ = D3DXVECTOR2(0, 0);
 
 	bCap_ = false;
-	bSmoothAngle_ = false;
+	smooth_ = 0;
 }
 void StgCurveLaserObject::Work() {
 	if (frameWork_ == 0) {
@@ -2716,22 +2746,38 @@ void StgCurveLaserObject::RenderOnShotManager() {
 			std::fill(arrInc.begin(), arrInc.end(), rcInc);
 
 		size_t iPos = 0U;
-		int range = 2;
+
+		// Smoothing stuff
+		int range = smooth_;
+		bool bCircular = false; // For cases where it would be ideal for the first node to connect to the last
+
 		for (auto itr = listPosition_.begin(); itr != listPosition_.end(); ++itr, ++iPos) {
 			D3DXVECTOR2 pos = itr->pos;
 			D3DXVECTOR2 vertOff[2]{ itr->vertOff[0], itr->vertOff[1] };
 
-			if (bSmoothAngle_ && countPos > 1 && iPos > 1 && iPos < countPos - 2) {
+			if (smooth_ > 0 && countPos > 1) {
+				if (iPos == 0) {
+					auto itrLast = listPosition_.end();
+					--itrLast;
+					bCircular = pos == itrLast->pos;
+				}
 				auto itrNext = listPosition_.begin();
 				auto itrPrev = listPosition_.begin();
-				std::advance(itrNext, std::clamp((int)iPos + range, 0, (int)countPos - 1));
-				std::advance(itrPrev, std::clamp((int)iPos - range, 0, (int)countPos - 1));
+				if (bCircular) {
+					std::advance(itrNext, (iPos + range) % (countPos - 1));
+					std::advance(itrPrev, (iPos - range + countPos - 1) % (countPos - 1));
+				}
+				else {
+					std::advance(itrNext, std::clamp((int)iPos + range, 0, (int)countPos - 1));
+					std::advance(itrPrev, std::clamp((int)iPos - range, 0, (int)countPos - 1));
+				}
+				
 				D3DXVECTOR2* posNext = &itrNext->pos;
 				D3DXVECTOR2* posPrev = &itrPrev->pos;
 
 				float arc = atan2f(posNext->y - posPrev->y, posNext->x - posPrev->x);
 
-				D3DXVECTOR2 vecNew(sinf(arc) * widthRender_ / 2.0f, -cosf(arc) * widthRender_ / 2.0f);
+				D3DXVECTOR2 vecNew(-sinf(arc), cosf(arc));
 				vertOff[0] = vecNew;
 				vertOff[1] = -vecNew;
 			}
@@ -2757,8 +2803,8 @@ void StgCurveLaserObject::RenderOnShotManager() {
 				VERTEX_TLX* pv = &verts[iVert];
 
 				_SetVertexUV(pv, ptrSrc[(iVert & 1) << 1] * texSizeInv.x, rectV);
-				_SetVertexPosition(pv, itr->pos.x + itr->vertOff[iVert].x * renderWd,
-					itr->pos.y + itr->vertOff[iVert].y * renderWd, position_.z);
+				_SetVertexPosition(pv, itr->pos.x + vertOff[iVert].x * renderWd,
+					itr->pos.y + vertOff[iVert].y * renderWd, position_.z);
 				_SetVertexColorARGB(pv, thisColor);
 			}
 			renderer->AddSquareVertex_CurveLaser(verts, std::next(itr) != listPosition_.end());
@@ -2870,6 +2916,7 @@ void StgPatternShotObjectGenerator::CleanUp() {
 
 void StgPatternShotObjectGenerator::CopyFrom(StgPatternShotObjectGenerator* other) {
 	parent_ = other->parent_;
+	shotParent_ = other->shotParent_;
 	listTransformation_ = other->listTransformation_;
 	bAutoDelete_ = other->bAutoDelete_;
 
@@ -2981,6 +3028,8 @@ void StgPatternShotObjectGenerator::FireSet(void* scriptData, StgStageController
 		shotManager->AddShot(objShot);
 
 		if (idVector) idVector->push_back(idRes);
+
+		if (shotParent_) shotParent_->AddChild(shotParent_, objShot);
 		return true;
 	};
 
