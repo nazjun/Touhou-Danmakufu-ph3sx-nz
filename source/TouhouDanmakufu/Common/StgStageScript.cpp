@@ -327,6 +327,9 @@ static const std::vector<function> stgStageFunction = {
 	{ "CreateShotB1", StgStageScript::Func_CreateShotB1, 6 },
 	{ "CreateShotB2", StgStageScript::Func_CreateShotB2, 10 },
 	{ "CreateShotOB1", StgStageScript::Func_CreateShotOB1, 5 },
+	{ "CreateShotC1", StgStageScript::Func_CreateShotC1, 7 },
+	{ "CreateShotC2", StgStageScript::Func_CreateShotC2, 12 },
+	{ "CreateShotOC1", StgStageScript::Func_CreateShotOC1, 6 },
 	{ "CreateLooseLaserA1", StgStageScript::Func_CreateLooseLaserA1, 8 },
 	{ "CreateStraightLaserA1", StgStageScript::Func_CreateStraightLaserA1, 8 },
 	{ "CreateCurveLaserA1", StgStageScript::Func_CreateCurveLaserA1, 8 },
@@ -389,6 +392,10 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjMove_AddPatternB1", StgStageScript::Func_ObjMove_AddPatternB1, 4 },
 	{ "ObjMove_AddPatternB2", StgStageScript::Func_ObjMove_AddPatternB2, 8 },
 	{ "ObjMove_AddPatternB3", StgStageScript::Func_ObjMove_AddPatternB3, 9 },
+	{ "ObjMove_AddPatternC1", StgStageScript::Func_ObjMove_AddPatternC1, 5 },
+	{ "ObjMove_AddPatternC2", StgStageScript::Func_ObjMove_AddPatternC2, 10 },
+	{ "ObjMove_AddPatternC3", StgStageScript::Func_ObjMove_AddPatternC3, 11 },
+	{ "ObjMove_AddPatternC4", StgStageScript::Func_ObjMove_AddPatternC4, 12 },
 	{ "ObjMove_GetX", StgStageScript::Func_ObjMove_GetX, 1 },
 	{ "ObjMove_GetY", StgStageScript::Func_ObjMove_GetY, 1 },
 	{ "ObjMove_GetPosition", StgStageScript::Func_ObjMove_GetPosition, 1 },
@@ -402,6 +409,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjMove_SetProcessMovement", StgStageScript::Func_ObjMove_SetProcessMovement, 2 },
 	{ "ObjMove_GetProcessMovement", StgStageScript::Func_ObjMove_GetProcessMovement, 1 },
 	{ "ObjMove_GetMoveFrame", StgStageScript::Func_ObjMove_GetMoveFrame, 1 },
+	{ "ObjMove_GetMovementType", StgStageScript::Func_ObjMove_GetMovementType, 1 },
 	
 	// Move object + move parent
 	{ "ObjMove_GetParent", StgStageScript::Func_ObjMove_GetParent, 1 },
@@ -419,6 +427,8 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjMoveParent_AddChild", StgStageScript::Func_ObjMoveParent_AddChild, 2 },
 	{ "ObjMoveParent_GetChildren", StgStageScript::Func_ObjMoveParent_GetChildren, 1 },
 	{ "ObjMoveParent_RemoveChildren", StgStageScript::Func_ObjMoveParent_RemoveChildren, 1 },
+	{ "ObjMoveParent_TransferChildren", StgStageScript::Func_ObjMoveParent_TransferChildren, 2 },
+	{ "ObjMoveParent_SwapChildren", StgStageScript::Func_ObjMoveParent_SwapChildren, 2 },
 	{ "ObjMoveParent_SetPositionOffset", StgStageScript::Func_ObjMoveParent_SetPositionOffset, 3 },
 	{ "ObjMoveParent_SetPositionOffsetCircle", StgStageScript::Func_ObjMoveParent_SetPositionOffsetCircle, 3 },
 	{ "ObjMoveParent_SetTransformScale", StgStageScript::Func_ObjMoveParent_SetTransformScale, 3 },
@@ -432,13 +442,14 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjMoveParent_GetTransformScaleX", StgStageScript::Func_ObjMoveParent_GetTransformScaleX, 1 },
 	{ "ObjMoveParent_GetTransformScaleY", StgStageScript::Func_ObjMoveParent_GetTransformScaleY, 1 },
 	{ "ObjMoveParent_GetTransformAngle", StgStageScript::Func_ObjMoveParent_GetTransformAngle , 1 },
-	// { "ObjMoveParent_GetRadiusAtAngle", StgStageScript::Func_ObjMoveParent_GetRadiusAtAngle , 2 },
 	{ "ObjMoveParent_SetChildAngleMode", StgStageScript::Func_ObjMoveParent_SetChildAngleMode, 2 },
 	{ "ObjMoveParent_SetChildMotionEnable", StgStageScript::Func_ObjMoveParent_SetChildMotionEnable, 2 },
+	{ "ObjMoveParent_SetChildAdditionTransformEnable", StgStageScript::Func_ObjMoveParent_SetChildAdditionTransformEnable, 2 },
 	{ "ObjMoveParent_SetLaserRotationEnable", StgStageScript::Func_ObjMoveParent_SetLaserRotationEnable, 2 },
 	{ "ObjMoveParent_SetTransformOrder", StgStageScript::Func_ObjMoveParent_SetTransformOrder, 2 },
 	{ "ObjMoveParent_ApplyTransformation", StgStageScript::Func_ObjMoveParent_ApplyTransformation, 1 },
 	{ "ObjMoveParent_ResetTransformation", StgStageScript::Func_ObjMoveParent_ResetTransformation, 1 },
+	{ "ObjMoveParent_CopySettings", StgStageScript::Func_ObjMoveParent_CopySettings, 2 },
 
 	//STG共通関数：敵オブジェクト操作
 	{ "ObjEnemy_Create", StgStageScript::Func_ObjEnemy_Create, 1 },
@@ -660,6 +671,8 @@ static const std::vector<constant> stgStageConstant = {
 	constant("TRANSFORM_ADDPATTERN_A2", StgPatternShotTransform::TRANSFORM_ADDPATTERN_A2),
 	constant("TRANSFORM_ADDPATTERN_B1", StgPatternShotTransform::TRANSFORM_ADDPATTERN_B1),
 	constant("TRANSFORM_ADDPATTERN_B2", StgPatternShotTransform::TRANSFORM_ADDPATTERN_B2),
+	constant("TRANSFORM_ADDPATTERN_C1", StgPatternShotTransform::TRANSFORM_ADDPATTERN_C1),
+	constant("TRANSFORM_ADDPATTERN_C2", StgPatternShotTransform::TRANSFORM_ADDPATTERN_C2),
 
 	//Player states
 	constant("STATE_NORMAL", StgPlayerObject::STATE_NORMAL),
@@ -772,6 +785,13 @@ static const std::vector<constant> stgStageConstant = {
 	constant("TARGET_ALL", StgStageScript::TARGET_ALL),
 	constant("TARGET_ENEMY", StgStageScript::TARGET_ENEMY),
 	constant("TARGET_PLAYER", StgStageScript::TARGET_PLAYER),
+
+	//Movement types
+	constant("MOVE_OTHER", StgMovePattern::TYPE_OTHER),
+	constant("MOVE_ANGLE", StgMovePattern::TYPE_ANGLE),
+	constant("MOVE_XY", StgMovePattern::TYPE_XY),
+	constant("MOVE_XY_ANGLE", StgMovePattern::TYPE_XY_ANG),
+	constant("MOVE_LINE", StgMovePattern::TYPE_LINE),
 
 	//AddPattern constants
 	constant("TOPLAYER_CHANGE", StgMovePattern::TOPLAYER_CHANGE),
@@ -1632,7 +1652,7 @@ gstd::value StgStageScript::Func_CreateShotA2(gstd::script_machine* machine, int
 			double speed = argv[2].as_real();
 			double angle = argv[3].as_real();
 			double accele = argv[4].as_real();
-            double wvel = Math::DegreeToRadian(argv[5].as_real());
+            double wvel = argv[5].as_real();
 			double maxSpeed = argv[6 - old].as_real();
 			int idShot = argv[7 - old].as_int();
 			int delay = argv[8 - old].as_int();
@@ -1650,7 +1670,7 @@ gstd::value StgStageScript::Func_CreateShotA2(gstd::script_machine* machine, int
 			StgMoveObject* objMove = (StgMoveObject*)obj.get();
 			StgMovePattern_Angle* pattern = dynamic_cast<StgMovePattern_Angle*>(objMove->GetPattern().get());
 			pattern->SetAcceleration(accele);
-            if (!old) pattern->SetAngularVelocity(wvel);
+            if (!old) pattern->SetAngularVelocity(Math::DegreeToRadian(wvel));
 			pattern->SetMaxSpeed(maxSpeed);
 		}
 	}
@@ -1799,6 +1819,128 @@ gstd::value StgStageScript::Func_CreateShotOB1(gstd::script_machine* machine, in
 				ref_unsync_ptr<StgMovePattern_XY> pattern = new StgMovePattern_XY(obj.get());
 				pattern->SetSpeedX(speedX);
 				pattern->SetSpeedY(speedY);
+				obj->SetPattern(pattern);
+			}
+		}
+	}
+	return script->CreateIntValue(id);
+}
+gstd::value StgStageScript::Func_CreateShotC1(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	StgStageController* stageController = script->stageController_;
+
+	int id = ID_INVALID;
+	if (stageController->GetShotManager()->GetShotCountAll() < StgShotManager::SHOT_MAX) {
+		ref_unsync_ptr<StgNormalShotObject> obj = new StgNormalShotObject(stageController);
+		id = script->AddObject(obj);
+		if (id != ID_INVALID) {
+			stageController->GetShotManager()->AddShot(obj);
+
+			double posX = argv[0].as_real();
+			double posY = argv[1].as_real();
+			double speedX = argv[2].as_real();
+			double speedY = argv[3].as_real();
+			double angOff = argv[4].as_real();
+			int idShot = argv[5].as_int();
+			int delay = argv[6].as_int();
+			int typeOwner = script->GetScriptType() == TYPE_PLAYER ?
+				StgShotObject::OWNER_PLAYER : StgShotObject::OWNER_ENEMY;
+
+			obj->SetX(posX);
+			obj->SetY(posY);
+			obj->SetShotDataID(idShot);
+			obj->SetDelay(delay);
+			obj->SetOwnerType(typeOwner);
+
+			ref_unsync_ptr<StgMovePattern_XY_Angle> pattern = new StgMovePattern_XY_Angle(obj.get());
+			pattern->SetSpeedX(speedX);
+			pattern->SetSpeedY(speedY);
+			pattern->SetAngleOffset(Math::DegreeToRadian(angOff));
+			obj->SetPattern(pattern);
+		}
+	}
+	return script->CreateIntValue(id);
+}
+gstd::value StgStageScript::Func_CreateShotC2(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	StgStageController* stageController = script->stageController_;
+
+	int id = ID_INVALID;
+	if (stageController->GetShotManager()->GetShotCountAll() < StgShotManager::SHOT_MAX) {
+		ref_unsync_ptr<StgNormalShotObject> obj = new StgNormalShotObject(stageController);
+		id = script->AddObject(obj);
+		if (id != ID_INVALID) {
+			stageController->GetShotManager()->AddShot(obj);
+
+			double posX = argv[0].as_real();
+			double posY = argv[1].as_real();
+			double speedX = argv[2].as_real();
+			double speedY = argv[3].as_real();
+			double accelX = argv[4].as_real();
+			double accelY = argv[5].as_real();
+			double maxSpeedX = argv[6].as_real();
+			double maxSpeedY = argv[7].as_real();
+			double angOff = argv[8].as_real();
+			double angVel = argv[9].as_real();
+			int idShot = argv[10].as_int();
+			int delay = argv[11].as_int();
+			int typeOwner = script->GetScriptType() == TYPE_PLAYER ?
+				StgShotObject::OWNER_PLAYER : StgShotObject::OWNER_ENEMY;
+
+			obj->SetX(posX);
+			obj->SetY(posY);
+			obj->SetShotDataID(idShot);
+			obj->SetDelay(delay);
+			obj->SetOwnerType(typeOwner);
+
+			ref_unsync_ptr<StgMovePattern_XY_Angle> pattern = new StgMovePattern_XY_Angle(obj.get());
+			pattern->SetSpeedX(speedX);
+			pattern->SetSpeedY(speedY);
+			pattern->SetAccelerationX(accelX);
+			pattern->SetAccelerationY(accelY);
+			pattern->SetMaxSpeedX(maxSpeedX);
+			pattern->SetMaxSpeedY(maxSpeedY);
+			pattern->SetAngleOffset(Math::DegreeToRadian(angOff));
+			pattern->SetAngularVelocity(Math::DegreeToRadian(angVel));
+			obj->SetPattern(pattern);
+		}
+	}
+	return script->CreateIntValue(id);
+}
+gstd::value StgStageScript::Func_CreateShotOC1(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	StgStageController* stageController = script->stageController_;
+
+	int id = ID_INVALID;
+	if (stageController->GetShotManager()->GetShotCountAll() < StgShotManager::SHOT_MAX) {
+		int tId = argv[0].as_int();
+		if (DxScriptRenderObject* tObj = script->GetObjectPointerAs<DxScriptRenderObject>(tId)) {
+			double posX = tObj->GetPosition().x;
+			double posY = tObj->GetPosition().y;
+
+			ref_unsync_ptr<StgNormalShotObject> obj = new StgNormalShotObject(stageController);
+			id = script->AddObject(obj);
+			if (id != ID_INVALID) {
+				stageController->GetShotManager()->AddShot(obj);
+
+				double speedX = argv[1].as_real();
+				double speedY = argv[2].as_real();
+				double angOff = argv[3].as_real();
+				int idShot = argv[4].as_int();
+				int delay = argv[5].as_int();
+				int typeOwner = script->GetScriptType() == TYPE_PLAYER ?
+					StgShotObject::OWNER_PLAYER : StgShotObject::OWNER_ENEMY;
+
+				obj->SetX(posX);
+				obj->SetY(posY);
+				obj->SetShotDataID(idShot);
+				obj->SetDelay(delay);
+				obj->SetOwnerType(typeOwner);
+
+				ref_unsync_ptr<StgMovePattern_XY_Angle> pattern = new StgMovePattern_XY_Angle(obj.get());
+				pattern->SetSpeedX(speedX);
+				pattern->SetSpeedY(speedY);
+				pattern->SetAngleOffset(Math::DegreeToRadian(angOff));
 				obj->SetPattern(pattern);
 			}
 		}
@@ -2592,17 +2734,21 @@ gstd::value StgStageScript::Func_ObjMove_SetSpeed(gstd::script_machine* machine,
 
 		StgMovePattern* pattern = obj->GetPattern().get();
 		if (pattern) {
-			if (auto patternXY = dynamic_cast<StgMovePattern_XY*>(pattern)) {
-				double oldSpeed = patternXY->GetSpeed();
-				if (oldSpeed != 0) {
-					double newSpeedMul = speed / oldSpeed;
+			double oldSpeed = pattern->GetSpeed();
+			if (speed != 0) {
+				double newSpeedMul = speed / oldSpeed;
+				if (auto patternXY = dynamic_cast<StgMovePattern_XY*>(pattern)) {
 					patternXY->SetSpeedX(patternXY->GetSpeedX() * newSpeedMul);
 					patternXY->SetSpeedY(patternXY->GetSpeedY() * newSpeedMul);
 					goto set_exit;
 				}
-				else {
-					obj->SetPattern(new StgMovePattern_Angle(obj));
+				else if (auto patternXYA = dynamic_cast<StgMovePattern_XY_Angle*>(pattern)) {
+					patternXYA->SetSpeedXY(patternXYA->GetSpeedX() * newSpeedMul, patternXYA->GetSpeedY() * newSpeedMul);
+					goto set_exit;
 				}
+			}
+			else {
+				obj->AddPattern(0, new StgMovePattern_Angle(obj));
 			}
 		}
 		obj->SetSpeed(speed);
@@ -2620,16 +2766,20 @@ gstd::value StgStageScript::Func_ObjMove_SetAngle(gstd::script_machine* machine,
 
 		StgMovePattern* pattern = obj->GetPattern().get();
 		if (pattern) {
-			if (auto patternXY = dynamic_cast<StgMovePattern_XY*>(pattern)) {
-				double speed = patternXY->GetSpeed();
-				if (speed != 0) {
+			double speed = pattern->GetSpeed();
+			if (speed != 0) {
+				if (auto patternXY = dynamic_cast<StgMovePattern_XY*>(pattern)) {
 					patternXY->SetSpeedX(cos(angle) * speed);
 					patternXY->SetSpeedY(sin(angle) * speed);
 					goto set_exit;
 				}
-				else {
-					obj->SetPattern(new StgMovePattern_Angle(obj));
+				else if (auto patternXYA = dynamic_cast<StgMovePattern_XY_Angle*>(pattern)) {
+					patternXYA->SetSpeedXY(cos(angle) * speed, sin(angle) * speed);
+					goto set_exit;
 				}
+			}
+			else {
+				obj->AddPattern(0, new StgMovePattern_Angle(obj));
 			}
 		}
 		obj->SetDirectionAngle(angle);
@@ -2643,9 +2793,9 @@ gstd::value StgStageScript::Func_ObjMove_SetAcceleration(gstd::script_machine* m
 	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
 	if (obj) {
 		ref_unsync_ptr<StgMovePattern_Angle> pattern = obj->GetPattern();
-		if (pattern == nullptr) {
+		if (pattern == nullptr || pattern->GetType() != StgMovePattern::TYPE_ANGLE) {
 			pattern = new StgMovePattern_Angle(obj);
-			obj->SetPattern(pattern);
+			obj->AddPattern(0, pattern);
 		}
 
 		double param = argv[1].as_real();
@@ -2659,9 +2809,9 @@ gstd::value StgStageScript::Func_ObjMove_SetAngularVelocity(gstd::script_machine
 	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
 	if (obj) {
 		ref_unsync_ptr<StgMovePattern_Angle> pattern = obj->GetPattern();
-		if (pattern == nullptr) {
+		if (pattern == nullptr || pattern->GetType() != StgMovePattern::TYPE_ANGLE) {
 			pattern = new StgMovePattern_Angle(obj);
-			obj->SetPattern(pattern);
+			obj->AddPattern(0, pattern);
 		}
 
 		double param = argv[1].as_real();
@@ -2675,9 +2825,9 @@ gstd::value StgStageScript::Func_ObjMove_SetMaxSpeed(gstd::script_machine* machi
 	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
 	if (obj) {
 		ref_unsync_ptr<StgMovePattern_Angle> pattern = obj->GetPattern();
-		if (pattern == nullptr) {
+		if (pattern == nullptr || pattern->GetType() != StgMovePattern::TYPE_ANGLE) {
 			pattern = new StgMovePattern_Angle(obj);
-			obj->SetPattern(pattern);
+			obj->AddPattern(0, pattern);
 		}
 
 		double param = argv[1].as_real();
@@ -2691,9 +2841,9 @@ gstd::value StgStageScript::Func_ObjMove_SetAngularAcceleration(gstd::script_mac
 	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
 	if (obj) {
 		ref_unsync_ptr<StgMovePattern_Angle> pattern = obj->GetPattern();
-		if (pattern == nullptr) {
+		if (pattern == nullptr || pattern->GetType() != StgMovePattern::TYPE_ANGLE) {
 			pattern = new StgMovePattern_Angle(obj);
-			obj->SetPattern(pattern);
+			obj->AddPattern(0, pattern);
 		}
 
 		double param = argv[1].as_real();
@@ -2707,9 +2857,9 @@ gstd::value StgStageScript::Func_ObjMove_SetAngularMaxVelocity(gstd::script_mach
 	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
 	if (obj) {
 		ref_unsync_ptr<StgMovePattern_Angle> pattern = obj->GetPattern();
-		if (pattern == nullptr) {
+		if (pattern == nullptr || pattern->GetType() != StgMovePattern::TYPE_ANGLE) {
 			pattern = new StgMovePattern_Angle(obj);
-			obj->SetPattern(pattern);
+			obj->AddPattern(0, pattern);
 		}
 
 		double param = argv[1].as_real();
@@ -2980,6 +3130,125 @@ gstd::value StgStageScript::Func_ObjMove_AddPatternB3(gstd::script_machine* mach
 	}
 	return value();
 }
+gstd::value StgStageScript::Func_ObjMove_AddPatternC1(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
+	if (obj) {
+		int frame = argv[1].as_int();
+		double speedX = argv[2].as_real();
+		double speedY = argv[3].as_real();
+		double angOff = argv[4].as_real();
+
+		ref_unsync_ptr<StgMovePattern_XY_Angle> pattern = new StgMovePattern_XY_Angle(obj);
+		pattern->AddCommand(std::make_pair(StgMovePattern_XY_Angle::SET_ZERO, 0));
+
+		ADD_CMD(StgMovePattern_XY_Angle::SET_S_X, speedX);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_S_Y, speedY);
+		ADD_CMD2(StgMovePattern_XY_Angle::SET_ANGLE, angOff, Math::DegreeToRadian(angOff));
+
+		obj->AddPattern(frame, pattern);
+	}
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMove_AddPatternC2(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
+	if (obj) {
+		int frame = argv[1].as_int();
+		double speedX = argv[2].as_real();
+		double speedY = argv[3].as_real();
+		double accelX = argv[4].as_real();
+		double accelY = argv[5].as_real();
+		double maxspX = argv[6].as_real();
+		double maxspY = argv[7].as_real();
+		double angOff = argv[8].as_real();
+		double angVel = argv[9].as_real();
+
+		ref_unsync_ptr<StgMovePattern_XY_Angle> pattern = new StgMovePattern_XY_Angle(obj);
+
+		ADD_CMD(StgMovePattern_XY_Angle::SET_S_X, speedX);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_S_Y, speedY);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_A_X, accelX);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_A_Y, accelY);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_M_X, maxspX);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_M_Y, maxspY);
+		ADD_CMD2(StgMovePattern_XY_Angle::SET_ANGLE, angOff, Math::DegreeToRadian(angOff));
+		ADD_CMD2(StgMovePattern_XY_Angle::SET_AGVEL, angVel, Math::DegreeToRadian(angVel));
+
+		obj->AddPattern(frame, pattern);
+	}
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMove_AddPatternC3(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
+	if (obj) {
+		int frame = argv[1].as_int();
+		double speedX = argv[2].as_real();
+		double speedY = argv[3].as_real();
+		double accelX = argv[4].as_real();
+		double accelY = argv[5].as_real();
+		double maxspX = argv[6].as_real();
+		double maxspY = argv[7].as_real();
+		double angOff = argv[8].as_real();
+		double angVel = argv[9].as_real();
+		int idShot = argv[10].as_int();
+
+		ref_unsync_ptr<StgMovePattern_XY_Angle> pattern = new StgMovePattern_XY_Angle(obj);
+
+		ADD_CMD(StgMovePattern_XY_Angle::SET_S_X, speedX);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_S_Y, speedY);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_A_X, accelX);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_A_Y, accelY);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_M_X, maxspX);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_M_Y, maxspY);
+		ADD_CMD2(StgMovePattern_XY_Angle::SET_ANGLE, angOff, Math::DegreeToRadian(angOff));
+		ADD_CMD2(StgMovePattern_XY_Angle::SET_AGVEL, angVel, Math::DegreeToRadian(angVel));
+
+		if (idShot != StgMovePattern::NO_CHANGE)
+			pattern->SetShotDataID(idShot);
+
+		obj->AddPattern(frame, pattern);
+	}
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMove_AddPatternC4(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
+	if (obj) {
+		int frame = argv[1].as_int();
+		double speedX = argv[2].as_real();
+		double speedY = argv[3].as_real();
+		double accelX = argv[4].as_real();
+		double accelY = argv[5].as_real();
+		double maxspX = argv[6].as_real();
+		double maxspY = argv[7].as_real();
+		double angOff = argv[8].as_real();
+		double angVel = argv[9].as_real();
+		double angAcc = argv[10].as_real();
+		double angMax = argv[11].as_real();
+
+		ref_unsync_ptr<StgMovePattern_XY_Angle> pattern = new StgMovePattern_XY_Angle(obj);
+
+		ADD_CMD(StgMovePattern_XY_Angle::SET_S_X, speedX);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_S_Y, speedY);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_A_X, accelX);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_A_Y, accelY);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_M_X, maxspX);
+		ADD_CMD(StgMovePattern_XY_Angle::SET_M_Y, maxspY);
+		ADD_CMD2(StgMovePattern_XY_Angle::SET_ANGLE, angOff, Math::DegreeToRadian(angOff));
+		ADD_CMD2(StgMovePattern_XY_Angle::SET_AGVEL, angVel, Math::DegreeToRadian(angVel));
+		ADD_CMD2(StgMovePattern_XY_Angle::SET_AGACC, angAcc, Math::DegreeToRadian(angAcc));
+		ADD_CMD2(StgMovePattern_XY_Angle::SET_AGMAX, angMax, Math::DegreeToRadian(angMax));
+
+		obj->AddPattern(frame, pattern);
+	}
+	return value();
+}
 #undef ADD_CMD
 #undef ADD_CMD2
 
@@ -3120,6 +3389,9 @@ gstd::value StgStageScript::Func_ObjMove_SetSpeedXY(gstd::script_machine* machin
 				patternAng->SetDirectionAngle(atan2(paramY, paramX));
 				patternAng->SetSpeed(hypot(paramX, paramY));
 			}
+			else if (auto patternXYA = dynamic_cast<StgMovePattern_XY_Angle*>(pattern)) {
+				patternXYA->SetSpeedXY(paramX, paramY);
+			}
 			else {
 				obj->SetSpeedX(paramX);
 				obj->SetSpeedY(paramY);
@@ -3152,6 +3424,18 @@ gstd::value StgStageScript::Func_ObjMove_GetMoveFrame(gstd::script_machine* mach
 	int id = argv[0].as_int();
 	StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id);
 	int res = obj ? obj->GetMoveFrame() : 0;
+	return script->CreateIntValue(res);
+}
+gstd::value StgStageScript::Func_ObjMove_GetMovementType(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	int res = StgMovePattern::TYPE_OTHER;
+	if (StgMoveObject* obj = script->GetObjectPointerAs<StgMoveObject>(id)) {
+		if (ref_unsync_ptr<StgMovePattern> objP = obj->GetPattern()) {
+			res = objP->GetType();
+		}
+	}
+	
 	return script->CreateIntValue(res);
 }
 
@@ -3307,6 +3591,32 @@ gstd::value StgStageScript::Func_ObjMoveParent_RemoveChildren(gstd::script_machi
 
 	return value();
 }
+gstd::value StgStageScript::Func_ObjMoveParent_TransferChildren(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	int idT = argv[1].as_int();
+	auto obj = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(id));
+	if (obj) {
+		auto objT = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(idT));
+		if (objT)
+			obj->TransferChildren(obj, objT);
+	}
+		
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SwapChildren(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	int idT = argv[1].as_int();
+	auto obj = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(id));
+	if (obj) {
+		auto objT = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(idT));
+		if (objT)
+			obj->SwapChildren(obj, objT);
+	}
+
+	return value();
+}
 gstd::value StgStageScript::Func_ObjMoveParent_SetPositionOffset(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
@@ -3368,7 +3678,7 @@ gstd::value StgStageScript::Func_ObjMoveParent_SetTransformScaleY(gstd::script_m
 gstd::value StgStageScript::Func_ObjMoveParent_SetTransformAngle(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
-	double z = argv[1].as_real();
+	double z = Math::DegreeToRadian(argv[1].as_real());
 	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
 	if (obj)
 		obj->SetTransformAngle(z);
@@ -3378,7 +3688,7 @@ gstd::value StgStageScript::Func_ObjMoveParent_SetTransformAngle(gstd::script_ma
 gstd::value StgStageScript::Func_ObjMoveParent_SetTransformAngularVelocity(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
-	double wv = argv[1].as_real();
+	double wv = Math::DegreeToRadian(argv[1].as_real());
 	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
 	if (obj)
 		obj->SetTransformAngularVelocity(wv);
@@ -3388,7 +3698,7 @@ gstd::value StgStageScript::Func_ObjMoveParent_SetTransformAngularVelocity(gstd:
 gstd::value StgStageScript::Func_ObjMoveParent_SetTransformAngularAcceleration(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
-	double wa = argv[1].as_real();
+	double wa = Math::DegreeToRadian(argv[1].as_real());
 	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
 	if (obj)
 		obj->SetTransformAngularAcceleration(wa);
@@ -3398,7 +3708,7 @@ gstd::value StgStageScript::Func_ObjMoveParent_SetTransformAngularAcceleration(g
 gstd::value StgStageScript::Func_ObjMoveParent_SetTransformAngularMaxVelocity(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
-	double wm = argv[1].as_real();
+	double wm = Math::DegreeToRadian(argv[1].as_real());
 	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
 	if (obj)
 		obj->SetTransformAngularMaxVelocity(wm);
@@ -3431,23 +3741,10 @@ gstd::value StgStageScript::Func_ObjMoveParent_GetTransformAngle(gstd::script_ma
 	double z = 0;
 	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
 	if (obj)
-		z = obj->GetTransformAngle();
+		z = Math::RadianToDegree(obj->GetTransformAngle());
 
 	return script->CreateRealValue(z);
 }
-/*
-gstd::value StgStageScript::Func_ObjMoveParent_GetRadiusAtAngle(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	StgStageScript* script = (StgStageScript*)machine->data;
-	int id = argv[0].as_int();
-	double dir = argv[1].as_real();
-	double rad = 0;
-	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
-	if (obj)
-		rad = obj->GetRadiusAtAngle(dir);
-
-	return script->CreateRealValue(rad);
-}
-*/
 gstd::value StgStageScript::Func_ObjMoveParent_SetChildAngleMode(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
@@ -3465,6 +3762,16 @@ gstd::value StgStageScript::Func_ObjMoveParent_SetChildMotionEnable(gstd::script
 	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
 	if (obj)
 		obj->SetChildMotionEnable(enable);
+
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_SetChildAdditionTransformEnable(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	bool enable = argv[1].as_boolean();
+	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
+	if (obj)
+		obj->SetChildAdditionTransformEnable(enable);
 
 	return value();
 }
@@ -3504,6 +3811,19 @@ gstd::value StgStageScript::Func_ObjMoveParent_ResetTransformation(gstd::script_
 	if (obj)
 		obj->ResetTransformation();
 
+	return value();
+}
+gstd::value StgStageScript::Func_ObjMoveParent_CopySettings(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+
+	int idDst = argv[0].as_int();
+	auto objDst = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(idDst));
+	if (objDst) {
+		int idSrc = argv[1].as_int();
+		auto objSrc = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(idSrc));
+		if (objSrc)
+			objDst->CopyFrom(objDst, objSrc);
+	}
 	return value();
 }
 

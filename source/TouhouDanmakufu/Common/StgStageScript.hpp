@@ -271,6 +271,9 @@ public:
 	static gstd::value Func_CreateShotB1(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_CreateShotB2(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_CreateShotOB1(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_CreateShotC1(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_CreateShotC2(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_CreateShotOC1(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_CreateLooseLaserA1(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_CreateStraightLaserA1(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_CreateCurveLaserA1(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -333,6 +336,10 @@ public:
 	static gstd::value Func_ObjMove_AddPatternB1(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_AddPatternB2(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_AddPatternB3(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_ObjMove_AddPatternC1(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_ObjMove_AddPatternC2(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_ObjMove_AddPatternC3(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_ObjMove_AddPatternC4(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_GetX(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_GetY(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_GetPosition(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -346,6 +353,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjMove_SetProcessMovement);
 	DNH_FUNCAPI_DECL_(Func_ObjMove_GetProcessMovement);
 	DNH_FUNCAPI_DECL_(Func_ObjMove_GetMoveFrame);
+	DNH_FUNCAPI_DECL_(Func_ObjMove_GetMovementType);
 
 	// Move object + move parent
 	DNH_FUNCAPI_DECL_(Func_ObjMove_GetParent);
@@ -363,6 +371,8 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_AddChild);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetChildren);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_RemoveChildren);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_TransferChildren);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SwapChildren);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetPositionOffset);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetPositionOffsetCircle);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformScale);
@@ -375,14 +385,15 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetTransformScaleX);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetTransformScaleY);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetTransformAngle);
-	// DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetRadiusAtAngle);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildAngleMode);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildMotionEnable);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildAdditionTransformEnable);
 	// DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildMotionTransformEnable);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetLaserRotationEnable);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformOrder);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_ApplyTransformation);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_ResetTransformation);
+	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_CopySettings);
 
 	//STG共通関数：敵オブジェクト操作
 	static gstd::value Func_ObjEnemy_Create(gstd::script_machine* machine, int argc, const gstd::value* argv);

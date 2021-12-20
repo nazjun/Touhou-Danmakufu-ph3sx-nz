@@ -1013,7 +1013,7 @@ void StgShotObject::_CommonWorkTask() {
 		auto& itr = listHitEnemy_.begin();
 		while (itr != listHitEnemy_.end()) {
 			--itr->second;
-			if (itr->second <= 0)
+			if (itr->second == 0)
 				itr = listHitEnemy_.erase(itr);
 			else
 				++itr;
@@ -1088,32 +1088,23 @@ void StgShotObject::Intersect(StgIntersectionTarget* ownTarget, StgIntersectionT
 	}
 	case StgIntersectionTarget::TYPE_ENEMY:
 	{
-		//Don't reduce penetration with lasers
-		if (!bSpellResist_ && dynamic_cast<StgLaserObject*>(this) == nullptr) {
+		if (!bSpellResist_) {
 			bool bHit = listHitEnemy_.size() == 0 || std::find_if(listHitEnemy_.begin(), listHitEnemy_.end(),
 				[&obj](const std::pair<ref_unsync_weak_ptr<StgEnemyObject>, int>& element) { return element.first == obj; }) == listHitEnemy_.end();
 
-			if (bHit) {
-				--life_;
-				if (life_ == 0) {
-					_RequestPlayerDeleteEvent(obj.IsExists() ? obj->GetDxScriptObjectID() : DxScript::ID_INVALID);
-				}
-			}
+			if (bHit) --life_;
 		}
 		break;
 	}
 	case StgIntersectionTarget::TYPE_ENEMY_SHOT:
 	{
-		//Don't reduce penetration with lasers
-		if (!bSpellResist_ && dynamic_cast<StgLaserObject*>(this) == nullptr && bPenetrateShot_) {
-			--life_;
-			if (life_ == 0) {
-				_RequestPlayerDeleteEvent(obj.IsExists() ? obj->GetDxScriptObjectID() : DxScript::ID_INVALID);
-			}
-		}
+		if (!bSpellResist_ && bPenetrateShot_) --life_;
 		break;
 	}
 	}
+
+	if (life_ == 0)
+		_RequestPlayerDeleteEvent(obj.IsExists() ? obj->GetDxScriptObjectID() : DxScript::ID_INVALID);
 }
 StgShotData* StgShotObject::_GetShotData(int id) {
 	StgShotData* res = nullptr;
@@ -1440,6 +1431,56 @@ void StgShotObject::_ProcessTransformAct() {
 			ADD_CMD(StgMovePattern_XY::SET_A_Y, accelY);
 			ADD_CMD(StgMovePattern_XY::SET_M_X, maxspX);
 			ADD_CMD(StgMovePattern_XY::SET_M_Y, maxspY);
+
+			if (shotID != StgMovePattern::NO_CHANGE)
+				pattern->SetShotDataID(shotID);
+
+			AddPattern(time, pattern, true);
+			break;
+		}
+		case StgPatternShotTransform::TRANSFORM_ADDPATTERN_C1:
+		{
+			int time = transform.param[0];
+
+			double speedX = transform.param[1];
+			double speedY = transform.param[2];
+			double angOff = transform.param[3];
+
+			ref_unsync_ptr<StgMovePattern_XY_Angle> pattern = new StgMovePattern_XY_Angle(this);
+			pattern->AddCommand(std::make_pair(StgMovePattern_XY_Angle::SET_ZERO, 0));
+
+			ADD_CMD(StgMovePattern_XY_Angle::SET_S_X, speedX);
+			ADD_CMD(StgMovePattern_XY_Angle::SET_S_Y, speedY);
+			ADD_CMD2(StgMovePattern_XY_Angle::SET_ANGLE, angOff, Math::DegreeToRadian(angOff));
+
+			AddPattern(time, pattern, true);
+			break;
+		}
+		case StgPatternShotTransform::TRANSFORM_ADDPATTERN_C2:
+		{
+			int time = transform.param[0];
+
+			double speedX = transform.param[1];
+			double speedY = transform.param[2];
+			double accelX = transform.param[3];
+			double accelY = transform.param[4];
+			double maxspX = transform.param[5];
+			double maxspY = transform.param[6];
+			double angOff = transform.param[7];
+			double angVel = transform.param[8];
+
+			int shotID = transform.param[9];
+
+			ref_unsync_ptr<StgMovePattern_XY_Angle> pattern = new StgMovePattern_XY_Angle(this);
+
+			ADD_CMD(StgMovePattern_XY_Angle::SET_S_X, speedX);
+			ADD_CMD(StgMovePattern_XY_Angle::SET_S_Y, speedY);
+			ADD_CMD(StgMovePattern_XY_Angle::SET_A_X, accelX);
+			ADD_CMD(StgMovePattern_XY_Angle::SET_A_Y, accelY);
+			ADD_CMD(StgMovePattern_XY_Angle::SET_M_X, maxspX);
+			ADD_CMD(StgMovePattern_XY_Angle::SET_M_Y, maxspY);
+			ADD_CMD2(StgMovePattern_XY_Angle::SET_ANGLE, angOff, Math::DegreeToRadian(angOff));
+			ADD_CMD2(StgMovePattern_XY_Angle::SET_AGVEL, angVel, Math::DegreeToRadian(angVel));
 
 			if (shotID != StgMovePattern::NO_CHANGE)
 				pattern->SetShotDataID(shotID);
