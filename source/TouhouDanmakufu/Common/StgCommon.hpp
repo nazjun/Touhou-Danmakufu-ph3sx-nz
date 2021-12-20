@@ -29,7 +29,7 @@ protected:
 	double posY_;
 
 	ref_unsync_ptr<StgMovePattern> pattern_;
-	ref_unsync_ptr<StgMovePattern> patternBak_;
+	// ref_unsync_ptr<StgMovePattern> patternBak_;
 
 	bool bEnableMovement_;
 	int frameMove_;
@@ -72,7 +72,7 @@ public:
 	std::vector<ref_unsync_weak_ptr<StgMoveParent>>& GetOwnedParentList() { return listOwnedParent_; }
 	void RemoveParent(ref_unsync_weak_ptr<StgMoveObject> self, bool bErase = true);
 	void SetRelativePosition(float x, float y) { offX_ = x; offY_ = y; }
-	void UpdateRelativePosition();
+	void UpdateRelativePosition(bool bUseTrans = true);
 	double GetDistanceFromParent();
 	double GetAngleFromParent();
 
@@ -113,6 +113,7 @@ protected:
 	bool bAutoDelete_;
 	bool bAutoDeleteChildren_;
 	bool bMoveChild_;
+	bool bTransNewChild_;
 	bool bRotateLaser_;
 	// bool bTransformMove_;
 
@@ -139,6 +140,8 @@ public:
 	virtual void SetRenderState() {}
 	virtual void CleanUp();
 
+	void CopyFrom(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveParent> other);
+
 	void SetParentObject(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveObject> parent);
 	ref_unsync_weak_ptr<StgMoveParent> GetParentObject() { return target_;  }
 	void SetAutoDelete(bool enable) { bAutoDelete_ = enable; }
@@ -146,11 +149,13 @@ public:
 	void AddChild(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveObject> child);
 	std::vector<ref_unsync_weak_ptr<StgMoveObject>>& GetChildren() { return listChild_; }
 	void RemoveChildren();
+	void TransferChildren(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveParent> target);
+	void SwapChildren(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveParent> target);
 	
 	void SetPositionOffset(double x, double y) { offX_ = x; offY_ = y; }
-	void SetTransformScale(double x, double y) { scaX_ = Unzero(x); scaY_ = Unzero(y); }
-	void SetTransformScaleX(double x) { scaX_ = Unzero(x); }
-	void SetTransformScaleY(double y) { scaY_ = Unzero(y); }
+	void SetTransformScale(double x, double y) { scaX_ = x; scaY_ = y; }
+	void SetTransformScaleX(double x) { scaX_ = x; }
+	void SetTransformScaleY(double y) { scaY_ = y; }
 	void SetTransformAngle(double z);
 	void SetTransformAngularVelocity(double wv) { wvlZ_ = wv; }
 	void SetTransformAngularAcceleration(double wa) { accZ_ = wa; }
@@ -158,11 +163,11 @@ public:
 	double GetTransformScaleX() { return scaX_; }
 	double GetTransformScaleY() { return scaY_; }
 	double GetTransformAngle() { return rotZ_; }
-	// double GetRadiusAtAngle(double angle);
 	void SetChildAngleMode(int type) { typeAngle_ = type; }
 	int GetChildAngleMode() { return typeAngle_;  }
 	void SetChildMotionEnable(bool enable) { bMoveChild_ = enable; }
 	void SetLaserRotationEnable(bool enable) { bRotateLaser_ = enable; }
+	void SetChildAdditionTransformEnable(bool enable) { bTransNewChild_ = enable; }
 	// void SetChildMotionTransformEnable(bool enable) { bTransformMove_ = enable;  }
 	void SetTransformOrder(int order) { transOrder_ = order; }
 	void ApplyTransformation();
@@ -173,10 +178,6 @@ public:
 
 	void UpdatePosition();
 	void UpdateChildren();
-
-	static inline double Unzero(double s) {
-		return (s >= 0) ? std::max(s, 0.00001) : std::min(s, -0.00001);
-	}
 };
 
 //*******************************************************************
@@ -189,6 +190,7 @@ public:
 		TYPE_OTHER,
 		TYPE_ANGLE,
 		TYPE_XY,
+		TYPE_XY_ANG,
 		TYPE_LINE,
 
 		NO_CHANGE = -0x1000000,
@@ -229,9 +231,11 @@ public:
 };
 
 class StgMovePattern_XY;
+class StgMovePattern_XY_Angle;
 class StgMovePattern_Angle : public StgMovePattern {
 	friend class StgMoveObject;
 	friend class StgMovePattern_XY;
+	friend class StgMovePattern_XY_Angle;
 public:
 	enum : int8_t {
 		SET_SPEED,
@@ -291,6 +295,7 @@ public:
 class StgMovePattern_XY : public StgMovePattern {
 	friend class StgMoveObject;
 	friend class StgMovePattern_Angle;
+	friend class StgMovePattern_XY_Angle;
 public:
 	enum : int8_t {
 		SET_S_X,
@@ -328,6 +333,68 @@ public:
 	double GetAccelerationY() { return accelerationY_; }
 	double GetMaxSpeedX() { return maxSpeedX_; }
 	double GetMaxSpeedY() { return maxSpeedY_; }
+};
+
+class StgMovePattern_XY_Angle : public StgMovePattern {
+	friend class StgMoveObject;
+	friend class StgMovePattern_Angle;
+	friend class StgMovePattern_XY;
+public:
+	enum : int8_t {
+		SET_S_X,
+		SET_S_Y,
+		SET_A_X,
+		SET_A_Y,
+		SET_M_X,
+		SET_M_Y,
+		SET_ANGLE,
+		SET_AGVEL,
+		SET_AGACC,
+		SET_AGMAX,
+	};
+protected:
+	double accelerationX_;
+	double accelerationY_;
+	double maxSpeedX_;
+	double maxSpeedY_;
+	double angOff_;
+	double angOffVelocity_;
+	double angOffAcceleration_;
+	double angOffMaxVelocity_;
+
+
+	virtual void _Activate(StgMovePattern* src);
+public:
+	StgMovePattern_XY_Angle(StgMoveObject* target);
+
+	virtual void Move();
+
+	virtual inline double GetSpeed() { return hypot(c_, s_); }
+	virtual inline double GetDirectionAngle() { return atan2(s_, c_) + angOff_; }
+
+	virtual double GetSpeedX() { return c_ * cos(angOff_) - s_ * sin(angOff_); }
+	virtual double GetSpeedY() { return c_ * sin(angOff_) + s_ * cos(angOff_); }
+	void SetSpeedX(double value) { c_ = value; }
+	void SetSpeedY(double value) { s_ = value; }
+	void SetSpeedXY(double x, double y) { // For proper de-rotation
+		double c = cos(-angOff_), s = sin(-angOff_);
+		c_ = x * c - y * s;
+		s_ = x * s + y * c;
+	}
+	void SetAccelerationX(double value) { accelerationX_ = value; }
+	void SetAccelerationY(double value) { accelerationY_ = value; }
+	void SetMaxSpeedX(double value) { maxSpeedX_ = value; }
+	void SetMaxSpeedY(double value) { maxSpeedY_ = value; }
+
+	double GetAccelerationX() { return accelerationX_; }
+	double GetAccelerationY() { return accelerationY_; }
+	double GetMaxSpeedX() { return maxSpeedX_; }
+	double GetMaxSpeedY() { return maxSpeedY_; }
+
+	void SetAngleOffset(double ao) { angOff_ = ao;  }
+	void SetAngularVelocity(double av) { angOffVelocity_ = av; }
+	void SetAngularAcceleration(double aa) { angOffAcceleration_ = aa; }
+	void SetAngularMaxVelocity(double am) { angOffMaxVelocity_ = am; }
 };
 
 class StgMovePattern_Line : public StgMovePattern {
