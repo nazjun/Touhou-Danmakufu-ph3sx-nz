@@ -340,6 +340,9 @@ public:
 	static gstd::value Func_ObjMove_AddPatternC2(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_AddPatternC3(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_AddPatternC4(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_ObjMove_AddPatternD1(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_ObjMove_AddPatternD2(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	static gstd::value Func_ObjMove_AddPatternD3(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_GetX(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_GetY(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjMove_GetPosition(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -354,6 +357,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjMove_GetProcessMovement);
 	DNH_FUNCAPI_DECL_(Func_ObjMove_GetMoveFrame);
 	DNH_FUNCAPI_DECL_(Func_ObjMove_GetMovementType);
+	DNH_FUNCAPI_DECL_(Func_ObjMove_CancelMovement);
 
 	// Move object + move parent
 	DNH_FUNCAPI_DECL_(Func_ObjMove_GetParent);
@@ -495,6 +499,8 @@ public:
 	static gstd::value Func_ObjCrLaser_SetTipDecrement(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_SetTipCapping);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_SetAngleSmoothness);
+	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_SetTipConnecting);
+	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_SetUniformMotionEnable);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_GetNodePointer);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_GetNodePointerList);
 	DNH_FUNCAPI_DECL_(Func_ObjCrLaser_GetNodePosition);
