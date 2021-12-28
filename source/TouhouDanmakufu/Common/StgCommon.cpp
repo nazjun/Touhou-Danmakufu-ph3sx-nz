@@ -66,7 +66,7 @@ void StgMoveObject::_AttachReservedPattern(ref_unsync_ptr<StgMovePattern> patter
 	if (pattern_ == nullptr)
 		pattern_ = new StgMovePattern_Angle(this);
 
-	pattern->_Activate(pattern_.get());
+	pattern->Activate(pattern_.get());
 	pattern_ = pattern;
 }
 
@@ -592,7 +592,7 @@ void StgMovePattern_Angle::Move() {
 
 	++frameWork_;
 }
-void StgMovePattern_Angle::_Activate(StgMovePattern* _src) {
+void StgMovePattern_Angle::Activate(StgMovePattern* _src) {
 	double newSpeed = 0;
 	double newAngle = 0;
 	double newAccel = 0;
@@ -624,11 +624,15 @@ void StgMovePattern_Angle::_Activate(StgMovePattern* _src) {
 		newAccel = hypot(src->GetAccelerationX(), src->GetAccelerationY());
 		newMaxSp = hypot(src->GetMaxSpeedX(), src->GetMaxSpeedY());
 	}
+	else if (_src->GetType() == TYPE_LINE) {
+		StgMovePattern_Line* src = dynamic_cast<StgMovePattern_Line*>(_src);
+		newSpeed = src->GetSpeed();
+		newAngle = src->GetDirectionAngle();
+	}
 
 	bool bMaxSpeed2 = false;
-	for (auto& pairCmd : listCommand_) {
-		double& arg = pairCmd.second;
-		switch (pairCmd.first) {
+	for (auto& [cmd, arg] : listCommand_) {
+		switch (cmd) {
 		case SET_ZERO:
 			newAccel = 0;
 			newAgVel = 0;
@@ -741,7 +745,7 @@ void StgMovePattern_XY::Move() {
 
 	++frameWork_;
 }
-void StgMovePattern_XY::_Activate(StgMovePattern* _src) {
+void StgMovePattern_XY::Activate(StgMovePattern* _src) {
 	if (_src->GetType() == TYPE_XY) {
 		StgMovePattern_XY* src = (StgMovePattern_XY*)_src;
 		c_ = src->c_;
@@ -764,29 +768,31 @@ void StgMovePattern_XY::_Activate(StgMovePattern* _src) {
 			maxSpeedY_ = s * src->maxSpeed_;
 		}
 	}
-	if (_src->GetType() == TYPE_XY_ANG) {
+	else if (_src->GetType() == TYPE_XY_ANG) {
 		StgMovePattern_XY_Angle* src = (StgMovePattern_XY_Angle*)_src;
-		double sc[2];
+
+		Math::DVec2 sc;
 		Math::DoSinCos(src->angOff_, sc);
 
-		double c = src->c_;
-		double s = src->s_;
-		double ax = src->accelerationX_;
-		double ay = src->accelerationY_;
-		double mx = src->maxSpeedX_;
-		double my = src->maxSpeedY_;
+		Math::DVec2 tmpS = { src->c_, src->s_ }, 
+			tmpAcc = { src->accelerationX_, src->accelerationY_ },
+			tmpMS = { src->maxSpeedX_, src->maxSpeedY_ };
+		Math::Rotate2D(tmpS, sc);
+		Math::Rotate2D(tmpAcc, sc);
+		Math::Rotate2D(tmpMS, sc);
 
-		c_ = c * sc[1] - s * sc[0];
-		s_ = c * sc[0] + s * sc[1];
-		accelerationX_ = ax * sc[1] - ay * sc[0];
-		accelerationY_ = ax * sc[0] + ay * sc[1];
-		maxSpeedX_ = mx * sc[1] - my * sc[0];
-		maxSpeedY_ = mx * sc[0] + my * sc[1];
+		c_ = tmpS[0]; s_ = tmpS[1];
+		accelerationX_ = tmpAcc[0]; accelerationY_ = tmpAcc[1];
+		maxSpeedX_ = tmpMS[0]; maxSpeedY_ = tmpMS[1];
+	}
+	else if (_src->GetType() == TYPE_LINE) {
+		StgMovePattern_Line* src = dynamic_cast<StgMovePattern_Line*>(_src);
+		c_ = src->GetSpeedX();
+		s_ = src->GetSpeedY();
 	}
 
-	for (auto& pairCmd : listCommand_) {
-		double& arg = pairCmd.second;
-		switch (pairCmd.first) {
+	for (auto& [cmd, arg] : listCommand_) {
+		switch (cmd) {
 		case SET_ZERO:
 			accelerationX_ = 0;
 			accelerationY_ = 0;
@@ -857,15 +863,15 @@ void StgMovePattern_XY_Angle::Move() {
 		angOff_ += angOffVelocity_;
 	}
 
-	double sc[2];
-	Math::DoSinCos(angOff_, sc);
+	Math::DVec2 speed{ c_, s_ };
+	Math::Rotate2D(speed, angOff_, 0, 0);
 
-	target_->SetPositionX(target_->GetPositionX() + c_ * sc[1] - s_ * sc[0]);
-	target_->SetPositionY(target_->GetPositionY() + c_ * sc[0] + s_ * sc[1]);
+	target_->SetPositionX(target_->GetPositionX() + speed[0]);
+	target_->SetPositionY(target_->GetPositionY() + speed[1]);
 
 	++frameWork_;
 }
-void StgMovePattern_XY_Angle::_Activate(StgMovePattern* _src) {
+void StgMovePattern_XY_Angle::Activate(StgMovePattern* _src) {
 	if (_src->GetType() == TYPE_XY) {
 		StgMovePattern_XY* src = (StgMovePattern_XY*)_src;
 		c_ = src->c_;
@@ -896,7 +902,7 @@ void StgMovePattern_XY_Angle::_Activate(StgMovePattern* _src) {
 			angOffMaxVelocity_ = 0;
 		}
 	}
-	if (_src->GetType() == TYPE_XY_ANG) {
+	else if (_src->GetType() == TYPE_XY_ANG) {
 		StgMovePattern_XY_Angle* src = (StgMovePattern_XY_Angle*)_src;
 		c_ = src->c_;
 		s_ = src->s_;
@@ -909,10 +915,14 @@ void StgMovePattern_XY_Angle::_Activate(StgMovePattern* _src) {
 		angOffAcceleration_ = src->angOffAcceleration_;
 		angOffMaxVelocity_ = src->angOffMaxVelocity_;
 	}
+	else if (_src->GetType() == TYPE_LINE) {
+		StgMovePattern_Line* src = dynamic_cast<StgMovePattern_Line*>(_src);
+		c_ = src->GetSpeedX();
+		s_ = src->GetSpeedY();
+	}
 
-	for (auto& pairCmd : listCommand_) {
-		double& arg = pairCmd.second;
-		switch (pairCmd.first) {
+	for (auto& [cmd, arg] : listCommand_) {
+		switch (cmd) {
 		case SET_ZERO:
 			accelerationX_ = 0;
 			accelerationY_ = 0;
@@ -979,6 +989,58 @@ void StgMovePattern_Line::Move() {
 	}
 
 	++frameWork_;
+}
+void StgMovePattern_Line::Activate(StgMovePattern* src) {
+	double tx = 0, ty = 0;
+
+	for (auto& [cmd, arg] : listCommand_) {
+		switch (cmd) {
+		case SET_DX:
+			tx = arg;
+			break;
+		case SET_DY:
+			ty = arg;
+			break;
+		}
+	}
+
+	if (auto patternS = dynamic_cast<StgMovePattern_Line_Speed*>(this)) {
+		double speed = 0;
+		for (auto& [cmd, arg] : listCommand_) {
+			if (cmd == SET_SP) speed = arg;
+		}
+		patternS->SetAtSpeed(tx, ty, speed);
+	}
+	else if (auto patternF = dynamic_cast<StgMovePattern_Line_Frame*>(this)) {
+		int frame = 0;
+		Math::Lerp::Type lerpMode = Math::Lerp::LINEAR;
+		for (auto& [cmd, arg] : listCommand_) {
+			switch (cmd) {
+			case SET_FR:
+				frame = (int)arg;
+				break;
+			case SET_LP:
+				lerpMode = (Math::Lerp::Type)arg;
+				break;
+			}
+		}
+		patternF->SetAtFrame(tx, ty, frame, Math::Lerp::GetFunc<double, double>(lerpMode), Math::Lerp::GetFuncDifferential<double>(lerpMode));
+	}
+	else if (auto patternW = dynamic_cast<StgMovePattern_Line_Weight*>(this)) {
+		double weight = 0;
+		double maxSpeed = 0;
+		for (auto& [cmd, arg] : listCommand_) {
+			switch (cmd) {
+			case SET_WG:
+				weight = arg;
+				break;
+			case SET_MS:
+				maxSpeed = arg;
+				break;
+			}
+		}
+		patternW->SetAtWeight(tx, ty, weight, maxSpeed);
+	}
 }
 
 StgMovePattern_Line_Speed::StgMovePattern_Line_Speed(StgMoveObject* target) : StgMovePattern_Line(target) {
@@ -1076,7 +1138,7 @@ void StgMovePattern_Line_Weight::SetAtWeight(double tx, double ty, double weight
 	s_ = dy / dist_;
 }
 void StgMovePattern_Line_Weight::Move() {
-	double tPos[2];
+	Math::DVec2 tPos;
 	if (dist_ < 0.1) {
 		speed_ = 0;
 
