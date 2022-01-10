@@ -60,9 +60,7 @@ void SystemController::ShowErrorDialog(const std::wstring& msg) {
 }
 void SystemController::ResetWindowTitle() {
 	EDirectGraphics* window = EDirectGraphics::GetInstance();
-	DnhConfiguration* config = DnhConfiguration::GetInstance();
-	std::wstring& title = config->windowTitle_;
-	::SetWindowText(window->GetParentHWND(), title.c_str());
+	window->SetWindowTitle(window->GetDefaultWindowTitle());
 }
 
 //*******************************************************************
