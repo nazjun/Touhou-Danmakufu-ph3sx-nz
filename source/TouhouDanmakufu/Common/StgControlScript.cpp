@@ -82,9 +82,8 @@ static const std::vector<function> stgControlFunction = {
 	{ "GetConfigWindowSizeIndex", StgControlScript::Func_GetConfigWindowSizeIndex, 0 },
 	{ "GetConfigWindowSizeList", StgControlScript::Func_GetConfigWindowSizeList, 0 },
 	{ "GetConfigVirtualKeyMapping", StgControlScript::Func_GetConfigVirtualKeyMapping, 1 },
+	{ "GetConfigWindowTitle", StgControlScript::Func_GetConfigWindowTitle, 0 },
 	{ "SetWindowTitle", StgControlScript::Func_SetWindowTitle, 1 },
-	{ "ResetWindowTitle", StgControlScript::Func_ResetWindowTitle, 0 },
-	{ "GetDefaultWindowTitle", StgControlScript::Func_GetDefaultWindowTitle, 0 },
 
 	//STG共通関数：描画関連
 	{ "ClearInvalidRenderPriority", StgControlScript::Func_ClearInvalidRenderPriority, 0 },
@@ -635,30 +634,18 @@ gstd::value StgControlScript::Func_GetConfigVirtualKeyMapping(script_machine* ma
 
 	return StgControlScript::CreateIntArrayValue(key_pad, 2U);
 }
+gstd::value StgControlScript::Func_GetConfigWindowTitle(script_machine* machine, int argc, const value* argv) {
+	EDirectGraphics* graphics = EDirectGraphics::GetInstance();
+	return StgControlScript::CreateStringValue(graphics->GetDefaultWindowTitle());
+}
 gstd::value StgControlScript::Func_SetWindowTitle(script_machine* machine, int argc, const value* argv) {
-	EDirectGraphics* window = EDirectGraphics::GetInstance();
-	std::wstring title = argv->as_string();
-	HWND hWndDisplay = window->GetParentHWND();
+	EDirectGraphics* graphics = EDirectGraphics::GetInstance();
 
-	::SetWindowText(hWndDisplay, title.c_str());
+	std::wstring title = argv[0].as_string();
+	graphics->SetWindowTitle(title);
+
 	return value();
 }
-gstd::value StgControlScript::Func_ResetWindowTitle(script_machine* machine, int argc, const value* argv) {
-	EDirectGraphics* window = EDirectGraphics::GetInstance();
-	DnhConfiguration* config = DnhConfiguration::GetInstance();
-	std::wstring& title = config->windowTitle_;
-	HWND hWndDisplay = window->GetParentHWND();
-
-	::SetWindowText(hWndDisplay, title.c_str());
-	return value();
-}
-gstd::value StgControlScript::Func_GetDefaultWindowTitle(script_machine* machine, int argc, const value* argv) {
-	DnhConfiguration* config = DnhConfiguration::GetInstance();
-	std::wstring& title = config->windowTitle_;
-
-	return StgControlScript::CreateStringValue(title);
-}
-
 
 //STG共通関数：描画関連
 gstd::value StgControlScript::Func_ClearInvalidRenderPriority(gstd::script_machine* machine, int argc, const gstd::value* argv) {
@@ -779,6 +766,8 @@ gstd::value StgControlScript::Func_SaveSnapShotA1(gstd::script_machine* machine,
 	std::wstring path = argv[0].as_string();
 
 	DirectGraphics* graphics = DirectGraphics::GetBase();
+
+	/*
 	shared_ptr<Texture> texture = textureManager->GetTexture(TextureManager::TARGET_TRANSITION);
 
 	graphics->SetRenderTarget(texture, false);
@@ -786,12 +775,13 @@ gstd::value StgControlScript::Func_SaveSnapShotA1(gstd::script_machine* machine,
 	systemController->RenderScriptObject(0, 100);
 	graphics->EndScene(false);
 	graphics->SetRenderTarget(nullptr, false);
+	*/
 
 	//Create the directory (if it doesn't exist)
 	std::wstring dir = PathProperty::GetFileDirectory(path);
 	File::CreateFileDirectory(dir);
 
-	IDirect3DSurface9* pSurface = texture->GetD3DSurface();
+	IDirect3DSurface9* pSurface = graphics->GetBaseSurface();
 	DxRect<LONG> rect(0, 0, graphics->GetScreenWidth(), graphics->GetScreenHeight());
 	HRESULT hr = D3DXSaveSurfaceToFile(path.c_str(), D3DXIFF_BMP,
 		pSurface, nullptr, (RECT*)&rect);
@@ -807,6 +797,7 @@ gstd::value StgControlScript::Func_SaveSnapShotA2(gstd::script_machine* machine,
 		argv[3].as_int(), argv[4].as_int());
 
 	DirectGraphics* graphics = DirectGraphics::GetBase();
+	/*
 	shared_ptr<Texture> texture = textureManager->GetTexture(TextureManager::TARGET_TRANSITION);
 
 	graphics->SetRenderTarget(texture, false);
@@ -814,12 +805,13 @@ gstd::value StgControlScript::Func_SaveSnapShotA2(gstd::script_machine* machine,
 	systemController->RenderScriptObject(0, 100);
 	graphics->EndScene(false);
 	graphics->SetRenderTarget(nullptr, false);
+	*/
 
 	//Create the directory (if it doesn't exist)
 	std::wstring dir = PathProperty::GetFileDirectory(path);
 	File::CreateFileDirectory(dir);
 
-	IDirect3DSurface9* pSurface = texture->GetD3DSurface();
+	IDirect3DSurface9* pSurface = graphics->GetBaseSurface();
 	HRESULT hr = D3DXSaveSurfaceToFile(path.c_str(), D3DXIFF_BMP,
 		pSurface, nullptr, (RECT*)&rect);
 	return script->CreateBooleanValue(SUCCEEDED(hr));
@@ -840,6 +832,7 @@ gstd::value StgControlScript::Func_SaveSnapShotA3(gstd::script_machine* machine,
 		imgFormat = D3DXIFF_PPM;
 
 	DirectGraphics* graphics = DirectGraphics::GetBase();
+	/*
 	shared_ptr<Texture> texture = textureManager->GetTexture(TextureManager::TARGET_TRANSITION);
 
 	graphics->SetRenderTarget(texture, false);
@@ -847,12 +840,13 @@ gstd::value StgControlScript::Func_SaveSnapShotA3(gstd::script_machine* machine,
 	systemController->RenderScriptObject(0, 100);
 	graphics->EndScene(false);
 	graphics->SetRenderTarget(nullptr, false);
+	*/
 
 	//Create the directory (if it doesn't exist)
 	std::wstring dir = PathProperty::GetFileDirectory(path);
 	File::CreateFileDirectory(dir);
 
-	IDirect3DSurface9* pSurface = texture->GetD3DSurface();
+	IDirect3DSurface9* pSurface = graphics->GetBaseSurface();
 	HRESULT hr = D3DXSaveSurfaceToFile(path.c_str(), (D3DXIMAGE_FILEFORMAT)imgFormat,
 		pSurface, nullptr, (RECT*)&rect);
 	return script->CreateBooleanValue(SUCCEEDED(hr));

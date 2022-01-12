@@ -189,6 +189,28 @@ static const std::vector<function> commonFunction = {
 	{ "Interpolate_X_AngleR", ScriptClientBase::Func_Interpolate_X_Angle<true>, 4 },
     { "Interpolate_X_Array", ScriptClientBase::Func_Interpolate_X_Array, 3 },
 
+	//Kinematics
+	{ "Kinematic_U_VAD", ScriptClientBase::Func_Kinematic<Math::Kinematic::U_VAD>, 3 },
+	{ "Kinematic_U_VAT", ScriptClientBase::Func_Kinematic<Math::Kinematic::U_VAT>, 3 },
+	{ "Kinematic_U_VDT", ScriptClientBase::Func_Kinematic<Math::Kinematic::U_VDT>, 3 },
+	{ "Kinematic_U_ADT", ScriptClientBase::Func_Kinematic<Math::Kinematic::U_ADT>, 3 },
+	{ "Kinematic_V_UAD", ScriptClientBase::Func_Kinematic<Math::Kinematic::V_UAD>, 3 },
+	{ "Kinematic_V_UAT", ScriptClientBase::Func_Kinematic<Math::Kinematic::V_UAT>, 3 },
+	{ "Kinematic_V_UDT", ScriptClientBase::Func_Kinematic<Math::Kinematic::V_UDT>, 3 },
+	{ "Kinematic_V_ADT", ScriptClientBase::Func_Kinematic<Math::Kinematic::V_ADT>, 3 },
+	{ "Kinematic_A_UVD", ScriptClientBase::Func_Kinematic<Math::Kinematic::A_UVD>, 3 },
+	{ "Kinematic_A_UVT", ScriptClientBase::Func_Kinematic<Math::Kinematic::A_UVT>, 3 },
+	{ "Kinematic_A_UDT", ScriptClientBase::Func_Kinematic<Math::Kinematic::A_UDT>, 3 },
+	{ "Kinematic_A_VDT", ScriptClientBase::Func_Kinematic<Math::Kinematic::A_VDT>, 3 },
+	{ "Kinematic_D_UVA", ScriptClientBase::Func_Kinematic<Math::Kinematic::D_UVA>, 3 },
+	{ "Kinematic_D_UVT", ScriptClientBase::Func_Kinematic<Math::Kinematic::D_UVT>, 3 },
+	{ "Kinematic_D_UAT", ScriptClientBase::Func_Kinematic<Math::Kinematic::D_UAT>, 3 },
+	{ "Kinematic_D_VAT", ScriptClientBase::Func_Kinematic<Math::Kinematic::D_VAT>, 3 },
+	{ "Kinematic_T_UVA", ScriptClientBase::Func_Kinematic<Math::Kinematic::T_UVA>, 3 },
+	{ "Kinematic_T_UVD", ScriptClientBase::Func_Kinematic<Math::Kinematic::T_UVD>, 3 },
+	{ "Kinematic_T_UAD", ScriptClientBase::Func_Kinematic<Math::Kinematic::T_UAD>, 3 },
+	{ "Kinematic_T_VAD", ScriptClientBase::Func_Kinematic<Math::Kinematic::T_VAD>, 3 },
+
 	//Rotation
 	{ "Rotate2D", ScriptClientBase::Func_Rotate2D, 3 },
 	{ "Rotate2D", ScriptClientBase::Func_Rotate2D, 5 },
@@ -568,7 +590,7 @@ void ScriptClientBase::SetArgumentValue(value v, int index) {
 	listValueArg_[index] = v;
 }
 
-value ScriptClientBase::CreateStringArrayValue(std::vector<std::string>& list) {
+value ScriptClientBase::CreateStringArrayValue(const std::vector<std::string>& list) {
 	script_type_manager* typeManager = script_type_manager::get_instance();
 	type_data* type_arr = typeManager->get_array_type(typeManager->get_string_type());
 
@@ -587,7 +609,7 @@ value ScriptClientBase::CreateStringArrayValue(std::vector<std::string>& list) {
 
 	return value(type_arr, std::wstring());
 }
-value ScriptClientBase::CreateStringArrayValue(std::vector<std::wstring>& list) {
+value ScriptClientBase::CreateStringArrayValue(const std::vector<std::wstring>& list) {
 	script_type_manager* typeManager = script_type_manager::get_instance();
 	type_data* type_arr = typeManager->get_array_type(typeManager->get_string_type());
 
@@ -606,7 +628,7 @@ value ScriptClientBase::CreateStringArrayValue(std::vector<std::wstring>& list) 
 
 	return value(type_arr, std::wstring());
 }
-value ScriptClientBase::CreateValueArrayValue(std::vector<value>& list) {
+value ScriptClientBase::CreateValueArrayValue(const std::vector<value>& list) {
 	script_type_manager* typeManager = script_type_manager::get_instance();
 
 	if (list.size() > 0) {
@@ -1268,8 +1290,9 @@ static value _ScriptValueLerp(script_machine* machine, const value* v1, const va
 			std::vector<value> resArr;
 			resArr.resize(v1->length_as_array());
 			for (size_t i = 0; i < v1->length_as_array(); ++i) {
-				const value* a1 = &v1->index_as_array(i);
-				resArr[i] = _ScriptValueLerp(machine, a1, &v2->index_as_array(i), vx, lerpFunc);
+				const value* a1 = &(*v1)[i];
+				const value* a2 = &(*v2)[i];
+				resArr[i] = _ScriptValueLerp(machine, a1, a2, vx, lerpFunc);
 			}
 
 			res.reset(v1->get_type(), resArr);
@@ -1447,6 +1470,11 @@ value ScriptClientBase::Func_Interpolate_X_Array(script_machine* machine, int ar
 	auto lerpFunc =  Math::Lerp::GetFunc<double, double>(type);
 
 	return _ScriptValueLerp(machine, &arr[from], &arr[to], x, lerpFunc);
+}
+
+template<double (*funcKinematic)(double, double, double)>
+value ScriptClientBase::Func_Kinematic(script_machine* machine, int argc, const value* argv) {
+	return CreateRealValue(funcKinematic(argv[0].as_real(), argv[1].as_real(), argv[2].as_real()));
 }
 
 value ScriptClientBase::Func_Rotate2D(script_machine* machine, int argc, const value* argv) {
@@ -3255,7 +3283,7 @@ void ScriptCommonData::_WriteRecord(gstd::ByteBuffer& buffer, const gstd::value&
 		uint32_t arrayLength = comValue.length_as_array();
 		buffer.WriteValue(arrayLength);
 		for (size_t iArray = 0; iArray < arrayLength; iArray++) {
-			const value& arrayValue = comValue.index_as_array(iArray);
+			const value& arrayValue = comValue[iArray];
 			_WriteRecord(buffer, arrayValue);
 		}
 		break;
