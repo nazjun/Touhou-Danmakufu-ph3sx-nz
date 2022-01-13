@@ -456,7 +456,7 @@ DnhConfiguration::DnhConfiguration() {
 
 	windowTitle_ = L"The Nameless Avatar";
 	bDynamicScaling_ = false;
-	pathPackageScript_ = PathProperty::GetModuleDirectory() + L"script/tna.dat";
+	pathPackageScript_ = PathProperty::GetModuleDirectory() + L"tna.dat";
 
 	LoadConfigFile();
 	// _LoadDefinitionFile();
