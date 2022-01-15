@@ -97,6 +97,7 @@ static const std::vector<function> dxFunction = {
 	{ "GetWindowedWidth", DxScript::Func_GetWindowedWidth, 0 },
 	{ "GetWindowedHeight", DxScript::Func_GetWindowedHeight, 0 },
 	{ "IsFullscreenMode", DxScript::Func_IsFullscreenMode, 0 },
+	{ "IsWindowFocused", DxScript::Func_IsWindowFocused, 0 },
 
 	{ "LoadTexture", DxScript::Func_LoadTexture, 1 },
 	{ "LoadTextureEx", DxScript::Func_LoadTextureEx, 3 },
@@ -310,6 +311,7 @@ static const std::vector<function> dxFunction = {
 	{ "ObjRender_SetTextureFilterMin", DxScript::Func_ObjRender_SetTextureFilterMin, 2 },
 	{ "ObjRender_SetTextureFilterMag", DxScript::Func_ObjRender_SetTextureFilterMag, 2 },
 	{ "ObjRender_SetTextureFilterMip", DxScript::Func_ObjRender_SetTextureFilterMip, 2 },
+	{ "ObjRender_SetTextureFilter", DxScript::Func_ObjRender_SetTextureFilter, 4 },
 	{ "ObjRender_SetVertexShaderRenderingMode", DxScript::Func_ObjRender_SetVertexShaderRenderingMode, 2 },
 	{ "ObjRender_SetEnableDefaultTransformMatrix", DxScript::Func_ObjRender_SetEnableDefaultTransformMatrix, 2 },
 	{ "ObjRender_SetLightingEnable", DxScript::Func_ObjRender_SetLightingEnable, 3 },
@@ -1235,6 +1237,11 @@ gstd::value DxScript::Func_GetWindowedHeight(gstd::script_machine* machine, int 
 gstd::value DxScript::Func_IsFullscreenMode(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	DirectGraphics* graphics = DirectGraphics::GetBase();
 	bool res = graphics->GetScreenMode() == ScreenMode::SCREENMODE_FULLSCREEN;
+	return DxScript::CreateBooleanValue(res);
+}
+gstd::value DxScript::Func_IsWindowFocused(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	Application* app = Application::GetBase();
+	bool res = app->IsFocused();
 	return DxScript::CreateBooleanValue(res);
 }
 value DxScript::Func_GetCoordinateScalingFactor(gstd::script_machine* machine, int argc, const value* argv) {
@@ -3161,6 +3168,23 @@ value DxScript::Func_ObjRender_SetTextureFilterMip(gstd::script_machine* machine
 	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
 	if (obj)
 		obj->filterMip_ = (D3DTEXTUREFILTERTYPE)type;
+
+	return value();
+}
+value DxScript::Func_ObjRender_SetTextureFilter(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	int typeMin = std::clamp((int)argv[1].as_int(), (int)D3DTEXF_NONE, (int)D3DTEXF_ANISOTROPIC);
+	int typeMag = std::clamp((int)argv[2].as_int(), (int)D3DTEXF_NONE, (int)D3DTEXF_ANISOTROPIC);
+	int typeMip = std::clamp((int)argv[3].as_int(), (int)D3DTEXF_NONE, (int)D3DTEXF_ANISOTROPIC);
+
+	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
+	if (obj) {
+		obj->filterMin_ = (D3DTEXTUREFILTERTYPE)typeMin;
+		obj->filterMag_ = (D3DTEXTUREFILTERTYPE)typeMag;
+		obj->filterMip_ = (D3DTEXTUREFILTERTYPE)typeMip;
+	}
+		
 
 	return value();
 }
