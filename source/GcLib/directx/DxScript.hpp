@@ -118,6 +118,7 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_GetWindowedWidth);
 		DNH_FUNCAPI_DECL_(Func_GetWindowedHeight);
 		DNH_FUNCAPI_DECL_(Func_IsFullscreenMode);
+		DNH_FUNCAPI_DECL_(Func_IsWindowFocused);
 		DNH_FUNCAPI_DECL_(Func_GetCoordinateScalingFactor);
 		DNH_FUNCAPI_DECL_(Func_SetCoordinateScalingFactor);
 
@@ -314,6 +315,7 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_ObjRender_SetTextureFilterMin);
 		DNH_FUNCAPI_DECL_(Func_ObjRender_SetTextureFilterMag);
 		DNH_FUNCAPI_DECL_(Func_ObjRender_SetTextureFilterMip);
+		DNH_FUNCAPI_DECL_(Func_ObjRender_SetTextureFilter);
 		DNH_FUNCAPI_DECL_(Func_ObjRender_SetVertexShaderRenderingMode);
 		DNH_FUNCAPI_DECL_(Func_ObjRender_SetEnableDefaultTransformMatrix);
 		DNH_FUNCAPI_DECL_(Func_ObjRender_SetLightingEnable);
