@@ -452,6 +452,7 @@ DnhConfiguration::DnhConfiguration() {
 
 	bDynamicScaling_ = false;
 	bEnableUnfocusedProcessing_ = false;
+	pathPackageScript_ = PathProperty::GetModuleDirectory() + L"th_sdf.dnh";
 
 	LoadConfigFile();
 	_LoadDefinitionFile();
