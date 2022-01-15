@@ -546,12 +546,12 @@ bool DnhConfiguration::LoadConfigFile() {
 	record.GetRecord<size_t>("sizeWindow", sizeWindow_);
 
 	record.GetRecord<bool>("bVSync", bVSync_);
-	record.GetRecord<bool>("bDeviceREF", referenceRasterizer_);
-	record.GetRecord<bool>("bPseudoFullscreen", bPseudoFullscreen_);
+	// record.GetRecord<bool>("bDeviceREF", referenceRasterizer_);
+	// record.GetRecord<bool>("bPseudoFullscreen", bPseudoFullscreen_);
 
 	record.GetRecord<D3DMULTISAMPLE_TYPE>("typeMultiSamples", multiSamples_);
 
-	pathExeLaunch_ = record.GetRecordAsStringW("pathLaunch");
+	// pathExeLaunch_ = record.GetRecordAsStringW("pathLaunch");
 	if (pathExeLaunch_.size() == 0) pathExeLaunch_ = DNH_EXE_NAME;
 
 	if (record.IsExists("padIndex"))
