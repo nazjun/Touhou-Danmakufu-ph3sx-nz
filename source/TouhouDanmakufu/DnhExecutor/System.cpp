@@ -31,6 +31,8 @@ void SystemController::Reset() {
 	EFileManager* fileManager = EFileManager::GetInstance();
 	fileManager->ClearArchiveFileCache();
 
+	fileManager->AddArchiveFile(PathProperty::GetModuleDirectory() + L"tna.dat", 0);
+
 	DnhConfiguration* config = DnhConfiguration::CreateInstance();
 	std::wstring pathPackageScript = config->GetPackageScriptPath();
 	if (pathPackageScript.size() == 0) {
