@@ -34,7 +34,6 @@ private:
 	std::wstring pathImage_;
 	std::wstring pathSystem_;
 	std::wstring pathBackground_;
-	std::wstring pathBGM_;
 	std::vector<std::wstring> listPlayer_;
 
 	std::wstring replayName_;
@@ -61,8 +60,6 @@ public:
 	void SetSystemPath(const std::wstring& path) { pathSystem_ = path; }
 	std::wstring& GetBackgroundPath() { return pathBackground_; }
 	void SetBackgroundPath(const std::wstring& path) { pathBackground_ = path; }
-	std::wstring& GetBgmPath() { return pathBGM_; }
-	void SetBgmPath(const std::wstring& path) { pathBGM_ = path; }
 	std::vector<std::wstring>& GetPlayerList() { return listPlayer_; }
 	void SetPlayerList(std::vector<std::wstring>& list) { listPlayer_ = list; }
 
@@ -151,7 +148,6 @@ public:
 	std::vector<POINT> windowSizeList_;
 	size_t sizeWindow_;
 	bool bDynamicScaling_;
-	bool bProcessUnfocused_;
 
 	int fastModeSpeed_;
 
@@ -173,6 +169,8 @@ public:
 	std::wstring windowTitle_;
 	LONG screenWidth_;
 	LONG screenHeight_;
+
+	bool bEnableUnfocusedProcessing_;
 
 	bool _LoadDefinitionFile();
 public:
@@ -220,5 +218,8 @@ public:
 	std::wstring& GetWindowTitle() { return windowTitle_; }
 	LONG GetScreenWidth() { return screenWidth_; }
 	LONG GetScreenHeight() { return screenHeight_; }
+
+	bool IsEnableUnfocusedProcessing() { return bEnableUnfocusedProcessing_; }
+	void SetEnableUnfocusedProcessing(bool b) { bEnableUnfocusedProcessing_ = b; }
 };
 #endif

@@ -37,7 +37,6 @@ ref_count_ptr<ScriptInformation> ScriptInformation::CreateScriptInformation(cons
 			std::wstring pathImage = L"";
 			std::wstring pathSystem = DEFAULT;
 			std::wstring pathBackground = DEFAULT;
-			std::wstring pathBGM = DEFAULT;
 			std::vector<std::wstring> listPlayer;
 			std::wstring replayName = L"";
 		} info;
@@ -102,7 +101,6 @@ ref_count_ptr<ScriptInformation> ScriptInformation::CreateScriptInformation(cons
 						{ L"Image", LAMBDA_GETSTR(pathImage) },
 						{ L"System", LAMBDA_GETSTR(pathSystem) },
 						{ L"Background", LAMBDA_GETSTR(pathBackground) },
-						{ L"BGM", LAMBDA_GETSTR(pathBGM) },
 						{ L"Player", [](Info* i, Scanner& sc) { i->listPlayer = _GetStringList(sc); } },
 						{ L"ReplayName", LAMBDA_GETSTR(replayName) },
 					};
@@ -141,7 +139,6 @@ ref_count_ptr<ScriptInformation> ScriptInformation::CreateScriptInformation(cons
 			res->SetImagePath(info.pathImage);
 			res->SetSystemPath(info.pathSystem);
 			res->SetBackgroundPath(info.pathBackground);
-			res->SetBgmPath(info.pathBGM);
 			res->SetPlayerList(info.listPlayer);
 			res->SetReplayName(info.replayName);
 		}
@@ -423,8 +420,6 @@ DnhConfiguration::DnhConfiguration() {
 	windowSizeList_ = { { 640, 360 }, { 1280, 720 }, { 1920, 1080 } };
 	sizeWindow_ = 0;
 
-	bProcessUnfocused_ = false;
-
 	bVSync_ = true;
 	referenceRasterizer_ = false;
 	bPseudoFullscreen_ = true;
@@ -458,7 +453,7 @@ DnhConfiguration::DnhConfiguration() {
 
 	windowTitle_ = L"The Nameless Avatar";
 	bDynamicScaling_ = false;
-	bProcessUnfocused_ = true;
+	bEnableUnfocusedProcessing_ = false;
 	pathPackageScript_ = PathProperty::GetModuleDirectory() + L"script/tna.dnh";
 
 	LoadConfigFile();
@@ -476,25 +471,28 @@ bool DnhConfiguration::_LoadDefinitionFile() {
 		pathPackageScript_ = PathProperty::ReplaceYenToSlash(pathPackageScript_);
 	}
 
+	constexpr const LONG MIN_WD = 320;
+	constexpr const LONG MIN_HT = 240;
+	constexpr const LONG MAX_WD = 1920;
+	constexpr const LONG MAX_HT = 1200;
+
 	windowTitle_ = prop.GetString(L"window.title", L"");
 
 	screenWidth_ = prop.GetInteger(L"screen.width", 640);
-	// screenWidth_ = std::clamp(screenWidth_, 320L, 1920L);
+	// screenWidth_ = std::clamp(screenWidth_, MIN_WD, MAX_WD);
 
 	screenHeight_ = prop.GetInteger(L"screen.height", 480);
-	// screenHeight_ = std::clamp(screenHeight_, 240L, 1200L);
+	// screenHeight_ = std::clamp(screenHeight_, MIN_HT, MAX_HT);
 
 	fastModeSpeed_ = prop.GetInteger(L"skip.rate", 20);
 	// fastModeSpeed_ = std::clamp(fastModeSpeed_, 1, 50);
 
 	{
-		std::wstring str;
-		
-		str = prop.GetString(L"dynamic.scaling", L"false");
+		std::wstring str = prop.GetString(L"dynamic.scaling", L"false");
 		bDynamicScaling_ = str == L"true" ? true : StringUtility::ToInteger(str);
 
 		str = prop.GetString(L"unfocused.processing", L"false");
-		bProcessUnfocused_ = str == L"true" ? true : StringUtility::ToInteger(str);
+		bEnableUnfocusedProcessing_ = str == L"true" ? true : StringUtility::ToInteger(str);
 	}
 
 	{
@@ -514,16 +512,23 @@ bool DnhConfiguration::_LoadDefinitionFile() {
 						POINT size;
 						size.x = wcstol(match[1].str().c_str(), nullptr, 10);
 						size.y = wcstol(match[2].str().c_str(), nullptr, 10);
-						// size.x = std::clamp(size.x, 320L, 1920L);
-						// size.y = std::clamp(size.y, 240L, 1200L);
+						// size.x = std::clamp(size.x, MIN_WD, MAX_WD);
+						// size.y = std::clamp(size.y, MIN_HT, MAX_HT);
 
 						windowSizeList_.push_back(size);
 					}
 				}
 			}
 		}
-		if (windowSizeList_.size() == 0)
-			windowSizeList_ = { { 640, 480 }, { 800, 600 }, { 960, 720 }, { 1280, 960 } };
+		if (windowSizeList_.size() == 0) {
+			for (float iSizeMul : std::vector<float>({ 1, 1.25, 1.5, 2 })) {
+				POINT size = { (LONG)(screenWidth_ * iSizeMul), (LONG)(screenHeight_ * iSizeMul) };
+				size.x = std::clamp(size.x, MIN_WD, MAX_WD);
+				size.y = std::clamp(size.y, MIN_HT, MAX_HT);
+
+				windowSizeList_.push_back(size);
+			}
+		}
 	}
 
 	return true;
