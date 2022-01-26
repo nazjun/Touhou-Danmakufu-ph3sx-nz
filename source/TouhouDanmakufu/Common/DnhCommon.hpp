@@ -148,7 +148,6 @@ public:
 	std::vector<POINT> windowSizeList_;
 	size_t sizeWindow_;
 	bool bDynamicScaling_;
-	bool bProcessUnfocused_;
 
 	int fastModeSpeed_;
 
@@ -170,6 +169,8 @@ public:
 	std::wstring windowTitle_;
 	LONG screenWidth_;
 	LONG screenHeight_;
+
+	bool bEnableUnfocusedProcessing_;
 
 	bool _LoadDefinitionFile();
 public:
@@ -217,5 +218,8 @@ public:
 	std::wstring& GetWindowTitle() { return windowTitle_; }
 	LONG GetScreenWidth() { return screenWidth_; }
 	LONG GetScreenHeight() { return screenHeight_; }
+
+	bool IsEnableUnfocusedProcessing() { return bEnableUnfocusedProcessing_; }
+	void SetEnableUnfocusedProcessing(bool b) { bEnableUnfocusedProcessing_ = b; }
 };
 #endif

@@ -315,14 +315,6 @@ void StgStageController::Work() {
 	}
 
 	bool bCurrentPause = infoStage_->IsPause();
-
-	if (!Application::GetBase()->IsFocused() && !infoStage_->IsReplay()) {
-		if (!bCurrentPause)
-			input->GetVirtualKey(EDirectInput::KEY_PAUSE)->SetKeyState(KEY_PUSH);
-		else
-			input->ClearKeyState();
-	}
-
 	if (bPackageMode && bCurrentPause) {
 		//パッケージモードで停止中の場合は、パッケージスクリプトで処理する
 		return;
