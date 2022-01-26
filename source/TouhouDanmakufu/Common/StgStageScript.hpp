@@ -278,6 +278,7 @@ public:
 	static gstd::value Func_SetShotAutoDeleteClip(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_GetShotDataInfoA1(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	DNH_FUNCAPI_DECL_(Func_SetShotDeleteEventEnable);
+	DNH_FUNCAPI_DECL_(Func_SetShotTextureFilter);
 
 	//STG共通関数：アイテム
 	static gstd::value Func_CreateItemA1(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -295,6 +296,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_GetItemIdInCircleA1);
 	DNH_FUNCAPI_DECL_(Func_GetItemIdInCircleA2);
 	DNH_FUNCAPI_DECL_(Func_SetItemAutoDeleteClip);
+	DNH_FUNCAPI_DECL_(Func_SetItemTextureFilter);
 
 	//STG共通関数：その他
 	static gstd::value Func_StartSlow(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -406,6 +408,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetIntersectionScaleY);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetIntersectionScaleXY);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetPositionRounding);
+	DNH_FUNCAPI_DECL_(Func_ObjShot_SetAngleRounding);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetDelayMotionEnable);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetDelayGraphic);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetDelayScaleParameter);
@@ -416,6 +419,8 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetGrazeInvalidFrame);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetGrazeFrame);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_IsValidGraze);
+	DNH_FUNCAPI_DECL_(Func_ObjShot_SetPenetrateShotEnable);
+	DNH_FUNCAPI_DECL_(Func_ObjShot_SetEnemyIntersectionInvalidFrame);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetFixedAngle);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetSpinAngularVelocity);
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetDelayAngularVelocity);

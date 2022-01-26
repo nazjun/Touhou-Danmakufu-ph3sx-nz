@@ -17,6 +17,10 @@ StgShotManager::StgShotManager(StgStageController* stageController) {
 
 	rcDeleteClip_ = DxRect<LONG>(-64, -64, 64, 64);
 
+	filterMin_ = D3DTEXF_LINEAR;
+	filterMag_ = D3DTEXF_LINEAR;
+	filterMip_ = D3DTEXF_NONE;
+
 	{
 		RenderShaderLibrary* shaderManager_ = ShaderManager::GetBase()->GetRenderLib();
 		effectLayer_ = shaderManager_->GetRender2DShader();
@@ -68,7 +72,7 @@ void StgShotManager::Render(int targetPriority) {
 	graphics->SetZWriteEnable(false);
 	graphics->SetCullingMode(D3DCULL_NONE);
 	graphics->SetLightingEnable(false);
-	graphics->SetTextureFilter(D3DTEXF_LINEAR, D3DTEXF_LINEAR, D3DTEXF_NONE);
+	graphics->SetTextureFilter(filterMin_, filterMag_, filterMip_);
 
 	DWORD bEnableFog = FALSE;
 	device->GetRenderState(D3DRS_FOGENABLE, &bEnableFog);
@@ -792,6 +796,9 @@ StgShotObject::StgShotObject(StgStageController* stageController) : StgMoveObjec
 	frameGrazeInvalid_ = 0;
 	frameGrazeInvalidStart_ = -1;
 
+	bPenetrateShot_ = true;
+	frameEnemyHitInvalid_ = 0;
+
 	frameFadeDelete_ = -1;
 	frameAutoDelete_ = INT_MAX;
 
@@ -803,6 +810,7 @@ StgShotObject::StgShotObject(StgStageController* stageController) : StgMoveObjec
 
 	bEnableMotionDelay_ = false;
 	bRoundingPosition_ = false;
+	roundingAngle_ = 0;
 
 	hitboxScale_ = D3DXVECTOR2(1.0f, 1.0f);
 
@@ -902,6 +910,14 @@ void StgShotObject::_CommonWorkTask() {
 		_DeleteInFadeDelete();
 	}
 	--frameGrazeInvalid_;
+
+	//----------------------------------------------------------
+
+	for (auto itr = mapEnemyHitCooldown_.begin(); itr != mapEnemyHitCooldown_.end();) {
+		if (itr->first.expired() || (--(itr->second) == 0))
+			itr = mapEnemyHitCooldown_.erase(itr);
+		else ++itr;
+	}
 }
 
 void StgShotObject::Intersect(StgIntersectionTarget* ownTarget, StgIntersectionTarget* otherTarget) {
@@ -939,18 +955,24 @@ void StgShotObject::Intersect(StgIntersectionTarget* ownTarget, StgIntersectionT
 		break;
 	}
 	case StgIntersectionTarget::TYPE_ENEMY:
-	case StgIntersectionTarget::TYPE_ENEMY_SHOT:
 	{
-		//Don't reduce penetration with lasers
-		if (!bSpellResist_ && dynamic_cast<StgLaserObject*>(this) == nullptr) {
-			--life_;
-			if (life_ == 0) {
-				_RequestPlayerDeleteEvent(obj.IsExists() ? obj->GetDxScriptObjectID() : DxScript::ID_INVALID);
-			}
+		if (!bSpellResist_) {
+			//Register intersection only if the enemy is off hit cooldown
+			if (!CheckEnemyHitCooldownExists(ref_unsync_weak_ptr<StgEnemyObject>::Cast(obj)))
+				--life_;
 		}
 		break;
 	}
+	case StgIntersectionTarget::TYPE_ENEMY_SHOT:
+	{
+		if (!bSpellResist_ && bPenetrateShot_)
+			--life_;
+		break;
 	}
+	}
+
+	if (life_ == 0)
+		_RequestPlayerDeleteEvent(obj.IsExists() ? obj->GetDxScriptObjectID() : DxScript::ID_INVALID);
 }
 StgShotData* StgShotObject::_GetShotData(int id) {
 	StgShotData* res = nullptr;
@@ -1383,7 +1405,8 @@ void StgNormalShotObject::Work() {
 			}
 
 			if (angleZ != lastAngle_) {
-				move_ = D3DXVECTOR2(cosf(angleZ), sinf(angleZ));
+				double ang = (roundingAngle_ > 0) ? round(angleZ / roundingAngle_) * roundingAngle_ : angleZ;
+				move_ = D3DXVECTOR2(cosf(ang), sinf(ang));
 				lastAngle_ = angleZ;
 			}
 		}
@@ -2179,7 +2202,7 @@ void StgStraightLaserObject::RenderOnShotManager() {
 
 		if (widthRender_ > 0) {
 			float _rWidth = fabs(widthRender_ / 2.0f) * scaleX_;
-			_rWidth = std::max(_rWidth, 0.5f);
+			_rWidth = std::max(_rWidth, 1.0f);
 			D3DXVECTOR4 rcDest(_rWidth, length_, -_rWidth, 0);
 
 			VERTEX_TLX verts[4];
@@ -2668,7 +2691,7 @@ void StgCurveLaserObject::RenderOnShotManager() {
 				nodeAlpha = Math::Lerp::Linear(tipAlpha, baseAlpha, iPos / (halfPos - 1.0f));
 			nodeAlpha = std::max(0.0f, nodeAlpha);
 
-			float renderWd = std::max(widthRender_ * itr->widthMul / 2.0f, 0.5f);
+			float renderWd = std::max(widthRender_ * itr->widthMul / 2.0f, 1.0f);
 
 			D3DCOLOR thisColor = color_;
 			{

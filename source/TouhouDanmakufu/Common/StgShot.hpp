@@ -46,6 +46,10 @@ protected:
 
 	DxRect<LONG> rcDeleteClip_;
 
+	D3DTEXTUREFILTERTYPE filterMin_;
+	D3DTEXTUREFILTERTYPE filterMag_;
+	D3DTEXTUREFILTERTYPE filterMip_;
+
 	ID3DXEffect* effectLayer_;
 	D3DXHANDLE handleEffectWorld_;
 public:
@@ -68,6 +72,12 @@ public:
 
 	void SetShotDeleteClip(const DxRect<LONG>& clip) { rcDeleteClip_ = clip; }
 	DxRect<LONG>* GetShotDeleteClip() { return &rcDeleteClip_; }
+
+	void SetTextureFilter(D3DTEXTUREFILTERTYPE min, D3DTEXTUREFILTERTYPE mag, D3DTEXTUREFILTERTYPE mip) {
+		filterMin_ = min;
+		filterMag_ = mag;
+		filterMip_ = mip;
+	}
 
 	void DeleteInCircle(int typeDelete, int typeTo, int typeOwner, int cx, int cy, int* radius);
 	std::vector<int> GetShotIdInCircle(int typeOwner, int cx, int cy, int* radius);
@@ -299,6 +309,18 @@ protected:
 	int frameGrazeInvalid_;
 	int frameGrazeInvalidStart_;
 	int frameFadeDelete_;
+
+	bool bPenetrateShot_; // Translation: Does The Shot Lose Penetration Points Upon Colliding With Another Shot And Not An Enemy
+
+private:
+	struct _WeakPtrHasher {
+		std::size_t operator()(const ref_unsync_weak_ptr<StgEnemyObject>& k) const {
+			return std::hash<StgEnemyObject*>{}(k.get());
+		}
+	};
+public:
+	uint32_t frameEnemyHitInvalid_;
+	std::unordered_map<ref_unsync_weak_ptr<StgEnemyObject>, uint32_t, _WeakPtrHasher> mapEnemyHitCooldown_;
 	
 	bool bRequestedPlayerDeleteEvent_;
 	double damage_;
@@ -317,6 +339,7 @@ protected:
 
 	bool bEnableMotionDelay_;
 	bool bRoundingPosition_;
+	double roundingAngle_;
 
 	StgShotData* _GetShotData() { return _GetShotData(idShotData_); }
 	StgShotData* _GetShotData(int id);
@@ -380,6 +403,20 @@ public:
 	void SetGrazeFrame(int frame) { frameGrazeInvalid_ = frame; }
 	bool IsValidGraze() { return frameGrazeInvalid_ <= 0; }
 
+	void SetPenetrateShotEnable(bool enable) { bPenetrateShot_ = enable; }
+	bool GetPenetrateShotEnable() { return bPenetrateShot_; }
+
+	void SetEnemyIntersectionInvalidFrame(uint32_t frame) { frameEnemyHitInvalid_ = frame; }
+	uint32_t GetEnemyIntersectionInvalidFrame() { return frameEnemyHitInvalid_;  }
+
+	//Returns true if obj is on hit cooldown
+	bool CheckEnemyHitCooldownExists(ref_unsync_weak_ptr<StgEnemyObject> obj) {
+		return mapEnemyHitCooldown_.find(obj) != mapEnemyHitCooldown_.end();
+	}
+	void AddEnemyHitCooldown(ref_unsync_weak_ptr<StgEnemyObject> obj, uint32_t time) {
+		mapEnemyHitCooldown_[obj] = time;
+	}
+
 	int GetDelay() { return delay_.time; }
 	void SetDelay(int delay) { delay_.time = delay; }
 	int GetShotDataDelayID() { return delay_.id; }
@@ -412,6 +449,7 @@ public:
 	void SetItemChangeEnable(bool b) { bChangeItemEnable_ = b; }
 
 	void SetPositionRounding(bool b) { bRoundingPosition_ = b; }
+	void SetAngleRounding(double a) { roundingAngle_ = a; }
 
 	void SetHitboxScale(D3DXVECTOR2& sc) { hitboxScale_ = sc; }
 	void SetHitboxScaleX(float x) { hitboxScale_.x = x; }

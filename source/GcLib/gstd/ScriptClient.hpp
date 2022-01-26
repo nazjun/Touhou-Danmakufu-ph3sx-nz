@@ -227,8 +227,8 @@ namespace gstd {
 		DNH_FUNCAPI_DECL_(Func_Hypot);
 		DNH_FUNCAPI_DECL_(Func_Distance);
 		DNH_FUNCAPI_DECL_(Func_DistanceSq);
+		template<bool USE_RAD>
 		DNH_FUNCAPI_DECL_(Func_GapAngle);
-		DNH_FUNCAPI_DECL_(Func_RGapAngle);
 
 		//Math functions; random
 		static value Func_Rand(script_machine* machine, int argc, const value* argv);
@@ -244,19 +244,16 @@ namespace gstd {
 		//Math functions; angle helper
 		DNH_FUNCAPI_DECL_(Func_ToDegrees);
 		DNH_FUNCAPI_DECL_(Func_ToRadians);
+		template<bool USE_RAD>
 		DNH_FUNCAPI_DECL_(Func_NormalizeAngle);
-		DNH_FUNCAPI_DECL_(Func_NormalizeAngleR);
+		template<bool USE_RAD>
 		DNH_FUNCAPI_DECL_(Func_AngularDistance);
-		DNH_FUNCAPI_DECL_(Func_AngularDistanceR);
+		template<bool USE_RAD>
 		DNH_FUNCAPI_DECL_(Func_ReflectAngle);
-		DNH_FUNCAPI_DECL_(Func_ReflectAngleR);
 
 		//Math functions; interpolation
-		DNH_FUNCAPI_DECL_(Func_Interpolate_Linear);
-		DNH_FUNCAPI_DECL_(Func_Interpolate_Smooth);
-		DNH_FUNCAPI_DECL_(Func_Interpolate_Smoother);
-		DNH_FUNCAPI_DECL_(Func_Interpolate_Accelerate);
-		DNH_FUNCAPI_DECL_(Func_Interpolate_Decelerate);
+		template<double (*func)(double, double, double)>
+		DNH_FUNCAPI_DECL_(Func_Interpolate);
 		DNH_FUNCAPI_DECL_(Func_Interpolate_Modulate);
 		DNH_FUNCAPI_DECL_(Func_Interpolate_Overshoot);
 		DNH_FUNCAPI_DECL_(Func_Interpolate_QuadraticBezier);
@@ -265,6 +262,8 @@ namespace gstd {
 
 		DNH_FUNCAPI_DECL_(Func_Interpolate_X);
 		DNH_FUNCAPI_DECL_(Func_Interpolate_X_Packed);
+		template<bool USE_RAD>
+		DNH_FUNCAPI_DECL_(Func_Interpolate_X_Angle);
 		DNH_FUNCAPI_DECL_(Func_Interpolate_X_Array);
 
 		//Math functions; rotation
@@ -295,6 +294,7 @@ namespace gstd {
 		static value Func_GetFilePathList(script_machine* machine, int argc, const value* argv);
 		static value Func_GetDirectoryList(script_machine* machine, int argc, const value* argv);
 
+		DNH_FUNCAPI_DECL_(Func_GetWorkingDirectory);
 		DNH_FUNCAPI_DECL_(Func_GetModuleName);
 		DNH_FUNCAPI_DECL_(Func_GetModuleDirectory);
 		DNH_FUNCAPI_DECL_(Func_GetFileDirectory);
