@@ -799,6 +799,10 @@ namespace gstd {
 
 			res.reset(newType, arrVal);
 		}
+		else {
+			res = *val;
+		}
+		res.make_unique();
 		return res;
 	}
 
