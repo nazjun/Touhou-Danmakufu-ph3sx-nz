@@ -454,7 +454,7 @@ DnhConfiguration::DnhConfiguration() {
 	screenHeight_ = 720;
 
 	bDynamicScaling_ = false;
-	bEnableUnfocusedProcessing_ = false;
+	bEnableUnfocusedProcessing_ = true;
 	pathPackageScript_ = PathProperty::GetModuleDirectory() + L"th_sdf.dnh";
 
 	LoadConfigFile();
