@@ -445,7 +445,7 @@ DnhConfiguration::DnhConfiguration() {
 
 	bLogWindow_ = false;
 	bLogFile_ = false;
-	bMouseVisible_ = true;
+	bMouseVisible_ = false;
 
 	windowTitle_ = L"東方弾夢記 ～ Spellbroken Dream Festival";
 	windowSizeList_ = { { 960, 720 }, { 1280, 960 }, { 1920, 1440 } };
