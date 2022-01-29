@@ -114,9 +114,9 @@ static const std::vector<function> dxFunction = {
 	{ "ClearRenderTargetA2", DxScript::Func_ClearRenderTargetA2, 5 },
 	{ "ClearRenderTargetA3", DxScript::Func_ClearRenderTargetA3, 9 },
 	{ "GetTransitionRenderTargetName", DxScript::Func_GetTransitionRenderTargetName, 0 },
-	{ "SaveRenderedTextureA1", DxScript::Func_SaveRenderedTextureA1, 2 },
-	{ "SaveRenderedTextureA2", DxScript::Func_SaveRenderedTextureA2, 6 },
-	{ "SaveRenderedTextureA3", DxScript::Func_SaveRenderedTextureA3, 7 },
+	//{ "SaveRenderedTextureA1", DxScript::Func_SaveRenderedTextureA1, 2 },
+	//{ "SaveRenderedTextureA2", DxScript::Func_SaveRenderedTextureA2, 6 },
+	//{ "SaveRenderedTextureA3", DxScript::Func_SaveRenderedTextureA3, 7 },
 
 	{ "IsPixelShaderSupported", DxScript::Func_IsPixelShaderSupported, 2 },
 	{ "IsVertexShaderSupported", DxScript::Func_IsVertexShaderSupported, 2 },
@@ -468,7 +468,7 @@ static const std::vector<function> dxFunction = {
 	{ "ObjFile_Create", DxScript::Func_ObjFile_Create, 1 },
 	{ "ObjFile_Open", DxScript::Func_ObjFile_Open, 2 },
 	{ "ObjFile_OpenNW", DxScript::Func_ObjFile_OpenNW, 2 },
-	{ "ObjFile_Store", DxScript::Func_ObjFile_Store, 1 },
+	//{ "ObjFile_Store", DxScript::Func_ObjFile_Store, 1 },
 	{ "ObjFile_GetSize", DxScript::Func_ObjFile_GetSize, 1 },
 
 	//Text file object functions

@@ -414,8 +414,8 @@ bool ErrorDialog::ShowModal(std::wstring msg) {
 DnhConfiguration::DnhConfiguration() {
 	modeScreen_ = ScreenMode::SCREENMODE_WINDOW;
 	modeColor_ = ColorMode::COLOR_MODE_32BIT;
-	fpsType_ = FPS_NORMAL;
-	fastModeSpeed_ = 20;
+	fpsType_ = FPS_AUTO;
+	fastModeSpeed_ = 50;
 
 	sizeWindow_ = 0;
 
@@ -447,15 +447,18 @@ DnhConfiguration::DnhConfiguration() {
 	bLogFile_ = false;
 	bMouseVisible_ = true;
 
-	screenWidth_ = 640;
-	screenHeight_ = 480;
+	windowTitle_ = L"東方弾夢記 ～ Spellbroken Dream Festival";
+	windowSizeList_ = { { 960, 720 }, { 1280, 960 }, { 1920, 1440 } };
+
+	screenWidth_ = 960;
+	screenHeight_ = 720;
 
 	bDynamicScaling_ = false;
 	bEnableUnfocusedProcessing_ = false;
 	pathPackageScript_ = PathProperty::GetModuleDirectory() + L"th_sdf.dnh";
 
 	LoadConfigFile();
-	_LoadDefinitionFile();
+	// _LoadDefinitionFile();
 }
 DnhConfiguration::~DnhConfiguration() {}
 
