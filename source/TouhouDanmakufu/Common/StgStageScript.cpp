@@ -336,7 +336,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "SetShotAutoDeleteClip", StgStageScript::Func_SetShotAutoDeleteClip, 4 },
 	{ "GetShotDataInfoA1", StgStageScript::Func_GetShotDataInfoA1, 3 },
 	{ "SetShotDeleteEventEnable", StgStageScript::Func_SetShotDeleteEventEnable, 2 },
-	{ "SetShotTextureFilter", StgStageScript::Func_SetShotTextureFilter, 3 },
+	{ "SetShotTextureFilter", StgStageScript::Func_SetShotTextureFilter, 2 },
 
 	//STG共通関数：アイテム
 	{ "CreateItemA1", StgStageScript::Func_CreateItemA1, 4 },
@@ -355,7 +355,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "GetItemIdInCircleA1", StgStageScript::Func_GetItemIdInCircleA1, 3 },
 	{ "GetItemIdInCircleA2", StgStageScript::Func_GetItemIdInCircleA2, 4 },
 	{ "SetItemAutoDeleteClip", StgStageScript::Func_SetItemAutoDeleteClip, 4 },
-	{ "SetItemTextureFilter", StgStageScript::Func_SetItemTextureFilter, 3 },
+	{ "SetItemTextureFilter", StgStageScript::Func_SetItemTextureFilter, 2 },
 
 	//STG共通関数：その他
 	{ "StartSlow", StgStageScript::Func_StartSlow, 2 },
@@ -601,7 +601,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjItem_Regist", StgStageScript::Func_ObjItem_Regist, 1 },
 	{ "ObjItem_SetItemID", StgStageScript::Func_ObjItem_SetItemID, 2 },
 	{ "ObjItem_SetRenderScoreEnable", StgStageScript::Func_ObjItem_SetRenderScoreEnable, 2 },
-	{ "ObjItem_SetAutoCollectEnable", StgStageScript::Func_ObjItem_SetAutoCollectEnable, 2 },
+	{ "ObjItem_SetAutoCollectEnableFlags", StgStageScript::Func_ObjItem_SetAutoCollectEnableFlags, 2 },
 	{ "ObjItem_SetDefinedMovePatternA1", StgStageScript::Func_ObjItem_SetDefinedMovePatternA1, 2 },
 	{ "ObjItem_GetInfo", StgStageScript::Func_ObjItem_GetInfo, 2 },
 	{ "ObjItem_SetMoveToPlayer", StgStageScript::Func_ObjItem_SetMoveToPlayer, 2 },
@@ -692,6 +692,13 @@ static const std::vector<constant> stgStageConstant = {
 	constant("ITEM_POINT", StgItemObject::ITEM_POINT),
 	constant("ITEM_POINT_S", StgItemObject::ITEM_POINT_S),
 	constant("ITEM_USER", StgItemObject::ITEM_USER),
+
+	//Item autocollect flags
+	constant("ITEM_AUTOCOLLECT_PLAYER_SCOPE", StgItemObject::FLAG_MOVETOPL_PLAYER_SCOPE),
+	constant("ITEM_AUTOCOLLECT_COLLECT_ALL", StgItemObject::FLAG_MOVETOPL_COLLECT_ALL),
+	constant("ITEM_AUTOCOLLECT_POC_LINE", StgItemObject::FLAG_MOVETOPL_POC_LINE),
+	constant("ITEM_AUTOCOLLECT_COLLECT_CIRCLE", StgItemObject::FLAG_MOVETOPL_COLLECT_CIRCLE),
+	constant("ITEM_AUTOCOLLECT_ALL", StgItemObject::FLAG_MOVETOPL_ALL),
 
 	//Item move types
 	constant("ITEM_MOVE_DOWN", StgMovePattern_Item::MOVE_DOWN),
@@ -2335,9 +2342,8 @@ gstd::value StgStageScript::Func_SetShotTextureFilter(gstd::script_machine* mach
 
 	int typeMin = std::clamp((int)argv[0].as_int(), (int)D3DTEXF_NONE, (int)D3DTEXF_ANISOTROPIC);
 	int typeMag = std::clamp((int)argv[1].as_int(), (int)D3DTEXF_NONE, (int)D3DTEXF_ANISOTROPIC);
-	int typeMip = std::clamp((int)argv[2].as_int(), (int)D3DTEXF_NONE, (int)D3DTEXF_ANISOTROPIC);
 
-	shotManager->SetTextureFilter((D3DTEXTUREFILTERTYPE)typeMin, (D3DTEXTUREFILTERTYPE)typeMag, (D3DTEXTUREFILTERTYPE)typeMip);
+	shotManager->SetTextureFilter((D3DTEXTUREFILTERTYPE)typeMin, (D3DTEXTUREFILTERTYPE)typeMag);
 
 	return value();
 }
@@ -2596,9 +2602,8 @@ gstd::value StgStageScript::Func_SetItemTextureFilter(gstd::script_machine* mach
 
 	int typeMin = std::clamp((int)argv[0].as_int(), (int)D3DTEXF_NONE, (int)D3DTEXF_ANISOTROPIC);
 	int typeMag = std::clamp((int)argv[1].as_int(), (int)D3DTEXF_NONE, (int)D3DTEXF_ANISOTROPIC);
-	int typeMip = std::clamp((int)argv[2].as_int(), (int)D3DTEXF_NONE, (int)D3DTEXF_ANISOTROPIC);
 
-	itemManager->SetTextureFilter((D3DTEXTUREFILTERTYPE)typeMin, (D3DTEXTUREFILTERTYPE)typeMag, (D3DTEXTUREFILTERTYPE)typeMip);
+	itemManager->SetTextureFilter((D3DTEXTUREFILTERTYPE)typeMin, (D3DTEXTUREFILTERTYPE)typeMag);
 
 	return value();
 }
@@ -5922,13 +5927,13 @@ gstd::value StgStageScript::Func_ObjItem_SetRenderScoreEnable(gstd::script_machi
 	}
 	return value();
 }
-gstd::value StgStageScript::Func_ObjItem_SetAutoCollectEnable(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+gstd::value StgStageScript::Func_ObjItem_SetAutoCollectEnableFlags(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
 	StgItemObject* obj = script->GetObjectPointerAs<StgItemObject>(id);
 	if (obj) {
-		bool bEnable = argv[1].as_boolean();
-		obj->SetPermitMoveToPlayer(bEnable);
+		int flags = argv[1].as_int();
+		obj->SetMoveToPlayerEnableFlags(flags);
 	}
 	return value();
 }
