@@ -19,7 +19,6 @@ StgShotManager::StgShotManager(StgStageController* stageController) {
 
 	filterMin_ = D3DTEXF_LINEAR;
 	filterMag_ = D3DTEXF_LINEAR;
-	filterMip_ = D3DTEXF_NONE;
 
 	{
 		RenderShaderLibrary* shaderManager_ = ShaderManager::GetBase()->GetRenderLib();
@@ -72,7 +71,7 @@ void StgShotManager::Render(int targetPriority) {
 	graphics->SetZWriteEnable(false);
 	graphics->SetCullingMode(D3DCULL_NONE);
 	graphics->SetLightingEnable(false);
-	graphics->SetTextureFilter(filterMin_, filterMag_, filterMip_);
+	graphics->SetTextureFilter(filterMin_, filterMag_, D3DTEXF_NONE);
 
 	DWORD bEnableFog = FALSE;
 	device->GetRenderState(D3DRS_FOGENABLE, &bEnableFog);
@@ -1017,9 +1016,19 @@ void StgShotObject::_CommonWorkTask() {
 	//----------------------------------------------------------
 
 	for (auto itr = mapEnemyHitCooldown_.begin(); itr != mapEnemyHitCooldown_.end();) {
-		if (itr->first.expired() || (--(itr->second) == 0))
+		if (itr->first.expired() || itr->first->IsDeleted() || (--(itr->second) == 0))
 			itr = mapEnemyHitCooldown_.erase(itr);
 		else ++itr;
+	}
+}
+
+bool StgShotObject::CheckEnemyHitCooldownExists(ref_unsync_weak_ptr<StgEnemyObject> obj) {
+	if (mapEnemyHitCooldown_.empty()) return false;
+	return mapEnemyHitCooldown_.find(obj) != mapEnemyHitCooldown_.end();
+}
+void StgShotObject::AddEnemyHitCooldown(ref_unsync_weak_ptr<StgEnemyObject> obj, uint32_t time) {
+	if (obj) {
+		mapEnemyHitCooldown_[obj] = time;
 	}
 }
 

@@ -48,7 +48,6 @@ protected:
 
 	D3DTEXTUREFILTERTYPE filterMin_;
 	D3DTEXTUREFILTERTYPE filterMag_;
-	D3DTEXTUREFILTERTYPE filterMip_;
 
 	ID3DXEffect* effectLayer_;
 	D3DXHANDLE handleEffectWorld_;
@@ -73,10 +72,9 @@ public:
 	void SetShotDeleteClip(const DxRect<LONG>& clip) { rcDeleteClip_ = clip; }
 	DxRect<LONG>* GetShotDeleteClip() { return &rcDeleteClip_; }
 
-	void SetTextureFilter(D3DTEXTUREFILTERTYPE min, D3DTEXTUREFILTERTYPE mag, D3DTEXTUREFILTERTYPE mip) {
+	void SetTextureFilter(D3DTEXTUREFILTERTYPE min, D3DTEXTUREFILTERTYPE mag) {
 		filterMin_ = min;
 		filterMag_ = mag;
-		filterMip_ = mip;
 	}
 
 	size_t DeleteInCircle(int typeDelete, int typeTo, int typeOwner, int cx, int cy, int* radius);
@@ -412,12 +410,8 @@ public:
 	uint32_t GetEnemyIntersectionInvalidFrame() { return frameEnemyHitInvalid_;  }
 
 	//Returns true if obj is on hit cooldown
-	bool CheckEnemyHitCooldownExists(ref_unsync_weak_ptr<StgEnemyObject> obj) {
-		return mapEnemyHitCooldown_.find(obj) != mapEnemyHitCooldown_.end();
-	}
-	void AddEnemyHitCooldown(ref_unsync_weak_ptr<StgEnemyObject> obj, uint32_t time) {
-		mapEnemyHitCooldown_[obj] = time;
-	}
+	bool CheckEnemyHitCooldownExists(ref_unsync_weak_ptr<StgEnemyObject> obj);
+	void AddEnemyHitCooldown(ref_unsync_weak_ptr<StgEnemyObject> obj, uint32_t time);
 
 	int GetDelay() { return delay_.time; }
 	void SetDelay(int delay) { delay_.time = delay; }
