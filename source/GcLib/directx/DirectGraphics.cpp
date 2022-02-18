@@ -6,6 +6,8 @@
 
 #if defined(DNH_PROJ_EXECUTOR)
 #include "Texture.hpp"
+
+#include "../../TouhouDanmakufu/Common/DnhCommon.hpp"
 #endif
 
 using namespace gstd;
@@ -42,6 +44,8 @@ DirectGraphicsConfig::DirectGraphicsConfig() {
 DirectGraphics* DirectGraphics::thisBase_ = nullptr;
 float DirectGraphics::g_dxCoordsMul_ = 1.0f;
 DirectGraphics::DirectGraphics() {
+	ZeroMemory(&dxModules_, sizeof(dxModules_));
+
 	pDirect3D_ = nullptr;
 	pDevice_ = nullptr;
 	pBackSurf_ = nullptr;
@@ -78,14 +82,50 @@ DirectGraphics::~DirectGraphics() {
 		delete itrSample.second.second;
 	}
 
+	_FreeModules();
+
 	thisBase_ = nullptr;
 	Logger::WriteTop("DirectGraphics: Finalized.");
 }
+
+void DirectGraphics::_LoadModules() {
+	HANDLE hCurrentProcess = ::GetCurrentProcess();
+
+	auto _LoadModule = [](const std::wstring& name, HMODULE* hDest, bool bThrowErr = true) -> bool {
+		*hDest = ::LoadLibraryW(name.c_str());
+		if (*hDest == nullptr && bThrowErr)
+			throw gstd::wexception(L"Failed to load module: " + name);
+		return *hDest != nullptr;
+	};
+
+	_LoadModule(L"d3d9.dll", &dxModules_.hLibrary_d3d9);
+	_LoadModule(L"d3dx9_43.dll", &dxModules_.hLibrary_d3dx9);
+	_LoadModule(L"d3dcompiler_43.dll", &dxModules_.hLibrary_d3dcompiler);
+	_LoadModule(L"dsound.dll", &dxModules_.hLibrary_dsound);
+	_LoadModule(L"dinput8.dll", &dxModules_.hLibrary_dinput8);
+}
+void DirectGraphics::_FreeModules() {
+	auto _Free = [](HMODULE* pModule) {
+		if (*pModule) {
+			::FreeLibrary(*pModule);
+			*pModule = nullptr;
+		}
+	};
+
+	_Free(&dxModules_.hLibrary_d3d9);
+	_Free(&dxModules_.hLibrary_d3dx9);
+	_Free(&dxModules_.hLibrary_d3dcompiler);
+	_Free(&dxModules_.hLibrary_dinput8);
+	_Free(&dxModules_.hLibrary_dsound);
+}
+
 bool DirectGraphics::Initialize(HWND hWnd) {
 	return this->Initialize(hWnd, config_);
 }
 bool DirectGraphics::Initialize(HWND hWnd, const DirectGraphicsConfig& config) {
 	if (thisBase_) return false;
+
+	_LoadModules();
 
 	Logger::WriteTop("DirectGraphics: Initialize.");
 	pDirect3D_ = Direct3DCreate9(D3D_SDK_VERSION);
@@ -122,9 +162,6 @@ bool DirectGraphics::Initialize(HWND hWnd, const DirectGraphicsConfig& config) {
 	{
 		//Fullscreen mode settings
 
-		RECT rcMonitor;
-		::GetWindowRect(::GetDesktopWindow(), &rcMonitor);
-
 		ZeroMemory(&d3dppFull_, sizeof(D3DPRESENT_PARAMETERS));
 		d3dppFull_.hDeviceWindow = hWnd;
 		d3dppFull_.BackBufferWidth = dxBackBufferW;
@@ -144,10 +181,7 @@ bool DirectGraphics::Initialize(HWND hWnd, const DirectGraphicsConfig& config) {
 
 	{
 		//Windowed mode settings
-
-		D3DDISPLAYMODE dmode;
-		HRESULT hrAdapt = pDirect3D_->GetAdapterDisplayMode(D3DADAPTER_DEFAULT, &dmode);
-
+		
 		ZeroMemory(&d3dppWin_, sizeof(D3DPRESENT_PARAMETERS));
 		d3dppWin_.hDeviceWindow = hWnd;
 		d3dppWin_.BackBufferWidth = dxBackBufferW;
@@ -930,10 +964,14 @@ DirectGraphicsPrimaryWindow::DirectGraphicsPrimaryWindow() {
 	hWndContent_ = nullptr;
 
 	newScreenMode_ = ScreenMode::SCREENMODE_WINDOW;
+
+	bWindowMoveEnable_ = false;
+	cPosOffset_ = { 0, 0 };
 }
 DirectGraphicsPrimaryWindow::~DirectGraphicsPrimaryWindow() {
 	SetThreadExecutionState(ES_CONTINUOUS);		//Just in case
 }
+
 void DirectGraphicsPrimaryWindow::_PauseDrawing() {
 	//	gstd::Application::GetBase()->SetActive(false);
 		// ウインドウのメニューバーを描画する
@@ -944,6 +982,7 @@ void DirectGraphicsPrimaryWindow::_PauseDrawing() {
 void DirectGraphicsPrimaryWindow::_RestartDrawing() {
 	gstd::Application::GetBase()->SetActive(true);
 }
+
 bool DirectGraphicsPrimaryWindow::Initialize() {
 	bool res =  this->Initialize(config_);
 	return res;
@@ -1017,8 +1056,55 @@ bool DirectGraphicsPrimaryWindow::Initialize(DirectGraphicsConfig& config) {
 		}
 		*/
 	}
-
 	return res;
+}
+
+void DirectGraphicsPrimaryWindow::_StartWindowMove(LPARAM lParam) {
+	LRESULT region = ::DefWindowProcW(hWnd_, WM_NCHITTEST, 0, lParam);
+	if (region == HTCAPTION) {
+		bWindowMoveEnable_ = true;
+
+		::GetCursorPos(&cPosOffset_);
+
+		RECT rect;
+		GetWindowRect(hWnd_, &rect);
+		cPosOffset_.x -= rect.left;
+		cPosOffset_.y -= rect.top;
+
+		::SendMessageW(hWnd_, WM_ENTERSIZEMOVE, 0, 0);
+	}
+
+	::SetCapture(hWnd_);
+}
+void DirectGraphicsPrimaryWindow::_StopWindowMove() {
+	if (bWindowMoveEnable_) {
+		bWindowMoveEnable_ = false;
+		::SendMessageW(hWnd_, WM_EXITSIZEMOVE, 0, 0);
+
+		POINT cPos;
+		::GetCursorPos(&cPos);
+		::ReleaseCapture();
+
+		//If the final pos clips the window into the top of the screen, clamp it down
+		if (cPos.y < std::max(0, ::GetSystemMetrics(SM_CYMENUSIZE) - 8)) {
+			RECT wRect;
+			::GetWindowRect(hWnd_, &wRect);
+			::MoveWindow(hWnd_, wRect.left, 0, wRect.right - wRect.left, wRect.bottom - wRect.top, false);
+		}
+	}
+}
+void DirectGraphicsPrimaryWindow::_WindowMove() {
+	if (bWindowMoveEnable_) {
+		POINT cPos;
+		::GetCursorPos(&cPos);
+
+		RECT wRect;
+		::GetWindowRect(hWnd_, &wRect);
+
+		LONG x = cPos.x - cPosOffset_.x;
+		LONG y = cPos.y - cPosOffset_.y;
+		::MoveWindow(hWnd_, x, y, wRect.right - wRect.left, wRect.bottom - wRect.top, false);
+	}
 }
 
 LRESULT DirectGraphicsPrimaryWindow::_WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -1094,6 +1180,7 @@ LRESULT DirectGraphicsPrimaryWindow::_WindowProcedure(HWND hWnd, UINT uMsg, WPAR
 	case WM_GETMINMAXINFO:
 	{
 		MINMAXINFO* info = (MINMAXINFO*)lParam;
+
 		int wWidth = ::GetSystemMetrics(SM_CXFULLSCREEN);
 		int wHeight = ::GetSystemMetrics(SM_CYFULLSCREEN);
 
@@ -1104,19 +1191,9 @@ LRESULT DirectGraphicsPrimaryWindow::_WindowProcedure(HWND hWnd, UINT uMsg, WPAR
 
 		info->ptMaxSize.x = wr.GetWidth();
 		info->ptMaxSize.y = wr.GetHeight();
-		return FALSE;
+
+		return 0;
 	}
-	/*
-	case WM_KEYDOWN:
-	{
-		switch (wParam) {
-		case VK_F12:
-			::PostMessage(hWnd, WM_CLOSE, 0, 0);
-			break;
-		}
-		return FALSE;
-	}
-	*/
 	case WM_SYSCHAR:
 	{
 		if (wParam == VK_RETURN)
@@ -1125,12 +1202,38 @@ LRESULT DirectGraphicsPrimaryWindow::_WindowProcedure(HWND hWnd, UINT uMsg, WPAR
 	}
 	case WM_SYSCOMMAND:
 	{
-		if (wParam == SC_MAXIMIZE) {
+		switch (wParam & 0xfff0) {
+		case SC_MAXIMIZE:
 			ChangeScreenMode(SCREENMODE_FULLSCREEN);
-			return TRUE;
+			return 0;
 		}
 	}
 	}
+
+#if defined(DNH_PROJ_EXECUTOR)
+	DnhConfiguration* config = DnhConfiguration::GetInstance();
+	if (config->bEnableUnfocusedProcessing_) {
+		switch (uMsg) {
+		case WM_MOUSEMOVE:
+			_WindowMove();
+			break;
+		case WM_LBUTTONUP:
+			_StopWindowMove();
+			break;
+		case WM_SYSCOMMAND:
+		{
+			switch (wParam & 0xfff0) {
+			case SC_MOVE:
+			{
+				_StartWindowMove(lParam);
+				return 0;
+			}
+			}
+		}
+		}
+	}
+#endif
+
 	return _CallPreviousWindowProcedure(hWnd, uMsg, wParam, lParam);
 }
 

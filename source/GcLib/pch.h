@@ -86,6 +86,7 @@
 #pragma comment(lib, "d3dx9.lib")
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxerr.lib")
+#pragma comment(lib, "d3dcompiler.lib")
 
 #if defined(DNH_PROJ_EXECUTOR)
 
@@ -145,6 +146,7 @@
 #include <map>
 #include <unordered_map>
 #include <bitset>
+#include <complex>
 
 #include <memory>
 #include <algorithm>
@@ -199,6 +201,8 @@
 namespace stdfs = std::filesystem;
 using path_t = stdfs::path;
 #endif
+
+namespace stdch = std::chrono;
 
 //------------------------------------------------------------------------------
 

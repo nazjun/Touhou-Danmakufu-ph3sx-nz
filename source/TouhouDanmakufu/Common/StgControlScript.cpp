@@ -49,12 +49,15 @@ static const std::vector<function> stgControlFunction = {
 	{ "SetSkipModeKey", StgControlScript::Func_SetSkipModeKey, 1 },
 
 	//STG制御共通関数：システム関連
-	{ "GetScore", StgControlScript::Func_GetScore, 0 },
-	{ "AddScore", StgControlScript::Func_AddScore, 1 },
-	{ "GetGraze", StgControlScript::Func_GetGraze, 0 },
-	{ "AddGraze", StgControlScript::Func_AddGraze, 1 },
-	{ "GetPoint", StgControlScript::Func_GetPoint, 0 },
-	{ "AddPoint", StgControlScript::Func_AddPoint, 1 },
+	{ "GetScore", StgControlScript::Func_StgStageInformation_int64_void<&StgStageInformation::GetScore>, 0 },
+	{ "SetScore", StgControlScript::Func_StgStageInformation_void_int64<&StgStageInformation::SetScore>, 1 },
+	{ "AddScore", StgControlScript::Func_StgStageInformation_void_int64<&StgStageInformation::AddScore>, 1 },
+	{ "GetGraze", StgControlScript::Func_StgStageInformation_int64_void<&StgStageInformation::GetGraze>, 0 },
+	{ "SetGraze", StgControlScript::Func_StgStageInformation_void_int64<&StgStageInformation::SetGraze>, 1 },
+	{ "AddGraze", StgControlScript::Func_StgStageInformation_void_int64<&StgStageInformation::AddGraze>, 1 },
+	{ "GetPoint", StgControlScript::Func_StgStageInformation_int64_void<&StgStageInformation::GetPoint>, 0 },
+	{ "SetPoint", StgControlScript::Func_StgStageInformation_void_int64<&StgStageInformation::SetPoint>, 1 },
+	{ "AddPoint", StgControlScript::Func_StgStageInformation_void_int64<&StgStageInformation::AddPoint>, 1 },
 
 	{ "IsReplay", StgControlScript::Func_IsReplay, 0 },
 
@@ -314,71 +317,39 @@ gstd::value StgControlScript::Func_AddReplayTargetVirtualKey(gstd::script_machin
 }
 gstd::value StgControlScript::Func_SetSkipModeKey(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	EFpsController* fpsController = EFpsController::GetInstance();
-	fpsController->SetFastModeKey((int16_t)argv[0].as_real());
+	fpsController->SetFastModeKey((int16_t)argv[0].as_float());
 	return value();
 }
 
 //STG制御共通関数：システム関連
-gstd::value StgControlScript::Func_GetScore(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+template<int64_t(StgStageInformation::* Func)()>
+gstd::value StgControlScript::Func_StgStageInformation_int64_void(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgControlScript* script = (StgControlScript*)machine->data;
 
 	int64_t res = 0;
 
 	shared_ptr<StgStageController> stageController = script->systemController_->GetStageController();
-	if (stageController)
-		res = stageController->GetStageInformation()->GetScore();
+	if (stageController) {
+		auto stgInfo = stageController->GetStageInformation().get();
+		res = (stgInfo->*Func)();
+	}
 
 	return script->CreateIntValue(res);
 }
-gstd::value StgControlScript::Func_AddScore(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+template<void(StgStageInformation::* Func)(int64_t)>
+gstd::value StgControlScript::Func_StgStageInformation_void_int64(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgControlScript* script = (StgControlScript*)machine->data;
+
 	shared_ptr<StgStageController> stageController = script->systemController_->GetStageController();
 	if (stageController) {
 		int64_t inc = argv[0].as_int();
-		stageController->GetStageInformation()->AddScore(inc);
+		auto stgInfo = stageController->GetStageInformation().get();
+		(stgInfo->*Func)(inc);
 	}
+
 	return value();
 }
-gstd::value StgControlScript::Func_GetGraze(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	StgControlScript* script = (StgControlScript*)machine->data;
 
-	int64_t res = 0;
-
-	shared_ptr<StgStageController> stageController = script->systemController_->GetStageController();
-	if (stageController)
-		res = stageController->GetStageInformation()->GetGraze();
-
-	return script->CreateIntValue(res);
-}
-gstd::value StgControlScript::Func_AddGraze(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	StgControlScript* script = (StgControlScript*)machine->data;
-	shared_ptr<StgStageController> stageController = script->systemController_->GetStageController();
-	if (stageController) {
-		int64_t inc = argv[0].as_int();
-		stageController->GetStageInformation()->AddGraze(inc);
-	}
-	return value();
-}
-gstd::value StgControlScript::Func_GetPoint(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	StgControlScript* script = (StgControlScript*)machine->data;
-
-	int64_t res = 0;
-
-	shared_ptr<StgStageController> stageController = script->systemController_->GetStageController();
-	if (stageController)
-		res = stageController->GetStageInformation()->GetPoint();
-
-	return script->CreateIntValue(res);
-}
-gstd::value StgControlScript::Func_AddPoint(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	StgControlScript* script = (StgControlScript*)machine->data;
-	shared_ptr<StgStageController> stageController = script->systemController_->GetStageController();
-	if (stageController) {
-		int64_t inc = argv[0].as_int();
-		stageController->GetStageInformation()->AddPoint(inc);
-	}
-	return value();
-}
 gstd::value StgControlScript::Func_IsReplay(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgControlScript* script = (StgControlScript*)machine->data;
 
@@ -421,7 +392,7 @@ gstd::value StgControlScript::Func_GetArchiveFilePathList(gstd::script_machine* 
 }
 gstd::value StgControlScript::Func_GetCurrentFps(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	EFpsController* fpsController = EFpsController::GetInstance();
-	return StgControlScript::CreateRealValue(fpsController->GetCurrentWorkFps());
+	return StgControlScript::CreateFloatValue(fpsController->GetCurrentWorkFps());
 }
 gstd::value StgControlScript::Func_GetLastFrameUpdateSpeed(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	ETaskManager* taskManager = ETaskManager::GetInstance();
@@ -485,7 +456,7 @@ gstd::value StgControlScript::Func_GetStgFrameLeft(gstd::script_machine* machine
 	if (stageController)
 		res = stageController->GetStageInformation()->GetStgFrameRect()->left;
 
-	return script->CreateRealValue(res);
+	return script->CreateFloatValue(res);
 }
 gstd::value StgControlScript::Func_GetStgFrameTop(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgControlScript* script = (StgControlScript*)machine->data;
@@ -495,7 +466,7 @@ gstd::value StgControlScript::Func_GetStgFrameTop(gstd::script_machine* machine,
 	if (stageController)
 		res = stageController->GetStageInformation()->GetStgFrameRect()->top;
 
-	return script->CreateRealValue(res);
+	return script->CreateFloatValue(res);
 }
 gstd::value StgControlScript::Func_GetStgFrameWidth(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgControlScript* script = (StgControlScript*)machine->data;
@@ -507,7 +478,7 @@ gstd::value StgControlScript::Func_GetStgFrameWidth(gstd::script_machine* machin
 		res = rect->right - rect->left;
 	}
 
-	return script->CreateRealValue(res);
+	return script->CreateFloatValue(res);
 }
 gstd::value StgControlScript::Func_GetStgFrameHeight(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgControlScript* script = (StgControlScript*)machine->data;
@@ -519,7 +490,7 @@ gstd::value StgControlScript::Func_GetStgFrameHeight(gstd::script_machine* machi
 		res = rect->bottom - rect->top;
 	}
 
-	return script->CreateRealValue(res);
+	return script->CreateFloatValue(res);
 }
 gstd::value StgControlScript::Func_GetMainPackageScriptPath(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgControlScript* script = (StgControlScript*)machine->data;
@@ -931,7 +902,7 @@ gstd::value StgControlScript::Func_GetLoadFreePlayerScriptList(gstd::script_mach
 	infoControlScript->LoadFreePlayerList();
 	std::vector<ref_count_ptr<ScriptInformation>>& listFreePlayer = infoControlScript->GetFreePlayerList();
 
-	return script->CreateRealValue(listFreePlayer.size());
+	return script->CreateFloatValue(listFreePlayer.size());
 }
 gstd::value StgControlScript::Func_GetFreePlayerScriptCount(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgControlScript* script = (StgControlScript*)machine->data;
@@ -939,7 +910,7 @@ gstd::value StgControlScript::Func_GetFreePlayerScriptCount(gstd::script_machine
 
 	std::vector<ref_count_ptr<ScriptInformation>>& listFreePlayer = infoControlScript->GetFreePlayerList();
 
-	return script->CreateRealValue(listFreePlayer.size());
+	return script->CreateFloatValue(listFreePlayer.size());
 }
 gstd::value StgControlScript::Func_GetFreePlayerScriptInfo(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgControlScript* script = (StgControlScript*)machine->data;
@@ -1036,7 +1007,7 @@ gstd::value StgControlScript::Func_GetReplayInfo(gstd::script_machine* machine, 
 		res = script->CreateIntValue(replayInfo->GetTotalScore());
 		break;
 	case REPLAY_FPS_AVERAGE:
-		res = script->CreateRealValue(replayInfo->GetAverageFps());
+		res = script->CreateFloatValue(replayInfo->GetAverageFps());
 		break;
 	case REPLAY_PLAYER_NAME:
 		res = script->CreateStringValue(replayInfo->GetPlayerScriptReplayName());
@@ -1170,11 +1141,8 @@ gstd::value StgControlScript::Func_SaveReplay(gstd::script_machine* machine, int
 //ScriptInfoPanel
 //*******************************************************************
 ScriptInfoPanel::ScriptInfoPanel() {
-	timeUpdateInterval_ = 500;
 }
 ScriptInfoPanel::~ScriptInfoPanel() {
-	Stop();
-	Join(1000);
 }
 bool ScriptInfoPanel::_AddedLogger(HWND hTab) {
 	Create(hTab);
@@ -1220,7 +1188,7 @@ bool ScriptInfoPanel::_AddedLogger(HWND hTab) {
 	wndSplitter2_.SetRatioX(0.45f);
 
 	SetWindowVisible(false);
-	Start();
+	PanelInitialize();
 
 	return true;
 }
@@ -1263,26 +1231,6 @@ void ScriptInfoPanel::LocateParts() {
 	int hScriptList = wHeight - yScriptList;
 
 	wndScript_.SetBounds(wx, yScriptList, wWidth, hScriptList);
-}
-
-void ScriptInfoPanel::_Run() {
-	while (GetStatus() == RUN) {
-		ETaskManager* taskManager = ETaskManager::GetInstance();
-		if (taskManager) {
-			bool bSystemAvailable = false;
-			std::list<shared_ptr<TaskBase>>& listTask = taskManager->GetTaskList();
-			for (auto itr = listTask.begin(); itr != listTask.end(); ++itr) {
-				StgSystemController* systemController = dynamic_cast<StgSystemController*>(itr->get());
-				if (systemController) {
-					Update(systemController);
-					bSystemAvailable = true;
-				}
-			}
-			if (!bSystemAvailable)
-				Update(nullptr);
-		}
-		Sleep(timeUpdateInterval_);
-	}
 }
 
 void ScriptInfoPanel::_TerminateScriptAll() {
@@ -1330,9 +1278,25 @@ const wchar_t* ScriptInfoPanel::GetScriptTypeName(ManagedScript* script) {
 	return L"Unknown";
 }
 
-void ScriptInfoPanel::Update(StgSystemController* systemController) {
+void ScriptInfoPanel::PanelUpdate() {
 	if (!IsWindowVisible()) return;
 
+	ETaskManager* taskManager = ETaskManager::GetInstance();
+	if (taskManager) {
+		bool bSystemAvailable = false;
+		std::list<shared_ptr<TaskBase>>& listTask = taskManager->GetTaskList();
+		for (auto itr = listTask.begin(); itr != listTask.end(); ++itr) {
+			StgSystemController* systemController = dynamic_cast<StgSystemController*>(itr->get());
+			if (systemController) {
+				Update(systemController);
+				bSystemAvailable = true;
+			}
+		}
+		if (!bSystemAvailable)
+			Update(nullptr);
+	}
+}
+void ScriptInfoPanel::Update(StgSystemController* systemController) {
 	std::vector<ScriptManager*> vecScriptManager;
 	std::list<weak_ptr<ScriptManager>> listScriptManager;
 	if (systemController)

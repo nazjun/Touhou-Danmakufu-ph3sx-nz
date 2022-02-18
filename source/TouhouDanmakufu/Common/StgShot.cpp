@@ -19,7 +19,6 @@ StgShotManager::StgShotManager(StgStageController* stageController) {
 
 	filterMin_ = D3DTEXF_LINEAR;
 	filterMag_ = D3DTEXF_LINEAR;
-	filterMip_ = D3DTEXF_NONE;
 
 	{
 		RenderShaderLibrary* shaderManager_ = ShaderManager::GetBase()->GetRenderLib();
@@ -72,7 +71,7 @@ void StgShotManager::Render(int targetPriority) {
 	graphics->SetZWriteEnable(false);
 	graphics->SetCullingMode(D3DCULL_NONE);
 	graphics->SetLightingEnable(false);
-	graphics->SetTextureFilter(filterMin_, filterMag_, filterMip_);
+	graphics->SetTextureFilter(filterMin_, filterMag_, D3DTEXF_NONE);
 
 	DWORD bEnableFog = FALSE;
 	device->GetRenderState(D3DRS_FOGENABLE, &bEnableFog);
@@ -858,7 +857,7 @@ void StgShotObject::_RequestPlayerDeleteEvent(int hitObjectID) {	//A super ugly 
 
 			value listScriptValue[4];
 			listScriptValue[0] = scriptPlayer->CreateIntValue(idObject_);
-			listScriptValue[1] = scriptPlayer->CreateRealArrayValue(listPos, 2U);
+			listScriptValue[1] = scriptPlayer->CreateFloatArrayValue(listPos, 2U);
 			listScriptValue[2] = scriptPlayer->CreateIntValue(GetShotDataID());
 			listScriptValue[3] = scriptPlayer->CreateIntValue(hitObjectID);
 			scriptPlayer->RequestEvent(StgStagePlayerScript::EV_DELETE_SHOT_PLAYER, listScriptValue, 4);
@@ -1248,8 +1247,8 @@ void StgShotObject::_ProcessTransformAct() {
 			double angle = transform.param[2];
 
 			double accel = transform.param[3];
-			double agvel = transform.param[4];
-			double maxsp = transform.param[5];
+			double maxsp = transform.param[4];
+			double agvel = transform.param[5];
 
 			int shotID = transform.param[6];
 			int relativeObj = transform.param[7];
@@ -1259,8 +1258,8 @@ void StgShotObject::_ProcessTransformAct() {
 			ADD_CMD(StgMovePattern_Angle::SET_SPEED, speed);
 			ADD_CMD2(StgMovePattern_Angle::SET_ANGLE, angle, Math::DegreeToRadian(angle));
 			ADD_CMD(StgMovePattern_Angle::SET_ACCEL, accel);
-			ADD_CMD2(StgMovePattern_Angle::SET_AGVEL, agvel, Math::DegreeToRadian(agvel));
 			ADD_CMD(StgMovePattern_Angle::SET_SPMAX, maxsp);
+			ADD_CMD2(StgMovePattern_Angle::SET_AGVEL, agvel, Math::DegreeToRadian(agvel));
 
 			pattern->SetShotDataID(shotID);
 			pattern->SetRelativeObject(relativeObj);
@@ -1656,7 +1655,7 @@ void StgNormalShotObject::_SendDeleteEvent(int type) {
 
 		gstd::value listScriptValue[3];
 		listScriptValue[0] = DxScript::CreateIntValue(idObject_);
-		listScriptValue[1] = DxScript::CreateRealArrayValue(pos);
+		listScriptValue[1] = DxScript::CreateFloatArrayValue(pos);
 		listScriptValue[2] = DxScript::CreateIntValue(GetShotDataID());
 		itemScript->RequestEvent(typeEvent, listScriptValue, 3);
 
@@ -1676,24 +1675,29 @@ void StgNormalShotObject::_SendDeleteEvent(int type) {
 }
 
 void StgNormalShotObject::SetShotDataID(int id) {
+	bool bPreserveSpin = id < 0;	//If id is negative, preserve angle and spin
+
 	StgShotData* oldData = _GetShotData();
-	StgShotObject::SetShotDataID(id);
+	StgShotObject::SetShotDataID(abs(id));
 
 	StgShotData* shotData = _GetShotData();
 	if (shotData != nullptr && oldData != shotData) {
-		if (angularVelocity_ != 0) {
-			angularVelocity_ = 0;
-			angle_.z = 0;
-		}
+		double newSpin = 0;
 
 		double avMin = shotData->GetAngularVelocityMin();
 		double avMax = shotData->GetAngularVelocityMax();
-		bFixedAngle_ = shotData->IsFixedAngle();
-		if (avMin != 0 || avMax != 0) {
+		if (avMin != avMax) {
 			ref_count_ptr<StgStageInformation> stageInfo = stageController_->GetStageInformation();
 			shared_ptr<RandProvider> rand = stageInfo->GetRandProvider();
-			angularVelocity_ = rand->GetReal(avMin, avMax);
+			newSpin = rand->GetReal(avMin, avMax);
 		}
+		else newSpin = avMin;
+
+		if (!bPreserveSpin) {
+			angularVelocity_ = newSpin;
+			angle_.z = 0;
+		}
+		bFixedAngle_ = shotData->IsFixedAngle();
 	}
 }
 
@@ -2036,7 +2040,7 @@ void StgLooseLaserObject::_SendDeleteEvent(int type) {
 
 			gstd::value listScriptValue[3];
 			listScriptValue[0] = DxScript::CreateIntValue(idObject_);
-			listScriptValue[1] = DxScript::CreateRealArrayValue(pos);
+			listScriptValue[1] = DxScript::CreateFloatArrayValue(pos);
 			listScriptValue[2] = DxScript::CreateIntValue(GetShotDataID());
 			itemScript->RequestEvent(typeEvent, listScriptValue, 3);
 
@@ -2342,7 +2346,7 @@ void StgStraightLaserObject::_SendDeleteEvent(int type) {
 
 			gstd::value listScriptValue[3];
 			listScriptValue[0] = DxScript::CreateIntValue(idObject_);
-			listScriptValue[1] = DxScript::CreateRealArrayValue(pos);
+			listScriptValue[1] = DxScript::CreateFloatArrayValue(pos);
 			listScriptValue[2] = DxScript::CreateIntValue(GetShotDataID());
 			itemScript->RequestEvent(typeEvent, listScriptValue, 3);
 
@@ -2756,7 +2760,7 @@ void StgCurveLaserObject::_SendDeleteEvent(int type) {
 
 		size_t countToItem = 0U;
 		auto _RequestItem = [&](double ix, double iy) {
-			listScriptValue[1] = itemScript->CreateRealArrayValue(Math::DVec2{ ix, iy });
+			listScriptValue[1] = itemScript->CreateFloatArrayValue(Math::DVec2{ ix, iy });
 			itemScript->RequestEvent(typeEvent, listScriptValue, 3);
 
 			if (delay_.time == 0 || bEnableMotionDelay_) {

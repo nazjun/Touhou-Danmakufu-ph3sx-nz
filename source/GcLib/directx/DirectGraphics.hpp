@@ -42,11 +42,20 @@ namespace directx {
 	};
 
 #if defined(DNH_PROJ_EXECUTOR)
+	struct DxModules {
+		HMODULE hLibrary_d3d9;
+		HMODULE hLibrary_d3dx9;
+		HMODULE hLibrary_d3dcompiler;
+		HMODULE hLibrary_dinput8;
+		HMODULE hLibrary_dsound;
+	};
 	class DirectGraphics {
 		static DirectGraphics* thisBase_;
 	public:
 		static float g_dxCoordsMul_;
 	protected:
+		DxModules dxModules_;
+
 		IDirect3D9* pDirect3D_;
 		IDirect3DDevice9* pDevice_;
 		D3DPRESENT_PARAMETERS d3dppFull_;
@@ -88,6 +97,9 @@ namespace directx {
 		void _InitializeDeviceState(bool bResetCamera);
 
 		void _VerifyDeviceCaps();
+
+		void _LoadModules();
+		void _FreeModules();
 	public:
 		DirectGraphics();
 		virtual ~DirectGraphics();
@@ -180,6 +192,8 @@ namespace directx {
 		void UpdateDefaultRenderTargetSize();
 	};
 
+	//-----------------------------------------------------------------------------------------------
+
 	//*******************************************************************
 	//DirectGraphicsPrimaryWindow
 	//*******************************************************************
@@ -192,11 +206,18 @@ namespace directx {
 		HWND hWndContent_;
 
 		ScreenMode newScreenMode_;
+
+		bool bWindowMoveEnable_;
+		POINT cPosOffset_;
 	protected:
 		virtual LRESULT _WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 		
 		void _PauseDrawing();
 		void _RestartDrawing();
+
+		void _StartWindowMove(LPARAM lParam);
+		void _StopWindowMove();
+		void _WindowMove();
 	public:
 		DirectGraphicsPrimaryWindow();
 		~DirectGraphicsPrimaryWindow();
