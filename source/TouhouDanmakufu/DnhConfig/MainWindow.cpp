@@ -258,7 +258,7 @@ void DevicePanel::ReadConfiguration() {
 	case DnhConfiguration::FPS_1_3:
 		SendDlgItemMessage(hWnd_, IDC_RADIO_FPS_3, BM_SETCHECK, BST_CHECKED, 0);
 		break;
-	case DnhConfiguration::FPS_AUTO:
+	case DnhConfiguration::FPS_VARIABLE:
 		SendDlgItemMessage(hWnd_, IDC_RADIO_FPS_AUTO, BM_SETCHECK, BST_CHECKED, 0);
 		break;
 	}
@@ -294,7 +294,7 @@ void DevicePanel::WriteConfiguration() {
 		config->SetMultiSampleType(mapIndexSample[multiSample]);
 	}
 
-	int fpsType = DnhConfiguration::FPS_AUTO;
+	int fpsType = DnhConfiguration::FPS_VARIABLE;
 	if (SendDlgItemMessage(hWnd_, IDC_RADIO_FPS_1, BM_GETCHECK, 0, 0))
 		fpsType = DnhConfiguration::FPS_NORMAL;
 	else if (SendDlgItemMessage(hWnd_, IDC_RADIO_FPS_2, BM_GETCHECK, 0, 0))
@@ -302,7 +302,7 @@ void DevicePanel::WriteConfiguration() {
 	else if (SendDlgItemMessage(hWnd_, IDC_RADIO_FPS_3, BM_GETCHECK, 0, 0))
 		fpsType = DnhConfiguration::FPS_1_3;
 	else if (SendDlgItemMessage(hWnd_, IDC_RADIO_FPS_AUTO, BM_GETCHECK, 0, 0))
-		fpsType = DnhConfiguration::FPS_AUTO;
+		fpsType = DnhConfiguration::FPS_VARIABLE;
 	config->SetFpsType(fpsType);
 
 	ColorMode modeColor = ColorMode::COLOR_MODE_32BIT;

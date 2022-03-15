@@ -65,7 +65,9 @@ static const std::vector<function> stgControlFunction = {
 	{ "AddArchiveFile", StgControlScript::Func_AddArchiveFile, 2 },		//Overloaded
 	{ "GetArchiveFilePathList", StgControlScript::Func_GetArchiveFilePathList, 2 },
 
-	{ "GetCurrentFps", StgControlScript::Func_GetCurrentFps, 0 },
+	{ "GetCurrentFps", StgControlScript::Func_GetCurrentRenderFps, 0 },
+	{ "GetCurrentUpdateFps", StgControlScript::Func_GetCurrentUpdateFps, 0 },
+	{ "GetCurrentRenderFps", StgControlScript::Func_GetCurrentRenderFps, 0 },
 	{ "GetLastFrameUpdateSpeed", StgControlScript::Func_GetLastFrameUpdateSpeed, 0 },
 	{ "GetLastFrameRenderSpeed", StgControlScript::Func_GetLastFrameRenderSpeed, 0 },
 	{ "GetStageTime", StgControlScript::Func_GetStageTime, 0 },
@@ -390,9 +392,13 @@ gstd::value StgControlScript::Func_GetArchiveFilePathList(gstd::script_machine* 
 
 	return StgControlScript::CreateStringArrayValue(pathList);
 }
-gstd::value StgControlScript::Func_GetCurrentFps(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+gstd::value StgControlScript::Func_GetCurrentUpdateFps(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	EFpsController* fpsController = EFpsController::GetInstance();
 	return StgControlScript::CreateFloatValue(fpsController->GetCurrentWorkFps());
+}
+gstd::value StgControlScript::Func_GetCurrentRenderFps(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	EFpsController* fpsController = EFpsController::GetInstance();
+	return StgControlScript::CreateFloatValue(fpsController->GetCurrentRenderFps());
 }
 gstd::value StgControlScript::Func_GetLastFrameUpdateSpeed(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	ETaskManager* taskManager = ETaskManager::GetInstance();
@@ -691,16 +697,20 @@ gstd::value StgControlScript::Func_RenderToTextureA1(gstd::script_machine* machi
 		}
 	}
 
-	if (texture) {
+	if (texture && texture->GetType() == TextureData::Type::TYPE_RENDER_TARGET) {
 		DirectGraphics* graphics = DirectGraphics::GetBase();
+		graphics->SetAllowRenderTargetChange(false);
 
-		graphics->SetRenderTarget(texture, false);
+		graphics->SetRenderTarget(texture);
+		graphics->ResetDeviceState();
+
 		graphics->BeginScene(false, bClear);
-
 		script->systemController_->RenderScriptObject(priMin, priMax);
-
 		graphics->EndScene(false);
-		graphics->SetRenderTarget(nullptr, false);
+
+		graphics->SetRenderTarget(nullptr);
+
+		graphics->SetAllowRenderTargetChange(true);
 	}
 
 	return value();
@@ -731,16 +741,20 @@ gstd::value StgControlScript::Func_RenderToTextureB1(gstd::script_machine* machi
 			}
 		}
 
-		if (texture) {
+		if (texture && texture->GetType() == TextureData::Type::TYPE_RENDER_TARGET) {
 			DirectGraphics* graphics = DirectGraphics::GetBase();
+			graphics->SetAllowRenderTargetChange(false);
 
-			graphics->SetRenderTarget(texture, false);
+			graphics->SetRenderTarget(texture);
+			graphics->ResetDeviceState();
+
 			graphics->BeginScene(false, bClear);
-
 			obj->Render();
-
 			graphics->EndScene(false);
-			graphics->SetRenderTarget(nullptr, false);
+
+			graphics->SetRenderTarget(nullptr);
+
+			graphics->SetAllowRenderTargetChange(true);
 		}
 	}
 
@@ -755,16 +769,6 @@ gstd::value StgControlScript::Func_SaveSnapShotA1(gstd::script_machine* machine,
 	std::wstring path = argv[0].as_string();
 
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-
-	/*
-	shared_ptr<Texture> texture = textureManager->GetTexture(TextureManager::TARGET_TRANSITION);
-
-	graphics->SetRenderTarget(texture, false);
-	graphics->BeginScene(false, true);
-	systemController->RenderScriptObject(0, 100);
-	graphics->EndScene(false);
-	graphics->SetRenderTarget(nullptr, false);
-	*/
 
 	//Create the directory (if it doesn't exist)
 	std::wstring dir = PathProperty::GetFileDirectory(path);
@@ -786,15 +790,6 @@ gstd::value StgControlScript::Func_SaveSnapShotA2(gstd::script_machine* machine,
 		argv[3].as_int(), argv[4].as_int());
 
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-	/*
-	shared_ptr<Texture> texture = textureManager->GetTexture(TextureManager::TARGET_TRANSITION);
-
-	graphics->SetRenderTarget(texture, false);
-	graphics->BeginScene(false, true);
-	systemController->RenderScriptObject(0, 100);
-	graphics->EndScene(false);
-	graphics->SetRenderTarget(nullptr, false);
-	*/
 
 	//Create the directory (if it doesn't exist)
 	std::wstring dir = PathProperty::GetFileDirectory(path);
@@ -821,15 +816,6 @@ gstd::value StgControlScript::Func_SaveSnapShotA3(gstd::script_machine* machine,
 		imgFormat = D3DXIFF_PPM;
 
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-	/*
-	shared_ptr<Texture> texture = textureManager->GetTexture(TextureManager::TARGET_TRANSITION);
-
-	graphics->SetRenderTarget(texture, false);
-	graphics->BeginScene(false, true);
-	systemController->RenderScriptObject(0, 100);
-	graphics->EndScene(false);
-	graphics->SetRenderTarget(nullptr, false);
-	*/
 
 	//Create the directory (if it doesn't exist)
 	std::wstring dir = PathProperty::GetFileDirectory(path);

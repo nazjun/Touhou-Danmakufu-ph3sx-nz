@@ -746,6 +746,7 @@ static const std::vector<constant> stgStageConstant = {
 	//AddPattern constants
 	constant("TOPLAYER_CHANGE", StgMovePattern::TOPLAYER_CHANGE),
 	constant("NO_CHANGE", StgMovePattern::NO_CHANGE),
+	constant("UNCAPPED_MAX", StgMovePattern::UNCAPPED),
 };
 
 StgStageScript::StgStageScript(StgStageController* stageController) : StgControlScript(stageController->GetSystemController()) {
@@ -2147,10 +2148,10 @@ gstd::value StgStageScript::Func_GetShotDataInfoA1(gstd::script_machine* machine
 		case INFO_EXISTS:
 			return script->CreateBooleanValue(true);
 		case INFO_PATH:
-			return script->CreateStringValue(shotData->GetTexture()->GetName());
+			return script->CreateStringValue(shotData->GetFrame(0)->GetVertexBufferContainer()->GetTexture()->GetName());
 		case INFO_RECT:
 		{
-			DxRect<LONG>* rect = shotData->GetData(0)->GetSource();
+			DxRect<LONG>* rect = shotData->GetFrame(0)->GetSourceRect();
 			return script->CreateIntArrayValue(reinterpret_cast<LONG*>(rect), 4U);
 		}
 		case INFO_DELAY_COLOR:
@@ -2341,7 +2342,7 @@ gstd::value StgStageScript::Func_CreateItemScore(gstd::script_machine* machine, 
 	double posX = argv[1].as_float();
 	double posY = argv[2].as_float();
 
-	ref_unsync_ptr<StgItemObject_Score> obj = new StgItemObject_Score(stageController);
+	ref_unsync_ptr<StgItemObject_ScoreText> obj = new StgItemObject_ScoreText(stageController);
 	int id = script->AddObject(obj);
 	if (id != ID_INVALID) {
 		itemManager->AddItem(obj);

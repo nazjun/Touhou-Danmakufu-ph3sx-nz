@@ -30,8 +30,9 @@ protected:
 
 	bool bEnableMovement_;
 
-	int framePattern_;
-	std::map<int, std::list<ref_unsync_ptr<StgMovePattern>>> mapPattern_;
+	uint32_t framePattern_;
+	std::map<uint32_t, std::list<ref_unsync_ptr<StgMovePattern>>> mapPattern_;
+
 	virtual void _Move();
 	void _AttachReservedPattern(ref_unsync_ptr<StgMovePattern> pattern);
 public:
@@ -58,7 +59,7 @@ public:
 	void SetPattern(ref_unsync_ptr<StgMovePattern> pattern) {
 		pattern_ = pattern;
 	}
-	void AddPattern(int frameDelay, ref_unsync_ptr<StgMovePattern> pattern, bool bForceMap = false);
+	void AddPattern(uint32_t frameDelay, ref_unsync_ptr<StgMovePattern> pattern, bool bForceMap = false);
 };
 
 //*******************************************************************
@@ -78,13 +79,14 @@ public:
 
 		NO_CHANGE = -0x1000000,
 		TOPLAYER_CHANGE = 0x1000000,
+		UNCAPPED = TOPLAYER_CHANGE,
 		SET_ZERO = -1,
 	};
 protected:
 	int typeMove_;
 	StgMoveObject* target_;
 
-	int frameWork_;
+	uint32_t frameWork_;
 	int idShotData_;
 
 	double c_;
@@ -201,7 +203,7 @@ public:
 	virtual void Move();
 
 	virtual inline double GetSpeed() { return hypot(c_, s_); }
-	virtual inline double GetDirectionAngle() { return (c_ != 0 && s_ != 0) ? atan2(s_, c_) : 0; }
+	virtual inline double GetDirectionAngle() { return (c_ != 0 || s_ != 0) ? atan2(s_, c_) : 0; }
 
 	virtual double GetSpeedX() { return c_; }
 	virtual double GetSpeedY() { return s_; }
@@ -246,7 +248,6 @@ protected:
 	double angOffVelocity_;
 	double angOffAcceleration_;
 	double angOffMaxVelocity_;
-
 public:
 	StgMovePattern_XY_Angle(StgMoveObject* target);
 
@@ -254,7 +255,9 @@ public:
 	virtual void Move();
 
 	virtual inline double GetSpeed() { return hypot(c_, s_); }
-	virtual inline double GetDirectionAngle() { return atan2(s_, c_) + angOff_; }
+	virtual inline double GetDirectionAngle() {
+		return ((c_ != 0 || s_ != 0) ? atan2(s_, c_) : 0) + angOff_;
+	}
 
 	virtual double GetSpeedX() { return c_ * cos(angOff_) - s_ * sin(angOff_); }
 	virtual double GetSpeedY() { return c_ * sin(angOff_) + s_ * cos(angOff_); }
@@ -303,13 +306,12 @@ protected:
 	};
 
 	int typeLine_;
-	int maxFrame_;
+	uint32_t maxFrame_;
 	double speed_;
 	double angDirection_;
 	
 	double iniPos_[2];
 	double targetPos_[2];
-
 public:
 	StgMovePattern_Line(StgMoveObject* target);
 
@@ -343,7 +345,7 @@ public:
 
 	virtual void Move();
 
-	void SetAtFrame(double tx, double ty, int frame, lerp_func lerpFunc, lerp_diff_func diffFunc);
+	void SetAtFrame(double tx, double ty, uint32_t frame, lerp_func lerpFunc, lerp_diff_func diffFunc);
 };
 class StgMovePattern_Line_Weight : public StgMovePattern_Line {
 	friend class StgMoveObject;

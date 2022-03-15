@@ -414,7 +414,7 @@ bool ErrorDialog::ShowModal(std::wstring msg) {
 DnhConfiguration::DnhConfiguration() {
 	modeScreen_ = ScreenMode::SCREENMODE_WINDOW;
 	modeColor_ = ColorMode::COLOR_MODE_32BIT;
-	fpsType_ = FPS_AUTO;
+	fpsType_ = FPS_VARIABLE;
 	fastModeSpeed_ = 50;
 
 	sizeWindow_ = 0;
@@ -472,10 +472,10 @@ bool DnhConfiguration::_LoadDefinitionFile() {
 		pathPackageScript_ = PathProperty::ReplaceYenToSlash(pathPackageScript_);
 	}
 
-	constexpr const LONG MIN_WD = 320;
-	constexpr const LONG MIN_HT = 240;
-	constexpr const LONG MAX_WD = 1920;
-	constexpr const LONG MAX_HT = 1200;
+	constexpr const LONG MIN_WD = 64;
+	constexpr const LONG MIN_HT = 64;
+	constexpr const LONG MAX_WD = 3840;
+	constexpr const LONG MAX_HT = 2160;
 
 	windowTitle_ = prop.GetString(L"window.title", L"");
 
