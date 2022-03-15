@@ -414,7 +414,7 @@ bool ErrorDialog::ShowModal(std::wstring msg) {
 DnhConfiguration::DnhConfiguration() {
 	modeScreen_ = ScreenMode::SCREENMODE_WINDOW;
 	modeColor_ = ColorMode::COLOR_MODE_32BIT;
-	fpsType_ = FPS_VARIABLE;
+	fpsType_ = FPS_NORMAL;
 	fastModeSpeed_ = 50;
 
 	sizeWindow_ = 0;
