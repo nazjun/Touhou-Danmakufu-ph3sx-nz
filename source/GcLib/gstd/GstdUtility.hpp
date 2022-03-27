@@ -25,6 +25,13 @@ namespace gstd {
 	class SystemUtility {
 	public:
 		static void TestCpuSupportSIMD();
+
+		static stdch::steady_clock::time_point GetCpuTime() {
+			return stdch::steady_clock::now();
+		}
+		static inline uint64_t GetCpuTime2() {
+			return GetCpuTime().time_since_epoch().count();
+		}
 	};
 
 	//================================================================
@@ -326,6 +333,14 @@ namespace gstd {
 
 		static inline const double Round(double val) { return std::round(val); }
 		static inline const int Trunc(double val) { return (int)(val + 0.01); }
+
+		template<typename T>
+		static inline T GetNextPow2(T x) {
+			T res = (T)1;
+			while (res < x)
+				res = res << 1;
+			return res;
+		}
 
 		class Lerp {
 		public:

@@ -3,6 +3,8 @@
 #include "DnhGcLibImpl.hpp"
 #include "DnhCommon.hpp"
 
+#include "../DnhExecutor/GcLibImpl.hpp"
+
 #if defined(DNH_PROJ_EXECUTOR)
 //*******************************************************************
 //EPathProperty
@@ -52,7 +54,10 @@ std::wstring EPathProperty::GetCommonDataPath(const std::wstring& scriptPath, co
 //ELogger
 //*******************************************************************
 ELogger::ELogger() {
-
+}
+ELogger::~ELogger() {
+	Stop();
+	Join(1000);
 }
 void ELogger::Initialize(bool bFile, bool bWindow) {
 	if (bFile) {
@@ -65,9 +70,52 @@ void ELogger::Initialize(bool bFile, bool bWindow) {
 	WindowLogger::Initialize(bWindow);
 
 	panelCommonData_.reset(new gstd::ScriptCommonDataInfoPanel());
+
+	Start();
 }
 void ELogger::UpdateCommonDataInfoPanel() {
 	panelCommonData_->Update();
+}
+void ELogger::_Run() {
+	time_ = SystemUtility::GetCpuTime2();
+
+	while (GetStatus() == RUN) {
+		uint64_t currentTime = SystemUtility::GetCpuTime2();
+		uint64_t timeDelta = currentTime - time_;
+
+		for (PanelData& iPanel : listPanel_) {
+			bool bUpdate = false;
+
+			bool bNowVisible = iPanel.panel->IsWindowVisible();
+			if (bNowVisible && !iPanel.bPrevVisible)
+				bUpdate = true;
+
+			iPanel.timer += timeDelta;
+			if (iPanel.timer >= iPanel.updateFreq) {
+				iPanel.timer -= iPanel.updateFreq;
+				bUpdate = true;
+			}
+
+			if (bUpdate) iPanel.panel->PanelUpdate();
+
+			iPanel.bPrevVisible = bNowVisible;
+		}
+
+		time_ = currentTime;
+		::Sleep(1);
+	}
+}
+bool ELogger::EAddPanel(shared_ptr<Panel> panel, const std::wstring& name, DWORD updateFreq) {
+	if (!this->AddPanel(panel, name)) return false;
+
+	PanelData data;
+	data.panel = panel;
+	data.updateFreq = updateFreq;
+	data.timer = 0;
+	data.bPrevVisible = false;
+	listPanel_.push_back(data);
+
+	return true;
 }
 
 //*******************************************************************
@@ -75,23 +123,31 @@ void ELogger::UpdateCommonDataInfoPanel() {
 //*******************************************************************
 EFpsController::EFpsController() {
 	DnhConfiguration* config = DnhConfiguration::GetInstance();
-	int fpsType = config->GetFpsType();
-	if (fpsType == DnhConfiguration::FPS_NORMAL ||
-		fpsType == DnhConfiguration::FPS_1_2 ||
-		fpsType == DnhConfiguration::FPS_1_3) {
+	int fpsType = config->fpsType_;
+	switch (fpsType) {
+	case DnhConfiguration::FPS_NORMAL:
+	case DnhConfiguration::FPS_1_2:
+	case DnhConfiguration::FPS_1_3:
+	{
 		StaticFpsController* controller = new StaticFpsController();
 		if (fpsType == DnhConfiguration::FPS_1_2)
-			controller->SetSkipRate(1);
-		else if (fpsType == DnhConfiguration::FPS_1_3)
 			controller->SetSkipRate(2);
+		else if (fpsType == DnhConfiguration::FPS_1_3)
+			controller->SetSkipRate(3);
+		controller_ = controller;
+		break;
+	}
+	case DnhConfiguration::FPS_VARIABLE:
+	{
+		VariableFpsController* controller = new VariableFpsController();
 		controller_ = controller;
 	}
-	else {
-		AutoSkipFpsController* controller = new AutoSkipFpsController();
-		controller_ = controller;
 	}
 
-	SetFps(STANDARD_FPS);
+	if (controller_ == nullptr)
+		throw gstd::wexception("Invalid refresh rate mode.");
+
+	SetFps(config->fpsStandard_);
 	fastModeKey_ = DIK_LCONTROL;
 }
 #endif
@@ -117,22 +173,50 @@ bool ETextureManager::Initialize() {
 	if (!res)
 		throw gstd::wexception("ETextureManager: Failed to initialize TextureManager.");
 
-	int failedIndex = -1;
-	for (size_t iRender = 0; iRender < MAX_RESERVED_RENDERTARGET; iRender++) {
-		std::wstring name = GetReservedRenderTargetName(iRender);
-		shared_ptr<Texture> texture(new Texture());
-		if (!texture->CreateRenderTarget(name)) {
-			failedIndex = iRender;
-			break;
+	DirectGraphics* graphics = DirectGraphics::GetBase();
+	{
+		size_t rW = Math::GetNextPow2(graphics->GetRenderScreenWidth());
+		size_t rH = Math::GetNextPow2(graphics->GetRenderScreenHeight());
+
+		shared_ptr<TextureData> data;
+		if (!_CreateRenderTarget_Unmanaged(data, L"__PRIMARY_BACKSURFACE__", rW, rH)) {
+			throw gstd::wexception("ETextureManager: Failed to create back surface render target.");
 		}
+
+		graphics->SetDefaultBackBufferRenderTarget(data);
+	}
+	{
+		size_t rW = Math::GetNextPow2(graphics->GetRenderScreenWidth() * 2);
+		size_t rH = Math::GetNextPow2(graphics->GetRenderScreenHeight() * 2);
+
+		std::wstring name = L"__SECONDARY_BACKSURFACE__";
+
+		shared_ptr<Texture> texture(new Texture());
+		if (!texture->CreateRenderTarget(name, rW, rH)) {
+			throw gstd::wexception("ETextureManager: Failed to create secondary backbuffer.");
+		}
+
 		Add(name, texture);
+		EApplication::GetInstance()->SetSecondaryBackBuffer(texture);
+	}
+	{
+		int failedIndex = -1;
+		for (size_t iRender = 0; iRender < MAX_RESERVED_RENDERTARGET; iRender++) {
+			std::wstring name = GetReservedRenderTargetName(iRender);
+			shared_ptr<Texture> texture(new Texture());
+			if (!texture->CreateRenderTarget(name)) {
+				failedIndex = iRender;
+				break;
+			}
+			Add(name, texture);
+		}
+		if (failedIndex >= 0) {
+			std::string err = StringUtility::Format("ETextureManager: Failed to create reserved render target %d.", failedIndex);
+			throw gstd::wexception(err);
+			res = false;
+		}
 	}
 
-	if (failedIndex >= 0) {
-		std::string err = StringUtility::Format("ETextureManager: Failed to create reserved render target %d.", failedIndex);
-		throw gstd::wexception(err);
-		res = false;
-	}
 	return res;
 }
 std::wstring ETextureManager::GetReservedRenderTargetName(int index) {

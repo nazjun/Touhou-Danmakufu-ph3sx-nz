@@ -11,8 +11,8 @@ EApplication::EApplication() {
 	ptrGraphics = nullptr;
 }
 EApplication::~EApplication() {
-
 }
+
 bool EApplication::_Initialize() {
 	ELogger* logger = ELogger::GetInstance();
 	Logger::WriteTop("Initializing application.");
@@ -23,11 +23,11 @@ bool EApplication::_Initialize() {
 	fileManager->Initialize();
 
 	EFpsController* fpsController = EFpsController::CreateInstance();
-	fpsController->SetFastModeRate((size_t)config->GetSkipModeSpeedRate() * 60U);
+	fpsController->SetFastModeRate((size_t)config->fastModeSpeed_ * 60U);
 	
 	std::wstring appName = L"";
 
-	const std::wstring& configWindowTitle = config->GetWindowTitle();
+	const std::wstring& configWindowTitle = config->windowTitle_;
 	if (configWindowTitle.size() > 0) {
 		appName = configWindowTitle;
 	}
@@ -38,7 +38,7 @@ bool EApplication::_Initialize() {
 	appName = L"[ph3sx_DEBUG]" + appName;
 #endif
 
-	if (!config->IsMouseVisible())
+	if (!config->bMouseVisible_)
 		WindowUtility::SetMouseVisible(false);
 
 	EDirectGraphics* graphics = EDirectGraphics::CreateInstance();
@@ -71,34 +71,41 @@ bool EApplication::_Initialize() {
 	ETaskManager* taskManager = ETaskManager::CreateInstance();
 	taskManager->Initialize();
 
-	shared_ptr<gstd::TaskInfoPanel> panelTask(new gstd::TaskInfoPanel());
-	bool bAddTaskPanel = logger->AddPanel(panelTask, L"Thread");
-	if (bAddTaskPanel) taskManager->SetInfoPanel(panelTask);
+	{
+		logger->EAddPanel(logger->GetInfoPanel(), L"Info", 500);
 
-	shared_ptr<directx::TextureInfoPanel> panelTexture(new directx::TextureInfoPanel());
-	bool bTexturePanel = logger->AddPanel(panelTexture, L"Texture");
-	if (bTexturePanel) textureManager->SetInfoPanel(panelTexture);
+		shared_ptr<gstd::TaskInfoPanel> panelTask(new gstd::TaskInfoPanel());
+		//Updated in TaskManager
+		if (logger->AddPanel(panelTask, L"Thread"))
+			taskManager->SetInfoPanel(panelTask);
 
-	shared_ptr<directx::ShaderInfoPanel> panelShader(new directx::ShaderInfoPanel());
-	bool bShaderPanel = logger->AddPanel(panelShader, L"Shader");
-	if (bShaderPanel) shaderManager->SetInfoPanel(panelShader);
+		shared_ptr<directx::TextureInfoPanel> panelTexture(new directx::TextureInfoPanel());
+		if (logger->EAddPanel(panelTexture, L"Texture", 500))
+			textureManager->SetInfoPanel(panelTexture);
 
-	shared_ptr<directx::DxMeshInfoPanel> panelMesh(new directx::DxMeshInfoPanel());
-	bool bMeshPanel = logger->AddPanel(panelMesh, L"Mesh");
-	if (bMeshPanel) meshManager->SetInfoPanel(panelMesh);
+		shared_ptr<directx::ShaderInfoPanel> panelShader(new directx::ShaderInfoPanel());
+		if (logger->EAddPanel(panelShader, L"Shader", 1000))
+			shaderManager->SetInfoPanel(panelShader);
 
-	shared_ptr<directx::SoundInfoPanel> panelSound(new directx::SoundInfoPanel());
-	bool bSoundPanel = logger->AddPanel(panelSound, L"Sound");
-	if (bSoundPanel) soundManager->SetInfoPanel(panelSound);
+		shared_ptr<directx::DxMeshInfoPanel> panelMesh(new directx::DxMeshInfoPanel());
+		if (logger->EAddPanel(panelMesh, L"Mesh", 1000))
+			meshManager->SetInfoPanel(panelMesh);
 
-	shared_ptr<gstd::ScriptCommonDataInfoPanel> panelCommonData = logger->GetScriptCommonDataInfoPanel();
-	logger->AddPanel(panelCommonData, L"Common Data");
+		shared_ptr<directx::SoundInfoPanel> panelSound(new directx::SoundInfoPanel());
+		//Updated in DirectSoundManager
+		if (logger->AddPanel(panelSound, L"Sound"))
+			soundManager->SetInfoPanel(panelSound);
 
-	shared_ptr<ScriptInfoPanel> panelScript(new ScriptInfoPanel());
-	logger->AddPanel(panelScript, L"Script");
+		shared_ptr<gstd::ScriptCommonDataInfoPanel> panelCommonData = logger->GetScriptCommonDataInfoPanel();
+		//Updated in StgSystem
+		logger->AddPanel(panelCommonData, L"Common Data");
+
+		shared_ptr<ScriptInfoPanel> panelScript(new ScriptInfoPanel());
+		logger->EAddPanel(panelScript, L"Script", 250);
+	}
 
 	logger->LoadState();
-	logger->SetWindowVisible(config->IsLogWindow());
+	logger->SetWindowVisible(config->bLogWindow_);
 
 	SystemController* systemController = SystemController::CreateInstance();
 	systemController->Reset();
@@ -120,65 +127,84 @@ bool EApplication::_Loop() {
 	HWND hWndLogger = logger->GetWindowHandle();
 
 	bWindowFocused_ = hWndFocused == hWndGraphics || hWndFocused == hWndLogger;
-	if (!config->IsEnableUnfocusedProcessing()) {
+	bool bInputEnable = false;
+	if (!config->bEnableUnfocusedProcessing_) {
 		if (!bWindowFocused_) {
 			//Pause main thread when the window isn't focused
 			::Sleep(10);
 			return true;
 		}
-		input->Update();
+		bInputEnable = true;
 	}
 	else {
-		if (bWindowFocused_)
-			input->Update();
-		else input->ClearKeyState();
-	}
-
-	if (input->GetKeyState(DIK_LCONTROL) == KEY_HOLD &&
-		input->GetKeyState(DIK_LSHIFT) == KEY_HOLD &&
-		input->GetKeyState(DIK_R) == KEY_PUSH) 
-	{
-		SystemController* systemController = SystemController::CreateInstance();
-		systemController->Reset();
+		bInputEnable = bWindowFocused_;
 	}
 
 	{
-		static uint32_t loopCount = 0;
+		static uint32_t count = 0;
 
-		taskManager->CallWorkFunction();
-		taskManager->SetWorkTime(taskManager->GetTimeSpentOnLastFuncCall());
+		auto& [bRenderFrame, bUpdateFrame] = fpsController->Advance();
 
-		if (!fpsController->IsSkip()) {
+		if (bUpdateFrame) {
+			{
+				if (bInputEnable)
+					input->Update();
+				else input->ClearKeyState();
+
+				if (input->GetKeyState(DIK_LCONTROL) == KEY_HOLD &&
+					input->GetKeyState(DIK_LSHIFT) == KEY_HOLD &&
+					input->GetKeyState(DIK_R) == KEY_PUSH)
+				{
+					SystemController* systemController = SystemController::CreateInstance();
+					systemController->Reset();
+				}
+			}
+
+			taskManager->CallWorkFunction();
+			taskManager->SetWorkTime(taskManager->GetTimeSpentOnLastFuncCall());
+
+			if (logger->IsWindowVisible()) {
+				std::wstring fps = StringUtility::Format(L"Logic: %.2ffps, Render: %.2ffps",
+					fpsController->GetCurrentWorkFps(),
+					fpsController->GetCurrentRenderFps());
+				logger->SetInfo(0, L"Fps", fps);
+
+				const POINT& screenSize = graphics->GetConfigData().sizeScreen_;
+				const POINT& screenSizeWindowed = graphics->GetConfigData().sizeScreenDisplay_;
+				//int widthScreen = widthConfig * graphics->GetScreenWidthRatio();
+				//int heightScreen = heightConfig * graphics->GetScreenHeightRatio();
+				std::wstring screenInfo = StringUtility::Format(L"Width: %d/%d, Height: %d/%d",
+					screenSizeWindowed.x, screenSize.x,
+					screenSizeWindowed.y, screenSize.y);
+				logger->SetInfo(1, L"Screen", screenInfo);
+
+				logger->SetInfo(2, L"Font cache",
+					StringUtility::Format(L"%d", EDxTextRenderer::GetInstance()->GetCacheCount()));
+			}
+
+			if (count % 120 == 0) {
+				taskManager->ArrangeTask();
+			}
+			if (count % 10 == 0 && config->fpsType_ == DnhConfiguration::FPS_VARIABLE) {
+				fpsController->SetCriticalFrame();
+			}
+			++count;
+		}
+
+		if (bRenderFrame) {
+			//graphics->SetAllowRenderTargetChange(false);
+			graphics->SetRenderTarget(nullptr);
+			graphics->ResetDeviceState();
+
 			graphics->BeginScene();
 
 			taskManager->CallRenderFunction();
 			taskManager->SetRenderTime(taskManager->GetTimeSpentOnLastFuncCall());
 
-			graphics->EndScene();
+			graphics->EndScene(false);
+
+			_RenderDisplay();
 		}
-
-		if ((++loopCount) % 30 == 0)
-			taskManager->ArrangeTask();
-		fpsController->Wait();
-	}
-
-	if (logger->IsWindowVisible()) {
-		std::wstring fps = StringUtility::Format(L"Work: %.2ffps, Draw: %.2ffps",
-			fpsController->GetCurrentWorkFps(),
-			fpsController->GetCurrentRenderFps());
-		logger->SetInfo(0, L"Fps", fps);
-
-		const POINT& screenSize = graphics->GetConfigData().sizeScreen_;
-		const POINT& screenSizeWindowed = graphics->GetConfigData().sizeScreenDisplay_;
-		//int widthScreen = widthConfig * graphics->GetScreenWidthRatio();
-		//int heightScreen = heightConfig * graphics->GetScreenHeightRatio();
-		std::wstring screenInfo = StringUtility::Format(L"Width: %d/%d, Height: %d/%d",
-			screenSizeWindowed.x, screenSize.x,
-			screenSizeWindowed.y, screenSize.y);
-		logger->SetInfo(1, L"Screen", screenInfo);
-
-		logger->SetInfo(2, L"Font cache",
-			StringUtility::Format(L"%d", EDxTextRenderer::GetInstance()->GetCacheCount()));
 	}
 
 	{
@@ -191,8 +217,155 @@ bool EApplication::_Loop() {
 
 	return true;
 }
+void EApplication::_RenderDisplay() {
+	EDirectGraphics* graphics = EDirectGraphics::GetInstance();
+	IDirect3DDevice9* device = graphics->GetDevice();
+
+	{
+		graphics->SetRenderTargetNull();
+		graphics->ResetDeviceState();
+		graphics->BeginScene();
+
+		{
+			device->SetFVF(VERTEX_TLX::fvf);
+
+			std::array<VERTEX_TLX, 4> verts;
+			auto _Render = [](IDirect3DDevice9* device, VERTEX_TLX* verts, const D3DXMATRIX* mat) {
+				constexpr float bias = -0.5f;
+				for (size_t iVert = 0; iVert < 4; ++iVert) {
+					VERTEX_TLX* vertex = (VERTEX_TLX*)verts + iVert;
+					vertex->diffuse_color = 0xffffffff;
+
+					D3DXVECTOR4* vPos = &vertex->position;
+					vPos->x += bias;
+					vPos->y += bias;
+
+					D3DXVec3TransformCoord((D3DXVECTOR3*)vPos, (D3DXVECTOR3*)vPos, mat);
+				}
+				device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, (void*)verts, sizeof(VERTEX_TLX));
+			};
+
+			{
+				//Render the secondary back buffer first
+
+				float texW = secondaryBackBuffer_->GetWidth();
+				float texH = secondaryBackBuffer_->GetHeight();
+
+				verts[0] = VERTEX_TLX(D3DXVECTOR4(0, 0, 0, 1), 0xffffffff,
+					D3DXVECTOR2(0, 0));
+				verts[1] = VERTEX_TLX(D3DXVECTOR4(texW, 0, 0, 1), 0xffffffff,
+					D3DXVECTOR2(1, 0));
+				verts[2] = VERTEX_TLX(D3DXVECTOR4(0, texH, 0, 1), 0xffffffff,
+					D3DXVECTOR2(0, 1));
+				verts[3] = VERTEX_TLX(D3DXVECTOR4(texW, texH, 0, 1), 0xffffffff,
+					D3DXVECTOR2(1, 1));
+
+				device->SetTexture(0, secondaryBackBuffer_->GetD3DTexture());
+				device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, (void*)verts.data(), sizeof(VERTEX_TLX));
+			}
+			{
+				//Render the main scene
+
+				DisplaySettings* pDispSettings = graphics->GetDisplaySettings();
+
+				VertexBufferManager* vbManager = VertexBufferManager::GetBase();
+				FixedVertexBuffer* vertexBuffer = vbManager->GetVertexBufferTLX();
+
+				UINT vpW = graphics->GetRenderScreenWidth(), vpH = graphics->GetRenderScreenHeight();
+				/*
+				if (graphics->GetScreenMode() == ScreenMode::SCREENMODE_FULLSCREEN) {
+					DxRect<LONG> rcWindow = WindowBase::GetActiveMonitorRect(graphics->GetAttachedWindowHandle());
+					vpW = rcWindow.GetWidth();
+					vpH = rcWindow.GetHeight();
+				}
+				*/
+				//graphics->SetViewPort(0, 0, vpW, vpH);
+
+				shared_ptr<TextureData> mainSceneTexture = graphics->GetDefaultBackBufferRenderTarget();
+				D3DXMATRIX matDisplayTransform = pDispSettings->matDisplay;
+				shared_ptr<Shader> shader = pDispSettings->shader;
+
+				float texW = mainSceneTexture->GetImageInfo()->Width;
+				float texH = mainSceneTexture->GetImageInfo()->Height;
+
+				verts[0] = VERTEX_TLX(D3DXVECTOR4(0, 0, 0, 1), 0xffffffff,
+					D3DXVECTOR2(0, 0));
+				verts[1] = VERTEX_TLX(D3DXVECTOR4(vpW, 0, 0, 1), 0xffffffff,
+					D3DXVECTOR2(vpW / texW, 0));
+				verts[2] = VERTEX_TLX(D3DXVECTOR4(0, vpH, 0, 1), 0xffffffff,
+					D3DXVECTOR2(0, vpH / texH));
+				verts[3] = VERTEX_TLX(D3DXVECTOR4(vpW, vpH, 0, 1), 0xffffffff,
+					D3DXVECTOR2(vpW / texW, vpH / texH));
+				{
+					constexpr float bias = -0.5f;
+					for (size_t iVert = 0; iVert < 4; ++iVert) {
+						D3DXVECTOR4* vPos = &verts[iVert].position;
+						vPos->x += bias;
+						vPos->y += bias;
+					}
+				}
+
+				device->SetTexture(0, mainSceneTexture->GetD3DTexture());
+				if (shader) {
+					BufferLockParameter lockParam = BufferLockParameter(D3DLOCK_DISCARD);
+
+					lockParam.SetSource(verts, 4, sizeof(VERTEX_TLX));
+					vertexBuffer->UpdateBuffer(&lockParam);
+
+					device->SetStreamSource(0, vertexBuffer->GetBuffer(), 0, sizeof(VERTEX_TLX));
+					device->SetVertexDeclaration(
+						ShaderManager::GetBase()->GetRenderLib()->GetVertexDeclarationTLX());
+
+					ID3DXEffect* effect = shader->GetEffect();
+					if (effect) {
+						if (shader->LoadTechnique()) {
+							shader->LoadParameter();
+
+							D3DXHANDLE handle = nullptr;
+							if (handle = effect->GetParameterBySemantic(nullptr, "WORLD"))
+								effect->SetMatrix(handle, &matDisplayTransform);
+							if (handle = effect->GetParameterBySemantic(nullptr, "VIEWPROJECTION"))
+								effect->SetMatrix(handle, &graphics->GetViewPortMatrix());
+							if (handle = effect->GetParameterBySemantic(nullptr, "TEXTURE"))
+								effect->SetTexture(handle, mainSceneTexture->GetD3DTexture());
+						}
+
+						UINT countPass = 1;
+						effect->Begin(&countPass, 0);
+						for (UINT iPass = 0; iPass < countPass; ++iPass) {
+							effect->BeginPass(iPass);
+							device->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
+							effect->EndPass();
+						}
+						effect->End();
+					}
+				}
+				else {
+					for (size_t iVert = 0; iVert < 4; ++iVert) {
+						D3DXVECTOR4* vPos = &verts[iVert].position;
+						D3DXVec3TransformCoord((D3DXVECTOR3*)vPos, (D3DXVECTOR3*)vPos, &matDisplayTransform);
+					}
+
+					device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, (void*)verts.data(), sizeof(VERTEX_TLX));
+				}
+			}
+		}
+
+		graphics->EndScene();
+		{
+			graphics->SetRenderTarget(secondaryBackBuffer_);
+			device->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.0f, 0);
+			graphics->SetRenderTarget(nullptr);
+		}
+	}
+}
+
 bool EApplication::_Finalize() {
 	Logger::WriteTop("Finalizing application.");
+
+	secondaryBackBuffer_ = nullptr;
+	//EDirectGraphics::GetBase()->ResetDisplaySettings();
+
 	SystemController::DeleteInstance();
 	ETaskManager::DeleteInstance();
 	EFileManager::GetInstance()->EndLoadThread();
@@ -224,15 +397,15 @@ bool EDirectGraphics::Initialize(const std::wstring& windowTitle) {
 	defaultWindowTitle_ = windowTitle;
 
 	DnhConfiguration* dnhConfig = DnhConfiguration::GetInstance();
-	LONG screenWidth = dnhConfig->GetScreenWidth();		//From th_dnh.def
-	LONG screenHeight = dnhConfig->GetScreenHeight();	//From th_dnh.def
-	ScreenMode screenMode = dnhConfig->GetScreenMode();
+	LONG screenWidth = dnhConfig->screenWidth_;		//From th_dnh.def
+	LONG screenHeight = dnhConfig->screenHeight_;	//From th_dnh.def
+	ScreenMode screenMode = dnhConfig->modeScreen_;
 
 	LONG windowedWidth = screenWidth;
 	LONG windowedHeight = screenHeight;
 	{
-		std::vector<POINT>& windowSizeList = dnhConfig->GetWindowSizeList();
-		size_t windowSizeIndex = dnhConfig->GetWindowSize();
+		std::vector<POINT>& windowSizeList = dnhConfig->windowSizeList_;
+		size_t windowSizeIndex = dnhConfig->windowSizeIndex_;
 		if (windowSizeIndex < windowSizeList.size()) {
 			windowedWidth = windowSizeList[windowSizeIndex].x;
 			windowedHeight = windowSizeList[windowSizeIndex].y;
@@ -243,17 +416,15 @@ bool EDirectGraphics::Initialize(const std::wstring& windowTitle) {
 	dxConfig.sizeScreen_ = { screenWidth, screenHeight };
 	dxConfig.sizeScreenDisplay_ = { windowedWidth, windowedHeight };
 	dxConfig.bShowWindow_ = true;
-	dxConfig.bShowCursor_ = dnhConfig->IsMouseVisible();
-	dxConfig.colorMode_ = dnhConfig->GetColorMode();
-	dxConfig.bVSync_ = dnhConfig->IsEnableVSync();
-	dxConfig.bUseRef_ = dnhConfig->IsEnableRef();
-	dxConfig.typeMultiSample_ = dnhConfig->GetMultiSampleType();
+	dxConfig.bShowCursor_ = dnhConfig->bMouseVisible_;
+	dxConfig.colorMode_ = dnhConfig->modeColor_;
+	dxConfig.bVSync_ = dnhConfig->bVSync_;
+	dxConfig.bUseRef_ = dnhConfig->bUseRef_;
+	dxConfig.typeMultiSample_ = dnhConfig->multiSamples_;
 	dxConfig.bBorderlessFullscreen_ = dnhConfig->bPseudoFullscreen_;
-	dxConfig.bUseDynamicScaling_ = dnhConfig->UseDynamicScaling();
 
 	{
-		RECT rcMonitor;
-		::GetWindowRect(::GetDesktopWindow(), &rcMonitor);
+		RECT rcMonitor = WindowBase::GetPrimaryMonitorRect();
 
 		LONG monitorWd = rcMonitor.right - rcMonitor.left;
 		LONG monitorHt = rcMonitor.bottom - rcMonitor.top;

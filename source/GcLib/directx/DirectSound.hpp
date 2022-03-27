@@ -87,8 +87,8 @@ namespace directx {
 	class DirectSoundManager::SoundManageThread : public gstd::Thread, public gstd::InnerClass<DirectSoundManager> {
 		friend DirectSoundManager;
 	protected:
-		int timeCurrent_;
-		int timePrevious_;
+		uint64_t timeCurrent_;
+		uint64_t timePrevious_;
 	protected:
 		SoundManageThread(DirectSoundManager* manager);
 
@@ -110,8 +110,8 @@ namespace directx {
 		};
 	protected:
 		gstd::WListView wndListView_;
-		int timeLastUpdate_;
-		int timeUpdateInterval_;
+		uint64_t timeLastUpdate_;
+		uint64_t timeUpdateInterval_;
 
 		virtual bool _AddedLogger(HWND hTab);
 	public:
@@ -191,22 +191,6 @@ namespace directx {
 		virtual void Release();
 		virtual bool Load(shared_ptr<gstd::FileReader> reader);
 	};
-	class SoundSourceDataMp3 : public SoundSourceData {
-	public:
-		MPEGLAYER3WAVEFORMAT formatMp3_;
-
-		HACMSTREAM hAcmStream_;
-		ACMSTREAMHEADER acmStreamHeader_;
-
-		QWORD posMp3DataStart_;
-		QWORD posMp3DataEnd_;
-	public:
-		SoundSourceDataMp3();
-		~SoundSourceDataMp3();
-
-		virtual void Release();
-		virtual bool Load(shared_ptr<gstd::FileReader> reader);
-	};
 
 	//*******************************************************************
 	//SoundPlayer
@@ -238,12 +222,6 @@ namespace directx {
 			INFO_LENGTH,
 			INFO_LENGTH_SAMPLE,
 		};
-
-		static void PtrDelete(SoundPlayer* p) {
-			if (p->pDirectSoundBuffer_)
-				p->pDirectSoundBuffer_->Stop();
-			delete p;
-		}
 	protected:
 		DirectSoundManager* manager_;
 		gstd::CriticalSection lock_;
@@ -270,6 +248,9 @@ namespace directx {
 
 		virtual bool _CreateBuffer(shared_ptr<SoundSourceData> source) = 0;
 		static LONG _GetVolumeAsDirectSoundDecibel(float rate);
+
+		void _LoadSamples(byte* pWaveData, size_t pSize, double* pRes);
+		void _DoFFT(const std::vector<double>& bufIn, std::vector<double>& bufOut, double multiplier, bool bAutoLog);
 	public:
 		SoundPlayer();
 		virtual ~SoundPlayer();
@@ -311,6 +292,8 @@ namespace directx {
 		virtual DWORD GetCurrentPosition();
 
 		void SetFrequency(DWORD freq);
+
+		virtual bool GetSamplesFFT(DWORD durationMs, size_t resolution, bool bAutoLog, std::vector<double>& res);
 	};
 
 	//*******************************************************************
@@ -322,7 +305,7 @@ namespace directx {
 	protected:
 		HANDLE hEvent_[3];
 		IDirectSoundNotify* pDirectSoundNotify_;
-		StreamingThread* thread_;
+		unique_ptr<StreamingThread> thread_;
 
 		bool bStreaming_;
 		bool bStreamOver_;
@@ -353,6 +336,8 @@ namespace directx {
 
 		virtual DWORD GetCurrentPosition();
 		DWORD* DbgGetStreamCopyPos() { return lastStreamCopyPos_; }
+
+		virtual bool GetSamplesFFT(DWORD durationMs, size_t resolution, bool bAutoLog, std::vector<double>& res);
 	};
 	class SoundStreamingPlayer::StreamingThread : public gstd::Thread, public gstd::InnerClass<SoundStreamingPlayer> {
 	public:
@@ -404,25 +389,6 @@ namespace directx {
 	public:
 		SoundStreamingPlayerOgg();
 		~SoundStreamingPlayerOgg();
-
-		virtual bool Seek(double time);
-		virtual bool Seek(DWORD sample);
-	};
-
-	//*******************************************************************
-	//SoundStreamingPlayerMp3
-	//*******************************************************************
-	class SoundStreamingPlayerMp3 : public SoundStreamingPlayer {
-	protected:
-		double timeCurrent_;
-		gstd::ByteBuffer bufDecode_;	//Temp buffer containing decoded ACM stream data
-	protected:
-		virtual bool _CreateBuffer(shared_ptr<SoundSourceData> source);
-		virtual DWORD _CopyBuffer(LPVOID pMem, DWORD dwSize);
-		DWORD _DecodeAcmStream(char* pBuffer, DWORD size);
-	public:
-		SoundStreamingPlayerMp3();
-		~SoundStreamingPlayerMp3();
 
 		virtual bool Seek(double time);
 		virtual bool Seek(DWORD sample);

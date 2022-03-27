@@ -60,10 +60,10 @@ RenderObject::RenderObject() {
 RenderObject::~RenderObject() {
 }
 size_t RenderObject::_GetPrimitiveCount() {
-	return _GetPrimitiveCount(GetVertexCount());
+	return _GetPrimitiveCount(typePrimitive_, GetVertexCount());
 }
-size_t RenderObject::_GetPrimitiveCount(size_t count) {
-	switch (typePrimitive_) {
+size_t RenderObject::_GetPrimitiveCount(D3DPRIMITIVETYPE typePrim, size_t count) {
+	switch (typePrim) {
 	case D3DPT_POINTLIST:
 		return count;
 	case D3DPT_LINELIST:
@@ -262,6 +262,7 @@ D3DXMATRIX RenderObject::CreateWorldMatrixSprite3D(const D3DXVECTOR3& position, 
 			D3DXMatrixMultiply(&mat, &mat, matRelative);
 		}
 	}
+
 	return mat;
 }
 
@@ -376,12 +377,17 @@ void RenderObjectTLX::Render(const D3DXVECTOR2& angX, const D3DXVECTOR2& angY, c
 }
 void RenderObjectTLX::Render(const D3DXMATRIX& matTransform) {
 	DirectGraphics* graphics = DirectGraphics::GetBase();
+	IDirect3DDevice9* device = graphics->GetDevice();
 	ref_count_ptr<DxCamera2D> camera = graphics->GetCamera2D();
 	ref_count_ptr<DxCamera> camera3D = graphics->GetCamera();
 
-	IDirect3DDevice9* device = graphics->GetDevice();
-	device->SetTexture(0, texture_ ? texture_->GetD3DTexture() : nullptr);
+	if (graphics->IsAllowRenderTargetChange()) {
+		if (auto pRT = renderTarget_.lock())
+			graphics->SetRenderTarget(pRT);
+		else graphics->SetRenderTarget(nullptr);
+	}
 
+	device->SetTexture(0, texture_ ? texture_->GetD3DTexture() : nullptr);
 	device->SetFVF(VERTEX_TLX::fvf);
 
 	{
@@ -577,10 +583,16 @@ void RenderObjectLX::Render(const D3DXMATRIX& matTransform) {
 	DirectGraphics* graphics = DirectGraphics::GetBase();
 	IDirect3DDevice9* device = graphics->GetDevice();
 
+	if (graphics->IsAllowRenderTargetChange()) {
+		if (auto pRT = renderTarget_.lock())
+			graphics->SetRenderTarget(pRT);
+		else graphics->SetRenderTarget(nullptr);
+	}
+
 	device->SetTexture(0, texture_ ? texture_->GetD3DTexture() : nullptr);
+	device->SetFVF(VERTEX_LX::fvf);
 
 	device->SetTransform(D3DTS_WORLD, &matTransform);
-	device->SetFVF(VERTEX_LX::fvf);
 
 	{
 		bool bUseIndex = vertexIndices_.size() > 0;
@@ -772,8 +784,13 @@ void RenderObjectNX::Render(D3DXMATRIX* matTransform) {
 	DirectGraphics* graphics = DirectGraphics::GetBase();
 	IDirect3DDevice9* device = graphics->GetDevice();
 
-	device->SetTexture(0, texture_ ? texture_->GetD3DTexture() : nullptr);
+	if (graphics->IsAllowRenderTargetChange()) {
+		if (auto pRT = renderTarget_.lock())
+			graphics->SetRenderTarget(pRT);
+		else graphics->SetRenderTarget(nullptr);
+	}
 
+	device->SetTexture(0, texture_ ? texture_->GetD3DTexture() : nullptr);
 	device->SetFVF(VERTEX_NX::fvf);
 
 	{
@@ -1001,6 +1018,12 @@ void SpriteList2D::Render(const D3DXVECTOR2& angX, const D3DXVECTOR2& angY, cons
 	IDirect3DDevice9* device = graphics->GetDevice();
 	ref_count_ptr<DxCamera2D> camera = graphics->GetCamera2D();
 	ref_count_ptr<DxCamera> camera3D = graphics->GetCamera();
+
+	if (graphics->IsAllowRenderTargetChange()) {
+		if (auto pRT = renderTarget_.lock())
+			graphics->SetRenderTarget(pRT);
+		else graphics->SetRenderTarget(nullptr);
+	}
 	
 	device->SetTexture(0, texture_ ? texture_->GetD3DTexture() : nullptr);
 	device->SetFVF(VERTEX_TLX::fvf);
@@ -1425,7 +1448,6 @@ void ParticleRendererBase::SetInstanceAngleSingle(size_t index, float ang) {
 }
 
 ParticleRenderer2D::ParticleRenderer2D() {
-	
 }
 void ParticleRenderer2D::Render() {
 	DirectGraphics* graphics = DirectGraphics::GetBase();
@@ -1440,6 +1462,13 @@ void ParticleRenderer2D::Render() {
 	
 	IDirect3DDevice9* device = graphics->GetDevice();
 	ref_count_ptr<DxCamera2D> camera = graphics->GetCamera2D();
+	ref_count_ptr<DxCamera> camera3D = graphics->GetCamera();
+
+	if (graphics->IsAllowRenderTargetChange()) {
+		if (auto pRT = renderTarget_.lock())
+			graphics->SetRenderTarget(pRT);
+		else graphics->SetRenderTarget(nullptr);
+	}
 
 	bool bCamera = camera->IsEnable() && bPermitCamera_;
 
@@ -1555,9 +1584,14 @@ void ParticleRenderer3D::Render() {
 	if (countIndex == 0U) return;
 
 	IDirect3DDevice9* device = graphics->GetDevice();
-
 	ref_count_ptr<DxCamera> camera = graphics->GetCamera();
 	ref_count_ptr<DxCamera2D> camera2D = graphics->GetCamera2D();
+
+	if (graphics->IsAllowRenderTargetChange()) {
+		if (auto pRT = renderTarget_.lock())
+			graphics->SetRenderTarget(pRT);
+		else graphics->SetRenderTarget(nullptr);
+	}
 
 	device->SetTexture(0, texture_ ? texture_->GetD3DTexture() : nullptr);
 
@@ -1910,11 +1944,8 @@ void DxMeshManager::CallFromLoadThread(shared_ptr<FileManager::LoadThreadEvent> 
 
 //DxMeshInfoPanel
 DxMeshInfoPanel::DxMeshInfoPanel() {
-	timeUpdateInterval_ = 500;
 }
 DxMeshInfoPanel::~DxMeshInfoPanel() {
-	Stop();
-	Join(1000);
 }
 bool DxMeshInfoPanel::_AddedLogger(HWND hTab) {
 	Create(hTab);
@@ -1932,7 +1963,7 @@ bool DxMeshInfoPanel::_AddedLogger(HWND hTab) {
 	wndListView_.AddColumn(32, ROW_COUNT_REFFRENCE, L"Ref");
 
 	SetWindowVisible(false);
-	Start();
+	PanelInitialize();
 
 	return true;
 }
@@ -1944,16 +1975,12 @@ void DxMeshInfoPanel::LocateParts() {
 
 	wndListView_.SetBounds(wx, wy, wWidth, wHeight);
 }
-void DxMeshInfoPanel::_Run() {
-	while (GetStatus() == RUN) {
-		DxMeshManager* manager = DxMeshManager::GetBase();
-		if (manager)
-			Update(manager);
-		Sleep(timeUpdateInterval_);
-	}
-}
-void DxMeshInfoPanel::Update(DxMeshManager* manager) {
+void DxMeshInfoPanel::PanelUpdate() {
+	DxMeshManager* manager = DxMeshManager::GetBase();
+	if (manager == nullptr) return;
+
 	if (!IsWindowVisible()) return;
+
 	std::set<std::wstring> setKey;
 	std::map<std::wstring, shared_ptr<DxMeshData>>& mapData = manager->mapMeshData_;
 	std::map<std::wstring, shared_ptr<DxMeshData>>::iterator itrMap;

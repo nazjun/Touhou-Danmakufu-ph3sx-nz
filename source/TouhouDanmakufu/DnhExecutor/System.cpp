@@ -14,7 +14,7 @@ SystemController::SystemController() {
 	infoSystem_ = new SystemInformation();
 
 	DnhConfiguration* config = DnhConfiguration::GetInstance();
-	if (config && config->GetPackageScriptPath().size() == 0) {
+	if (config && config->pathPackageScript_.size() == 0) {
 		//常駐タスク登録
 		ETaskManager* taskManager = ETaskManager::GetInstance();
 		shared_ptr<SystemResidentTask> task(new SystemResidentTask());
@@ -34,7 +34,7 @@ void SystemController::Reset() {
 	fileManager->AddArchiveFile(PathProperty::GetModuleDirectory() + L"tna.dat", 0);
 
 	DnhConfiguration* config = DnhConfiguration::CreateInstance();
-	std::wstring pathPackageScript = config->GetPackageScriptPath();
+	const std::wstring& pathPackageScript = config->pathPackageScript_;
 	if (pathPackageScript.size() == 0) {
 		infoSystem_->UpdateFreePlayerScriptInformationList();
 		sceneManager_->TransTitleScene();
@@ -109,7 +109,8 @@ void SceneManager::TransScriptSelectScene(int type) {
 		type == ScriptSelectScene::TYPE_STAGE ||
 		type == ScriptSelectScene::TYPE_PACKAGE ||
 		type == ScriptSelectScene::TYPE_DIR ||
-		type == ScriptSelectScene::TYPE_ALL) {
+		type == ScriptSelectScene::TYPE_ALL)
+	{
 		std::wstring dir = EPathProperty::GetStgScriptRootDirectory();
 		SystemInformation* systemInfo = SystemController::GetInstance()->GetSystemInformation();
 		if (type == ScriptSelectScene::TYPE_DIR) {
@@ -202,8 +203,8 @@ void SceneManager::TransStgScene(ref_count_ptr<ScriptInformation> infoMain, ref_
 		//自機を検索
 		ref_count_ptr<ScriptInformation> infoPlayer;
 		std::vector<ref_count_ptr<ScriptInformation>> listPlayer;
-		std::vector<std::wstring>& listPlayerPath = infoMain->GetPlayerList();
-		if (listPlayerPath.size() == 0) {
+		
+		if (infoMain->listPlayer_.size() == 0) {
 			listPlayer =
 				SystemController::GetInstance()->GetSystemInformation()->GetFreePlayerScriptInformationList();
 		}
@@ -212,9 +213,9 @@ void SceneManager::TransStgScene(ref_count_ptr<ScriptInformation> infoMain, ref_
 		}
 
 		for (ref_count_ptr<ScriptInformation> tInfo : listPlayer) {
-			if (tInfo->GetID() != replayPlayerID) continue;
+			if (tInfo->id_ != replayPlayerID) continue;
 
-			std::wstring tPlayerScriptFileName = PathProperty::GetFileName(tInfo->GetScriptPath());
+			std::wstring tPlayerScriptFileName = PathProperty::GetFileName(tInfo->pathScript_);
 			if (tPlayerScriptFileName != replayPlayerScriptFileName) continue;
 
 			infoPlayer = tInfo;
@@ -311,12 +312,15 @@ void TransitionManager::_CreateCurrentSceneTexture() {
 	TextureManager* textureManager = ETextureManager::GetInstance();
 	shared_ptr<Texture> texture = textureManager->GetTexture(TextureManager::TARGET_TRANSITION);
 
-	graphics->SetRenderTarget(texture, false);
+	graphics->SetRenderTarget(texture);
+	graphics->ResetDeviceState();
+
 	//graphics->ClearRenderTarget();
 	graphics->BeginScene(false, true);
 	taskManager->CallRenderFunction();
 	graphics->EndScene(false);
-	graphics->SetRenderTarget(nullptr, false);
+
+	graphics->SetRenderTarget(nullptr);
 }
 void TransitionManager::_AddTask(ref_count_ptr<TransitionEffect> effect) {
 	WorkRenderTaskManager* taskManager = ETaskManager::GetInstance();
@@ -371,7 +375,7 @@ SystemInformation::~SystemInformation() {
 void SystemInformation::_SearchFreePlayerScript(const std::wstring& dir) {
 	listFreePlayer_ = ScriptInformation::FindPlayerScriptInformationList(dir);
 	for (ref_count_ptr<ScriptInformation> info : listFreePlayer_) {
-		const std::wstring& path = info->GetScriptPath();
+		const std::wstring& path = info->pathScript_;
 		std::wstring log = StringUtility::Format(L"Found free player script: [%s]", 
 			PathProperty::ReduceModuleDirectory(path).c_str());
 		ELogger::WriteTop(log);
@@ -418,7 +422,7 @@ void SystemResidentTask::RenderFps() {
 	graphics->SetFogEnable(false);
 
 	EFpsController* fpsController = EFpsController::GetInstance();
-	float fps = fpsController->GetCurrentWorkFps();
+	float fps = fpsController->GetCurrentRenderFps();
 	textFps_.SetText(StringUtility::Format(L"%.2ffps", fps));
 	textFps_.Render();
 }
