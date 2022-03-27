@@ -161,7 +161,7 @@ bool WindowLogger::Initialize(bool bEnable) {
 
 	//InfoPanel
 	wndInfoPanel_.reset(new InfoPanel());
-	this->AddPanel(wndInfoPanel_, L"Info");
+	//this->AddPanel(wndInfoPanel_, L"Info");
 
 	windowState_ = bEnable ? STATE_RUNNING : STATE_CLOSED;
 
@@ -489,13 +489,8 @@ WindowLogger::InfoPanel::InfoPanel() {
 	hCounter_ = INVALID_HANDLE_VALUE;
 
 	_InitializeHandle();
-
-	Start();
 }
 WindowLogger::InfoPanel::~InfoPanel() {
-	Stop();
-	Join(500);
-
 	if (hQuery_ != INVALID_HANDLE_VALUE)
 		PdhCloseQuery(&hQuery_);
 	//if (hProcess_ != INVALID_HANDLE_VALUE)
@@ -526,19 +521,15 @@ void WindowLogger::InfoPanel::SetInfo(int row, const std::wstring& textInfo, con
 	wndListView_.SetText(row, ROW_INFO, textInfo);
 	wndListView_.SetText(row, ROW_DATA, textData);
 }
-void WindowLogger::InfoPanel::_Run() {
-	while (this->GetStatus() == RUN) {
-		_SetRamInfo();
+void WindowLogger::InfoPanel::PanelUpdate() {
+	_SetRamInfo();
 
 #if defined(DNH_PROJ_EXECUTOR)
-		if (WindowLogger* wLogger = WindowLogger::GetParent()) {
-			if (wLogger->GetState() == WindowLogger::STATE_RUNNING)
-				wLogger->FlushFileLogger();
-		}
-#endif
-
-		::Sleep(1000);
+	if (WindowLogger* wLogger = WindowLogger::GetParent()) {
+		if (wLogger->GetState() == WindowLogger::STATE_RUNNING)
+			wLogger->FlushFileLogger();
 	}
+#endif
 }
 
 void WindowLogger::InfoPanel::_SetRamInfo() {
@@ -580,6 +571,8 @@ double WindowLogger::InfoPanel::_GetCpuPerformance() {
 
 	return fmtValue.doubleValue;
 }
+
+#if 0
 WindowLogger::InfoPanel::CpuInfo WindowLogger::InfoPanel::_GetCpuInformation() {
 	int cpuid_supported;
 	char VenderID[13];
@@ -774,5 +767,6 @@ WindowLogger::InfoPanel::CpuInfo WindowLogger::InfoPanel::_GetCpuInformation() {
 	}
 	return ci;
 }
+#endif
 
 #endif

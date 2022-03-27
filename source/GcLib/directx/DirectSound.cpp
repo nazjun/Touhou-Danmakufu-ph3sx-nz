@@ -2,6 +2,8 @@
 
 #include "DirectSound.hpp"
 
+#include <kissfft/kissfft.hh>
+
 using namespace gstd;
 using namespace directx;
 
@@ -163,9 +165,6 @@ shared_ptr<SoundSourceData> DirectSoundManager::_CreateSoundSource(std::wstring 
 		else if (!memcmp(header.GetPointer(), "OggS", 4)) {	//Ogg Vorbis
 			format = SoundFileFormat::Ogg;
 		}
-		else {		//Death sentence
-			format = SoundFileFormat::Mp3;
-		}
 
 		bool bSuccess = false;
 
@@ -177,10 +176,6 @@ shared_ptr<SoundSourceData> DirectSoundManager::_CreateSoundSource(std::wstring 
 			break;
 		case SoundFileFormat::Ogg:
 			res.reset(new SoundSourceDataOgg());
-			bSuccess = res->Load(reader);
-			break;
-		case SoundFileFormat::Mp3:
-			res.reset(new SoundSourceDataMp3());
 			bSuccess = res->Load(reader);
 			break;
 		}
@@ -227,18 +222,15 @@ shared_ptr<SoundPlayer> DirectSoundManager::CreatePlayer(shared_ptr<SoundSourceD
 			if (source->audioSizeTotal_ < 1024 * 1024) {
 				//The audio is small enough (<1MB), just load the entire thing into memory
 				//Max: ~23.78sec at 44100hz
-				res = std::shared_ptr<SoundPlayerWave>(new SoundPlayerWave(), SoundPlayer::PtrDelete);
+				res = std::shared_ptr<SoundPlayerWave>(new SoundPlayerWave());
 			}
 			else {
-				//File too bigg uwu owo, pleasm be gentwe and take it easwy owo *blushes*
-				res = std::shared_ptr<SoundStreamingPlayerWave>(new SoundStreamingPlayerWave(), SoundPlayer::PtrDelete);
+				//File too bigg uwu owo, pweasm be gentwe and take it in swowwy owo *blushes*
+				res = std::shared_ptr<SoundStreamingPlayerWave>(new SoundStreamingPlayerWave());
 			}
 			break;
 		case SoundFileFormat::Ogg:
-			res = std::shared_ptr<SoundStreamingPlayerOgg>(new SoundStreamingPlayerOgg(), SoundPlayer::PtrDelete);
-			break;
-		case SoundFileFormat::Mp3:
-			res = std::shared_ptr<SoundStreamingPlayerMp3>(new SoundStreamingPlayerMp3(), SoundPlayer::PtrDelete);
+			res = std::shared_ptr<SoundStreamingPlayerOgg>(new SoundStreamingPlayerOgg());
 			break;
 		}
 
@@ -332,7 +324,7 @@ DirectSoundManager::SoundManageThread::SoundManageThread(DirectSoundManager* man
 void DirectSoundManager::SoundManageThread::_Run() {
 	DirectSoundManager* manager = _GetOuter();
 	while (this->GetStatus() == RUN) {
-		timeCurrent_ = ::timeGetTime();
+		timeCurrent_ = SystemUtility::GetCpuTime2();
 
 		{
 			Lock lock(manager->GetLock());
@@ -396,7 +388,7 @@ void DirectSoundManager::SoundManageThread::_Arrange() {
 }
 void DirectSoundManager::SoundManageThread::_Fade() {
 	DirectSoundManager* manager = _GetOuter();
-	int timeGap = timeCurrent_ - timePrevious_;
+	uint64_t timeGap = timeCurrent_ - timePrevious_;
 
 	auto* listPlayer = &manager->listManagedPlayer_;
 	for (auto itrPlayer = listPlayer->begin(); itrPlayer != listPlayer->end(); ++itrPlayer) {
@@ -407,7 +399,7 @@ void DirectSoundManager::SoundManageThread::_Fade() {
 		if (rateFade == 0) continue;
 
 		double rateVolume = player->GetVolumeRate();
-		rateFade *= (double)timeGap / (double)1000.0;
+		rateFade *= timeGap / 1000.0;
 		rateVolume += rateFade;
 		player->SetVolumeRate(rateVolume);
 
@@ -457,8 +449,8 @@ void SoundInfoPanel::Update(DirectSoundManager* soundManager) {
 	if (!IsWindowVisible()) return;
 
 	{
-		int time = timeGetTime();
-		if (abs(time - timeLastUpdate_) < timeUpdateInterval_) return;
+		uint64_t time = SystemUtility::GetCpuTime2();
+		if ((time - timeLastUpdate_) < timeUpdateInterval_) return;
 		timeLastUpdate_ = time;
 	}
 
@@ -733,200 +725,6 @@ long SoundSourceDataOgg::_TellOgg(void* source) {
 	return parent->reader_->GetFilePointer();
 }
 
-SoundSourceDataMp3::SoundSourceDataMp3() {
-	hAcmStream_ = nullptr;
-
-	ZeroMemory(&formatMp3_, sizeof(MPEGLAYER3WAVEFORMAT));
-	ZeroMemory(&acmStreamHeader_, sizeof(ACMSTREAMHEADER));
-	
-	posMp3DataStart_ = 0;
-	posMp3DataEnd_ = 0;
-}
-SoundSourceDataMp3::~SoundSourceDataMp3() {
-	Release();
-}
-void SoundSourceDataMp3::Release() {
-	SoundSourceData::Release();
-
-	if (hAcmStream_) {
-		acmStreamUnprepareHeader(hAcmStream_, &acmStreamHeader_, 0);
-		acmStreamClose(hAcmStream_, 0);
-
-		ptr_delete_scalar(acmStreamHeader_.pbSrc);
-		ptr_delete_scalar(acmStreamHeader_.pbDst);
-	}
-	hAcmStream_ = nullptr;
-
-	ZeroMemory(&formatMp3_, sizeof(MPEGLAYER3WAVEFORMAT));
-	ZeroMemory(&acmStreamHeader_, sizeof(ACMSTREAMHEADER));
-
-	posMp3DataStart_ = 0;
-	posMp3DataEnd_ = 0;
-}
-bool SoundSourceDataMp3::Load(shared_ptr<gstd::FileReader> reader) {
-	Release();
-
-	reader_ = reader;
-	reader->SetFilePointerBegin();
-
-	try {
-		size_t fileSize = reader->GetFileSize();
-		if (fileSize < 64) return false;
-
-		DWORD offsetDataStart = 0;
-		DWORD dataSize = 0;
-
-		{
-			byte headerFile[10];
-			reader->Read(headerFile, sizeof(headerFile));
-			if (memcmp(headerFile, "ID3", 3) == 0) {
-				auto UInt28ToInt = [](uint32_t src) -> uint32_t {
-					uint32_t res = 0;
-					byte* srcAsUInt8 = reinterpret_cast<byte*>(&src);
-					for (size_t i = 0; i < sizeof(uint32_t); ++i) {
-						res = (res << 7) | (srcAsUInt8[i] & 0b01111111);
-					}
-					return res;
-				};
-
-				uint32_t tagSize = UInt28ToInt(*reinterpret_cast<uint32_t*>(&headerFile[6])) + 0xA;
-
-				//Skip ID3 tags
-				offsetDataStart = tagSize;
-				dataSize = fileSize - tagSize;
-			}
-			else if (fileSize > 128) {
-				offsetDataStart = 0;
-
-				byte tag[3];
-				reader->Seek(fileSize - 128);
-				reader->Read(tag, sizeof(tag));
-
-				if (memcmp(tag, "TAG", 3) == 0)
-					dataSize = fileSize - 128;
-				else
-					dataSize = fileSize;
-			}
-		}
-
-		dataSize -= 4;	//mp3 header
-
-		posMp3DataStart_ = offsetDataStart + 4;
-		posMp3DataEnd_ = posMp3DataStart_ + dataSize;
-
-		reader->Seek(offsetDataStart);
-
-		byte headerData[4];
-		reader->Read(headerData, sizeof(headerData));
-
-		if (!(headerData[0] == 0xFF && (headerData[1] & 0xF0) == 0xF0))
-			return false;
-
-		static const short TABLE_BITRATE[][16] = {
-			// MPEG1, Layer1
-			{ 0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, -1 },
-			// MPEG1, Layer2
-			{ 0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, -1 },
-			// MPEG1, Layer3
-			{ 0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1 },
-			// MPEG2/2.5, Layer1,2
-			{ 0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256, -1 },
-			// MPEG2/2.5, Layer3
-			{ 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, -1 }
-		};
-		static const int TABLE_SAMPLERATE[][4] = {
-			{ 44100, 48000, 32000, -1 },	// MPEG1
-			{ 22050, 24000, 16000, -1 },	// MPEG2
-			{ 11025, 12000, 8000, -1 }		// MPEG2.5
-		};
-
-		byte version = (headerData[1] >> 3) & 0x03;
-		byte layer = (headerData[1] >> 1) & 0x03;
-
-		short bitRate = 0;
-		{
-			size_t indexBitrate = 0;
-			if (version == 3) {
-				indexBitrate = 3 - layer;
-			}
-			else {
-				if (layer == 3) indexBitrate = 3;
-				else indexBitrate = 4;
-			}
-			bitRate = TABLE_BITRATE[indexBitrate][headerData[2] >> 4];
-		}
-
-		size_t sampleRate = 0;
-		{
-			size_t indexSampleRate = 0;
-			switch (version) {
-			case 0: indexSampleRate = 2; break;
-			case 2: indexSampleRate = 1; break;
-			case 3: indexSampleRate = 0; break;
-			default:
-				throw false;
-			}
-			sampleRate = TABLE_SAMPLERATE[indexSampleRate][(headerData[2] >> 2) & 0x03];
-		}
-
-		byte padding = headerData[2] >> 1 & 0x01;
-		byte channel = headerData[3] >> 6;
-
-		DWORD mp3BlockSize = ((144000 * bitRate) / sampleRate) + padding;
-
-		formatMp3_.wfx.wFormatTag = WAVE_FORMAT_MPEGLAYER3;
-		formatMp3_.wfx.nChannels = channel == 3 ? 1 : 2;
-		formatMp3_.wfx.nSamplesPerSec = sampleRate;
-		formatMp3_.wfx.nAvgBytesPerSec = (bitRate * 1000) / 8;
-		formatMp3_.wfx.nBlockAlign = 1;
-		formatMp3_.wfx.wBitsPerSample = 0;
-		formatMp3_.wfx.cbSize = MPEGLAYER3_WFX_EXTRA_BYTES;
-
-		formatMp3_.wID = MPEGLAYER3_ID_MPEG;
-		formatMp3_.fdwFlags = padding ? MPEGLAYER3_FLAG_PADDING_ON : MPEGLAYER3_FLAG_PADDING_OFF;
-		formatMp3_.nBlockSize = (WORD)mp3BlockSize;
-		formatMp3_.nFramesPerBlock = 1;
-		formatMp3_.nCodecDelay = 0;
-
-		formatWave_.wFormatTag = WAVE_FORMAT_PCM;
-		MMRESULT mmResSuggest = acmFormatSuggest(nullptr, &formatMp3_.wfx, &formatWave_,
-			sizeof(WAVEFORMATEX), ACM_FORMATSUGGESTF_WFORMATTAG);
-		if (mmResSuggest != 0)
-			throw false;
-
-		MMRESULT mmResStreamOpen = acmStreamOpen(&hAcmStream_, nullptr, &formatMp3_.wfx,
-			&formatWave_, nullptr, 0, 0, 0);
-		if (mmResStreamOpen != 0)
-			throw false;
-
-		DWORD waveBlockSize = 0;
-		acmStreamSize(hAcmStream_, mp3BlockSize, &waveBlockSize, ACM_STREAMSIZEF_SOURCE);
-
-		DWORD totalSize = 0;
-		acmStreamSize(hAcmStream_, dataSize, &totalSize, ACM_STREAMSIZEF_SOURCE);
-		audioSizeTotal_ = totalSize;
-
-		ZeroMemory(&acmStreamHeader_, sizeof(ACMSTREAMHEADER));
-		acmStreamHeader_.cbStruct = sizeof(ACMSTREAMHEADER);
-		acmStreamHeader_.pbSrc = new BYTE[mp3BlockSize];
-		acmStreamHeader_.cbSrcLength = mp3BlockSize;
-		acmStreamHeader_.pbDst = new BYTE[waveBlockSize];
-		acmStreamHeader_.cbDstLength = waveBlockSize;
-
-		MMRESULT mmResPrepareHeader = acmStreamPrepareHeader(hAcmStream_, &acmStreamHeader_, 0);
-		if (mmResPrepareHeader != 0)
-			return false;
-	}
-	catch (bool) {
-		return false;
-	}
-	catch (gstd::wexception& e) {
-		throw e;
-	}
-
-	return true;
-}
-
 //*******************************************************************
 //SoundPlayer
 //*******************************************************************
@@ -1092,13 +890,152 @@ void SoundPlayer::SetFrequency(DWORD freq) {
 	}
 }
 
+void SoundPlayer::_LoadSamples(byte* pWaveData, size_t nSamples, double* pRes) {
+	DWORD sampleRate = soundSource_->formatWave_.nSamplesPerSec;
+	DWORD bytePerSample = soundSource_->formatWave_.wBitsPerSample / 8U;
+	DWORD nBlockAlign = soundSource_->formatWave_.nBlockAlign;
+	DWORD nChannels = soundSource_->formatWave_.nChannels;
+	DWORD bytePerPCM = bytePerSample / nChannels;
+
+	//I totally didn't copy these from LuaSTG!! what are you even talking about?!
+
+	const DWORD STHRESHOLD = 1U << (nBlockAlign / nChannels * 8 - 1);
+
+	if (nChannels == 1) {
+		for (size_t i = 0; i < nSamples; ++i) {
+			byte* pData = (byte*)pWaveData + (i * nBlockAlign);
+
+			int64_t val = 0;
+			for (size_t j = 0; j < nBlockAlign; ++j) {
+				val += pData[j] << (j * 8);
+			}
+			if (val > STHRESHOLD - 1) {
+				val -= STHRESHOLD * 2;
+			}
+
+			pRes[i] = val / (double)STHRESHOLD;
+		}
+	}
+	else if (nChannels == 2) {
+		for (size_t i = 0; i < nSamples; ++i) {
+			byte* pData = (byte*)pWaveData + (i * nBlockAlign);
+
+			int64_t val = 0;
+			int c = 0;
+			for (size_t j = 0; j < nChannels; ++j) {
+				val ^= pData[j] << (c * 8);
+				++c;
+			}
+			if (val > STHRESHOLD - 1) {
+				val -= STHRESHOLD * 2;
+			}
+
+			pRes[i] = val / (double)STHRESHOLD;
+		}
+	}
+	else {
+		for (size_t i = 0; i < nSamples; ++i) {
+			pRes[i] = 0;
+		}
+	}
+}
+void SoundPlayer::_DoFFT(const std::vector<double>& bufIn, std::vector<double>& bufOut, double multiplier, bool bAutoLog) {
+	size_t cSamples = bufIn.size();
+	size_t nResolution = bufOut.size();
+
+	size_t cSamplesP2 = 0;
+	{
+		size_t nextPow2 = pow(2, ceil(log2(cSamples)));
+		size_t prevPow2 = nextPow2 >> 1;
+
+		//Round to the nearest power of two
+		cSamplesP2 = ((nextPow2 - cSamples) < (cSamples - prevPow2)) ? nextPow2 : prevPow2;
+	}
+	size_t fillSize = std::min(cSamples, cSamplesP2);
+
+	kissfft<double> fft(fillSize, true);
+
+	std::vector<std::complex<double>> ffin(cSamplesP2, std::complex<double>(0, 0));
+	std::vector<std::complex<double>> ffout(cSamplesP2);
+	
+	for (size_t i = 0; i < fillSize; ++i) {
+		//Apply the Hann window function
+		double window = 0.54 * (1 - cos(2 * GM_PI * i / (fillSize - 1)));
+		//window *= multiplier;
+		ffin[i] = std::complex<double>(bufIn[i] * window, 0);
+	}
+
+	fft.transform(ffin.data(), ffout.data());
+
+	double avgPower = ffout[0].real();
+
+	size_t halfSamp = std::min(cSamplesP2, cSamples) / 2;
+	for (size_t i = 1; i < halfSamp; ++i) {
+		double norm = std::norm(ffout[i]);
+		ffout[i - 1] = { log(norm + 1), 0 };
+	}
+
+	size_t len = halfSamp - 1;
+	for (size_t i = 0; i < nResolution; ++i) {
+		double pos = i / (double)nResolution;
+		if (bAutoLog) {
+			//inverse function of [log10(1 + 99 * pos) / 2]
+			constexpr double LOG_F = 1.69460519893;
+			pos = 2 * (pow(10, LOG_F * pos) - 1) / 99;
+		}
+		pos *= len;
+
+		size_t from = floor(pos);
+		size_t to = std::min<size_t>(from + 1, len);
+
+		double val = Math::Lerp::Smooth(ffout[from].real(), ffout[to].real(), pos - from);
+		bufOut[i] = val;
+	}
+}
+bool SoundPlayer::GetSamplesFFT(DWORD durationMs, size_t resolution, bool bAutoLog, std::vector<double>& res) {
+	res.resize(resolution, 0);
+
+	if (durationMs > 0 && pDirectSoundBuffer_ && IsPlaying()) {
+		DWORD sampleRate = soundSource_->formatWave_.nSamplesPerSec;
+		DWORD bytePerSample = soundSource_->formatWave_.wBitsPerSample / 8U;
+		DWORD nChannels = soundSource_->formatWave_.nChannels;
+
+		DWORD samplesNeeded = durationMs * sampleRate / 1000U;
+		samplesNeeded = std::clamp<DWORD>(samplesNeeded, 32, sampleRate / 4);
+
+		DWORD cAudioPos = GetCurrentPosition();
+		DWORD cAudioPosMax = soundSource_->audioSizeTotal_;
+		DWORD sizeLock = std::min(cAudioPosMax - cAudioPos, samplesNeeded * bytePerSample);
+
+		std::vector<double> samples;
+
+		void* pMem;
+		DWORD dwSize;
+		HRESULT hr = pDirectSoundBuffer_->Lock(cAudioPos, sizeLock, &pMem, &dwSize, nullptr, nullptr, 0);
+		if (SUCCEEDED(hr)) {
+			samples.resize(samplesNeeded);
+
+			_LoadSamples((byte*)pMem, samplesNeeded, samples.data());
+
+			pDirectSoundBuffer_->Unlock(pMem, dwSize, nullptr, 0);
+		}
+		else return false;
+		
+		_DoFFT(samples, res, GetVolumeRate() / 100, bAutoLog);
+
+		return true;
+	}
+
+	return false;
+}
+
 //*******************************************************************
 //SoundStreamingPlayer
 //*******************************************************************
 SoundStreamingPlayer::SoundStreamingPlayer() {
 	pDirectSoundNotify_ = nullptr;
 	ZeroMemory(hEvent_, sizeof(HANDLE) * 3);
-	thread_ = new StreamingThread(this);
+	thread_.reset(new StreamingThread(this));
 
 	bStreaming_ = true;
 	bStreamOver_ = false;
@@ -1115,7 +1052,6 @@ SoundStreamingPlayer::~SoundStreamingPlayer() {
 	for (size_t iEvent = 0; iEvent < 3; ++iEvent)
 		::CloseHandle(hEvent_[iEvent]);
 	ptr_release(pDirectSoundNotify_);
-	delete thread_;
 }
 void SoundStreamingPlayer::_CreateSoundEvent(WAVEFORMATEX& formatWave) {
 	sizeCopy_ = formatWave.nAvgBytesPerSec;
@@ -1238,7 +1174,8 @@ bool SoundStreamingPlayer::Stop() {
 		if (pDirectSoundBuffer_)
 			pDirectSoundBuffer_->Stop();
 
-		thread_->Stop();
+		if (!thread_->IsStop())
+			thread_->Stop();
 	}
 	return true;
 }
@@ -1268,6 +1205,50 @@ DWORD SoundStreamingPlayer::GetCurrentPosition() {
 		return p0 + currentReader;
 	else
 		return p1 + currentReader - bufferPositionAtCopy_[0];
+}
+
+bool SoundStreamingPlayer::GetSamplesFFT(DWORD durationMs, size_t resolution, bool bAutoLog, std::vector<double>& res) {
+	res.resize(resolution, 0);
+
+	if (durationMs > 0 && pDirectSoundBuffer_ && IsPlaying()) {
+		DWORD sampleRate = soundSource_->formatWave_.nSamplesPerSec;
+		DWORD bytePerSample = soundSource_->formatWave_.wBitsPerSample / 8U;
+		DWORD nChannels = soundSource_->formatWave_.nChannels;
+
+		DWORD samplesNeeded = durationMs * sampleRate / 1000U;
+		samplesNeeded = std::clamp<DWORD>(samplesNeeded, 32, sampleRate / 4);
+
+		DWORD sizeLock = samplesNeeded * bytePerSample;
+
+		DWORD currentPos = 0;
+		if (pDirectSoundBuffer_) {
+			HRESULT hr = pDirectSoundBuffer_->GetCurrentPosition(&currentPos, nullptr);
+			if (FAILED(hr)) currentPos = 0;
+		}
+
+		std::vector<double> samples;
+
+		void* pMem1, *pMem2;
+		DWORD dwSize1, dwSize2;
+		HRESULT hr = pDirectSoundBuffer_->Lock(currentPos, sizeLock, &pMem1, &dwSize1, &pMem2, &dwSize2, 0);
+		if (SUCCEEDED(hr)) {
+			samples.resize(samplesNeeded);
+
+			DWORD sampSize1 = dwSize1 / bytePerSample;
+			_LoadSamples((byte*)pMem1, sampSize1, samples.data());
+			if (dwSize2 > 0)
+				_LoadSamples((byte*)pMem2, dwSize2 / bytePerSample, samples.data() + sampSize1);
+
+			pDirectSoundBuffer_->Unlock(pMem1, dwSize1, pMem2, dwSize2);
+		}
+		else return false;
+
+		_DoFFT(samples, res, GetVolumeRate() / 100, bAutoLog);
+
+		return true;
+	}
+
+	return false;
 }
 
 //StreamingThread
@@ -1695,218 +1676,6 @@ bool SoundStreamingPlayerOgg::Seek(DWORD sample) {
 		Lock lock(lock_);
 		ov_pcm_seek(source->fileOgg_, sample);
 		lastReadPointer_ = sample;
-	}
-	return true;
-}
-
-//*******************************************************************
-//SoundStreamingPlayerMp3
-//*******************************************************************
-SoundStreamingPlayerMp3::SoundStreamingPlayerMp3() {
-	timeCurrent_ = 0;
-}
-SoundStreamingPlayerMp3::~SoundStreamingPlayerMp3() {
-}
-bool SoundStreamingPlayerMp3::_CreateBuffer(shared_ptr<SoundSourceData> source) {
-	FileManager* fileManager = FileManager::GetBase();
-	DirectSoundManager* soundManager = DirectSoundManager::GetBase();
-
-	{
-		//Lock lock(soundManager->GetLock());
-
-		soundSource_ = source;
-
-		if (auto pSource = std::dynamic_pointer_cast<SoundSourceDataMp3>(source)) {
-			shared_ptr<FileReader> reader = pSource->reader_;
-
-			try {
-				DWORD sizeBuffer = std::min(2 * pSource->formatWave_.nAvgBytesPerSec, (DWORD)pSource->audioSizeTotal_);
-
-				DSBUFFERDESC desc;
-				ZeroMemory(&desc, sizeof(DSBUFFERDESC));
-				desc.dwSize = sizeof(DSBUFFERDESC);
-				desc.dwFlags = DSBCAPS_CTRLVOLUME | DSBCAPS_CTRLPAN | DSBCAPS_CTRLFREQUENCY
-					| DSBCAPS_CTRLPOSITIONNOTIFY | DSBCAPS_GETCURRENTPOSITION2
-					| DSBCAPS_LOCSOFTWARE | DSBCAPS_GLOBALFOCUS;
-				desc.dwBufferBytes = sizeBuffer;
-				desc.lpwfxFormat = &pSource->formatWave_;
-				HRESULT hrBuffer = soundManager->GetDirectSound()->CreateSoundBuffer(&desc,
-					(LPDIRECTSOUNDBUFFER*)&pDirectSoundBuffer_, nullptr);
-				if (FAILED(hrBuffer))
-					throw gstd::wexception("IDirectSound8::CreateSoundBuffer failure");
-
-				sizeCopy_ = pSource->formatWave_.nAvgBytesPerSec;
-				lastReadPointer_ = pSource->posMp3DataStart_;
-
-				bStreaming_ = sizeBuffer != pSource->audioSizeTotal_;
-				if (!bStreaming_) {
-					sizeCopy_ = pSource->audioSizeTotal_;
-					_CopyStream(0);
-				}
-				else {
-					_CreateSoundEvent(pSource->formatWave_);
-				}
-			}
-			catch (bool) {
-				return false;
-			}
-			catch (gstd::wexception& e) {
-				throw e;
-			}
-		}
-		else return false;
-	}
-
-	return true;
-}
-DWORD SoundStreamingPlayerMp3::_CopyBuffer(LPVOID pMem, DWORD dwSize) {
-	SoundSourceDataMp3* source = (SoundSourceDataMp3*)soundSource_.get();
-
-	DWORD samplePerSec = source->formatWave_.nSamplesPerSec;
-	DWORD bytePerSample = source->formatWave_.nBlockAlign;
-	DWORD bytePerSec = source->formatWave_.nAvgBytesPerSec;
-
-	DWORD resStreamPos = timeCurrent_ * bytePerSec;
-
-	auto& reader = source->reader_;
-	HACMSTREAM hAcmStream = source->hAcmStream_;
-	ACMSTREAMHEADER* pAcmHeader = &source->acmStreamHeader_;
-
-	memset(pMem, 0, dwSize);
-	if (reader != nullptr && hAcmStream != nullptr) {
-		double loopStart = playStyle_.timeLoopStart_;
-		double loopEnd = playStyle_.timeLoopEnd_;
-		DWORD byteLoopStart = Math::FloorBase<DWORD>(loopStart * bytePerSec, bytePerSample);
-		DWORD byteLoopEnd = Math::FloorBase<DWORD>(loopEnd * bytePerSec, bytePerSample);
-
-		reader->Seek(lastReadPointer_);
-
-		DWORD sizeWriteTotal = 0;
-		while (sizeWriteTotal < dwSize) {
-			DWORD cSize = dwSize - sizeWriteTotal;
-			double cTime = (double)cSize / (double)bytePerSec;
-
-			if (playStyle_.bLoop_ && (timeCurrent_ + cTime > loopEnd && loopEnd > 0)) {
-				//ループ終端
-				double timeOver = timeCurrent_ + cTime - loopEnd;
-				double cTime1 = cTime - timeOver;
-				DWORD cSize1 = cTime1 * bytePerSec;
-
-				bool bFileEnd = false;
-				DWORD size1Write = 0;
-				while (size1Write < cSize1) {
-					DWORD tSize = cSize1 - size1Write;
-					DWORD sw = _DecodeAcmStream((char*)pMem + sizeWriteTotal + size1Write, tSize);
-					if (sw == 0) {
-						bFileEnd = true;
-						break;
-					}
-					size1Write += sw;
-				}
-
-				if (!bFileEnd) {
-					sizeWriteTotal += size1Write;
-					timeCurrent_ += (double)size1Write / (double)bytePerSec;
-				}
-
-				if (playStyle_.bLoop_) {
-					Seek(loopStart);
-				}
-				else {
-					_SetStreamOver();
-					break;
-				}
-			}
-			else {
-				DWORD sizeWrite = _DecodeAcmStream((char*)pMem + sizeWriteTotal, cSize);
-				sizeWriteTotal += sizeWrite;
-				timeCurrent_ += (double)sizeWrite / (double)bytePerSec;
-
-				if (sizeWrite == 0) {//ファイル終点
-					if (playStyle_.bLoop_) {
-						Seek(loopStart);
-					}
-					else {
-						_SetStreamOver();
-						break;
-					}
-				}
-			}
-		}
-
-		lastReadPointer_ = reader->GetFilePointer();
-	}
-
-	return resStreamPos;
-}
-DWORD SoundStreamingPlayerMp3::_DecodeAcmStream(char* pBuffer, DWORD size) {
-	SoundSourceDataMp3* source = (SoundSourceDataMp3*)soundSource_.get();
-	auto& reader = source->reader_;
-	HACMSTREAM hAcmStream = source->hAcmStream_;
-	ACMSTREAMHEADER* pAcmHeader = &source->acmStreamHeader_;
-
-	DWORD sizeWrite = 0;
-	DWORD bufSize = bufDecode_.GetSize();
-	if (bufSize > 0) {
-		//前回デコード分を書き込み
-		DWORD copySize = std::min(size, bufSize);
-
-		memcpy(pBuffer, bufDecode_.GetPointer(), copySize);
-		sizeWrite += copySize;
-		if (bufSize > copySize) {
-			bufDecode_.SetSize(bufSize - copySize);
-			return sizeWrite;
-		}
-
-		bufDecode_.SetSize(0);
-		pBuffer += sizeWrite;
-	}
-
-	//デコード
-	while (true) {
-		DWORD readSize = reader->Read(pAcmHeader->pbSrc, pAcmHeader->cbSrcLength);
-		if (readSize == 0) return 0;
-		MMRESULT mmRes = acmStreamConvert(hAcmStream, pAcmHeader, ACM_STREAMCONVERTF_BLOCKALIGN);
-		if (mmRes != 0) return 0;
-		if (pAcmHeader->cbDstLengthUsed > 0) break;
-	}
-
-	DWORD sizeDecode = pAcmHeader->cbDstLengthUsed;
-	DWORD copySize = std::min(size, sizeDecode);
-	memcpy(pBuffer, pAcmHeader->pbDst, copySize);
-	if (sizeDecode > copySize) {
-		//今回余った分を、次回用にバッファリング
-		DWORD newSize = sizeDecode - copySize;
-		bufDecode_.SetSize(newSize);
-		memcpy(bufDecode_.GetPointer(), pAcmHeader->pbDst + copySize, newSize);
-	}
-	sizeWrite += copySize;
-
-	return sizeWrite;
-}
-
-bool SoundStreamingPlayerMp3::Seek(double time) {
-	if (soundSource_ == nullptr) return false;
-	return Seek((DWORD)(time * soundSource_->formatWave_.nSamplesPerSec));
-}
-bool SoundStreamingPlayerMp3::Seek(DWORD sample) {
-	if (soundSource_ == nullptr) return false;
-	SoundSourceDataMp3* source = (SoundSourceDataMp3*)soundSource_.get();
-	{
-		Lock lock(lock_);
-
-		DWORD waveBlockSize = source->acmStreamHeader_.cbDstLength;
-		DWORD mp3BlockSize = source->acmStreamHeader_.cbSrcLength;
-		DWORD sampleAsBytes = sample * source->formatWave_.nBlockAlign;
-
-		DWORD seekBlockIndex = sampleAsBytes / waveBlockSize;
-		DWORD posSeekMp3 = mp3BlockSize * seekBlockIndex;
-
-		source->reader_->Seek(source->posMp3DataStart_ + posSeekMp3);
-		lastReadPointer_ = source->reader_->GetFilePointer();
-
-		bufDecode_.SetSize(0);
-		timeCurrent_ = posSeekMp3 / (double)source->formatMp3_.wfx.nAvgBytesPerSec;
 	}
 	return true;
 }

@@ -44,8 +44,8 @@ namespace gstd {
 	constant::constant(const char* name_, int64_t d_int) : name(name_), type(type_data::tk_int) {
 		memcpy(&data, &d_int, sizeof(int64_t));
 	}
-	constant::constant(const char* name_, double d_real) : name(name_), type(type_data::tk_real) {
-		memcpy(&data, &d_real, sizeof(double));
+	constant::constant(const char* name_, double d_float) : name(name_), type(type_data::tk_float) {
+		memcpy(&data, &d_float, sizeof(double));
 	}
 	constant::constant(const char* name_, wchar_t d_char) : name(name_), type(type_data::tk_char) {
 		memcpy(&data, &d_char, sizeof(wchar_t));
@@ -56,8 +56,8 @@ namespace gstd {
 
 	//-------------------------------------------------------------------------------------------
 
-	static inline const bool _is_force_convert_real(type_data* type) {
-		return type->get_kind() & (type_data::tk_real | type_data::tk_array);
+	static inline const bool _is_force_convert_float(type_data* type) {
+		return type->get_kind() & (type_data::tk_float | type_data::tk_array);
 	}
 
 	//-------------------------------------------------------------------------------------------
@@ -78,15 +78,15 @@ namespace gstd {
 		uint8_t type_combine = kind_l | kind_r;
 		if (type_combine & (uint8_t)type_data::tk_array)
 			return kind_l == kind_r ? type_data::tk_array : type_data::tk_null;
-		else if (type_combine & (uint8_t)type_data::tk_real)
-			return type_data::tk_real;
+		else if (type_combine & (uint8_t)type_data::tk_float)
+			return type_data::tk_float;
 		else if (type_combine & (uint8_t)type_data::tk_int)
 			return type_data::tk_int;
 		else if (type_combine & (uint8_t)type_data::tk_char)
 			return type_data::tk_char;
 		else if (type_combine & (uint8_t)type_data::tk_boolean)
 			return type_data::tk_boolean;
-		return type_data::tk_real;
+		return type_data::tk_float;
 	}
 
 	bool BaseFunction::__type_assign_check(type_data* type_src, type_data* type_dst) {
@@ -103,8 +103,8 @@ namespace gstd {
 				if (elem_src == nullptr || elem_dst == nullptr)
 					return true;	//One is a null array (empty array)
 
-				if ((elem_src->get_kind() | elem_dst->get_kind()) == (type_data::tk_int | type_data::tk_real))
-					return true;	//Allow implicit (int[]) <-> (real[]) conversion
+				if ((elem_src->get_kind() | elem_dst->get_kind()) == (type_data::tk_int | type_data::tk_float))
+					return true;	//Allow implicit (int[]) <-> (float[]) conversion
 
 				if (_type_check_two_all(elem_src, elem_dst, type_data::tk_array))
 					return __type_assign_check(elem_src, elem_dst);
@@ -237,8 +237,8 @@ namespace gstd {
 		switch (cast->get_kind()) {
 		case type_data::tk_int:
 			return val->reset(cast, val->as_int());
-		case type_data::tk_real:
-			return val->reset(cast, val->as_real());
+		case type_data::tk_float:
+			return val->reset(cast, val->as_float());
 		case type_data::tk_char:
 			return val->reset(cast, val->as_char());
 		case type_data::tk_boolean:
@@ -324,7 +324,7 @@ namespace gstd {
 			switch (type->get_kind()) {
 			case type_data::tk_int:
 				res.reset(type, 0i64); break;
-			case type_data::tk_real:
+			case type_data::tk_float:
 				res.reset(type, 0.0); break;
 			case type_data::tk_char:
 				res.reset(type, L'\0'); break;
@@ -372,6 +372,27 @@ namespace gstd {
 
 	//-------------------------------------------------------------------------------------------
 
+	value BaseFunction::cast_x(script_machine* machine, int argc, const value* argv) {
+		const value& src = argv[0];
+		int type = argv[1].as_int();
+
+		switch (type) {
+		case type_data::tk_int:
+			return value(script_type_manager::get_int_type(), src.as_int());
+		case type_data::tk_float:
+			return value(script_type_manager::get_float_type(), src.as_float());
+		case type_data::tk_char:
+			return value(script_type_manager::get_char_type(), src.as_char());
+		case type_data::tk_boolean:
+			return value(script_type_manager::get_boolean_type(), src.as_boolean());
+		case type_data::tk_string:
+			return value(script_type_manager::get_string_type(), src.as_string());
+		}
+
+		machine->raise_error("Invalid type for type casting.\r\n");
+		return value();
+	}
+
 	type_data* __cast_array(script_machine* machine, type_data* rootType, value* val, type_data* setType) {
 		std::vector<value> arrVal(val->length_as_array());
 
@@ -397,6 +418,8 @@ namespace gstd {
 		return arrayType;
 	}
 	value BaseFunction::_cast_array(script_machine* machine, const value* argv, type_data::type_kind target) {
+		_null_check(machine, argv, 1);
+
 		type_data* arg0_type = argv->get_type();
 		if (arg0_type == nullptr || arg0_type->get_kind() != type_data::tk_array) {
 			_raise_error_unsupported(machine, arg0_type, "array cast");
@@ -417,8 +440,8 @@ namespace gstd {
 	value BaseFunction::cast_int_array(script_machine* machine, int argc, const value* argv) {
 		return _cast_array(machine, argv, type_data::tk_int);
 	}
-	value BaseFunction::cast_real_array(script_machine* machine, int argc, const value* argv) {
-		return _cast_array(machine, argv, type_data::tk_real);
+	value BaseFunction::cast_float_array(script_machine* machine, int argc, const value* argv) {
+		return _cast_array(machine, argv, type_data::tk_float);
 	}
 	value BaseFunction::cast_bool_array(script_machine* machine, int argc, const value* argv) {
 		return _cast_array(machine, argv, type_data::tk_boolean);
@@ -428,12 +451,10 @@ namespace gstd {
 		//return value(script_type_manager::get_string_type(), argv->as_string());
 	}
 	value BaseFunction::cast_x_array(script_machine* machine, int argc, const value* argv) {
-		_null_check(nullptr, argv, argc);
-
 		type_data::type_kind targetKind = (type_data::type_kind)argv[1].as_int();
 		switch (targetKind) {
 		case type_data::tk_int:
-		case type_data::tk_real:
+		case type_data::tk_float:
 		case type_data::tk_char:
 		case type_data::tk_boolean:
 			break;
@@ -455,8 +476,8 @@ namespace gstd {
 		if (argv[0].get_type()->get_kind() == type_data::tk_array)
 			return __script_perform_op_array(&argv[0], &argv[1], _script_add);
 		else {
-			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_real))
-				return value(script_type_manager::get_real_type(), argv[0].as_real() + argv[1].as_real());
+			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_float))
+				return value(script_type_manager::get_float_type(), argv[0].as_float() + argv[1].as_float());
 			else
 				return value(script_type_manager::get_int_type(), argv[0].as_int() + argv[1].as_int());
 		}
@@ -469,8 +490,8 @@ namespace gstd {
 		if (argv[0].get_type()->get_kind() == type_data::tk_array)
 			return __script_perform_op_array(&argv[0], &argv[1], _script_subtract);
 		else {
-			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_real))
-				return value(script_type_manager::get_real_type(), argv[0].as_real() - argv[1].as_real());
+			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_float))
+				return value(script_type_manager::get_float_type(), argv[0].as_float() - argv[1].as_float());
 			else
 				return value(script_type_manager::get_int_type(), argv[0].as_int() - argv[1].as_int());
 		}
@@ -483,8 +504,8 @@ namespace gstd {
 		if (argv[0].get_type()->get_kind() == type_data::tk_array)
 			return __script_perform_op_array(&argv[0], &argv[1], _script_multiply);
 		else {
-			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_real))
-				return value(script_type_manager::get_real_type(), argv[0].as_real() * argv[1].as_real());
+			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_float))
+				return value(script_type_manager::get_float_type(), argv[0].as_float() * argv[1].as_float());
 			else
 				return value(script_type_manager::get_int_type(), argv[0].as_int() * argv[1].as_int());
 		}
@@ -497,8 +518,8 @@ namespace gstd {
 		if (argv[0].get_type()->get_kind() == type_data::tk_array)
 			return __script_perform_op_array(&argv[0], &argv[1], _script_divide);
 		else {
-			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_real))
-				return value(script_type_manager::get_real_type(), argv[0].as_real() / argv[1].as_real());
+			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_float))
+				return value(script_type_manager::get_float_type(), argv[0].as_float() / argv[1].as_float());
 			else {
 				int64_t deno = argv[1].as_int();
 				if (deno == 0)
@@ -516,8 +537,8 @@ namespace gstd {
 			return __script_perform_op_array(&argv[0], &argv[1], _script_fdivide);
 		else {
 			int64_t res;
-			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_real))
-				res = argv[0].as_real() / argv[1].as_real();
+			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_float))
+				res = argv[0].as_float() / argv[1].as_float();
 			else {
 				int64_t deno = argv[1].as_int();
 				if (deno == 0)
@@ -535,8 +556,8 @@ namespace gstd {
 		if (argv[0].get_type()->get_kind() == type_data::tk_array)
 			return __script_perform_op_array(&argv[0], &argv[1], _script_remainder_);
 		else {
-			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_real))
-				return value(script_type_manager::get_real_type(), _fmod2(argv[0].as_real(), argv[1].as_real()));
+			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_float))
+				return value(script_type_manager::get_float_type(), _fmod2(argv[0].as_float(), argv[1].as_float()));
 			else
 				return value(script_type_manager::get_int_type(), _mod2(argv[0].as_int(), argv[1].as_int()));
 		}
@@ -557,8 +578,8 @@ namespace gstd {
 			return result;
 		}
 		else {
-			if (argv->get_type()->get_kind() == type_data::tk_real)
-				return value(script_type_manager::get_real_type(), -argv->as_real());
+			if (argv->get_type()->get_kind() == type_data::tk_float)
+				return value(script_type_manager::get_float_type(), -argv->as_float());
 			else
 				return value(script_type_manager::get_int_type(), -argv->as_int());
 		}
@@ -571,8 +592,8 @@ namespace gstd {
 		if (argv[0].get_type()->get_kind() == type_data::tk_array)
 			return __script_perform_op_array(&argv[0], &argv[1], _script_power);
 		else {
-			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_real))
-				return value(script_type_manager::get_real_type(), std::pow(argv[0].as_real(), argv[1].as_real()));
+			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_float))
+				return value(script_type_manager::get_float_type(), std::pow(argv[0].as_float(), argv[1].as_float()));
 			else {
 				return value(script_type_manager::get_int_type(),
 					(int64_t)(std::pow(argv[0].as_int(), argv[1].as_int()) + 0.01));
@@ -596,10 +617,10 @@ namespace gstd {
 					r = (a == b) ? 0 : (a < b) ? -1 : 1;
 					break;
 				}
-				case type_data::tk_real:
+				case type_data::tk_float:
 				{
-					double a = argv[0].as_real();
-					double b = argv[1].as_real();
+					double a = argv[0].as_float();
+					double b = argv[1].as_float();
 					r = (a == b) ? 0 : (a < b) ? -1 : 1;
 					break;
 				}
@@ -630,7 +651,7 @@ namespace gstd {
 						for (size_t i = 0; i < sr; ++i) {
 							v[0] = argv[0][i];
 							v[1] = argv[1][i];
-							r = _script_compare(2, v).as_real();
+							r = _script_compare(2, v).as_float();
 							if (r != 0)
 								break;
 						}
@@ -661,17 +682,17 @@ namespace gstd {
 	value BaseFunction::modc(script_machine* machine, int argc, const value* argv) {
 		_null_check(machine, argv, argc);
 
-		if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_real))
-			return value(script_type_manager::get_real_type(), fmod(argv[0].as_real(), argv[1].as_real()));
+		if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_float))
+			return value(script_type_manager::get_float_type(), fmod(argv[0].as_float(), argv[1].as_float()));
 		else
 			return value(script_type_manager::get_int_type(), argv[0].as_int() % argv[1].as_int());
 	}
 
 	//Allows for non-integer side counts because A. no division by 0 errors and B. why not 
 	DNH_FUNCAPI_DEF_(BaseFunction::apo) {
-		double n = argv->as_real();
+		double n = argv->as_float();
 		double r = n > 2 ? cos(GM_PI / n) : 0;
-		return value(script_type_manager::get_real_type(), r);
+		return value(script_type_manager::get_float_type(), r);
 	}
 
 	value BaseFunction::predecessor(script_machine* machine, int argc, const value* argv) {
@@ -680,8 +701,8 @@ namespace gstd {
 		switch (argv->get_type()->get_kind()) {
 		case type_data::tk_int:
 			return value(argv->get_type(), argv->as_int() - 1i64);
-		case type_data::tk_real:
-			return value(argv->get_type(), argv->as_real() - 1);
+		case type_data::tk_float:
+			return value(argv->get_type(), argv->as_float() - 1);
 		case type_data::tk_char:
 			return value(argv->get_type(), (wchar_t)(argv->as_char() - 1));
 		case type_data::tk_boolean:
@@ -710,8 +731,8 @@ namespace gstd {
 		switch (argv->get_type()->get_kind()) {
 		case type_data::tk_int:
 			return value(argv->get_type(), argv->as_int() + 1i64);
-		case type_data::tk_real:
-			return value(argv->get_type(), argv->as_real() + 1);
+		case type_data::tk_float:
+			return value(argv->get_type(), argv->as_float() + 1);
 		case type_data::tk_char:
 			return value(argv->get_type(), (wchar_t)(argv->as_char() + 1));
 		case type_data::tk_boolean:
@@ -1355,42 +1376,42 @@ namespace gstd {
 	}
 
 	value BaseFunction::round(script_machine* machine, int argc, const value* argv) {
-		double r = std::floor(argv->as_real() + 0.5);
-		return value(script_type_manager::get_real_type(), r);
+		double r = std::floor(argv->as_float() + 0.5);
+		return value(script_type_manager::get_float_type(), r);
 	}
 	DNH_FUNCAPI_DEF_(BaseFunction::round_base) {
-		double v = argv[0].as_real();
-		double base = argv[1].as_real();
+		double v = argv[0].as_float();
+		double base = argv[1].as_float();
 		double r = std::floor(v / base + 0.5) * base;
-		return value(script_type_manager::get_real_type(), r);
+		return value(script_type_manager::get_float_type(), r);
 	}
-	DNH_FUNCAPI_DEF_(BaseFunction::truncate) {
-		double r = argv->as_real();
-		return value(script_type_manager::get_real_type(), (r > 0) ? std::floor(r) : std::ceil(r));
+	value BaseFunction::truncate(script_machine* machine, int argc, const value* argv) {
+		double r = argv->as_float();
+		return value(script_type_manager::get_float_type(), (r > 0) ? std::floor(r) : std::ceil(r));
 	}
 	value BaseFunction::ceil(script_machine* machine, int argc, const value* argv) {
-		return value(script_type_manager::get_real_type(), std::ceil(argv->as_real()));
+		return value(script_type_manager::get_float_type(), std::ceil(argv->as_float()));
 	}
 	DNH_FUNCAPI_DEF_(BaseFunction::ceil_base) {
-		double v = argv[0].as_real();
-		double base = argv[1].as_real();
-		return value(script_type_manager::get_real_type(), std::ceil(v / base) * base);
+		double v = argv[0].as_float();
+		double base = argv[1].as_float();
+		return value(script_type_manager::get_float_type(), std::ceil(v / base) * base);
 	}
-	DNH_FUNCAPI_DEF_(BaseFunction::floor) {
-		return value(script_type_manager::get_real_type(), std::floor(argv->as_real()));
+	value BaseFunction::floor(script_machine* machine, int argc, const value* argv) {
+		return value(script_type_manager::get_float_type(), std::floor(argv->as_float()));
 	}
 	DNH_FUNCAPI_DEF_(BaseFunction::floor_base) {
-		double v = argv[0].as_real();
-		double base = argv[1].as_real();
-		return value(script_type_manager::get_real_type(), std::floor(v / base) * base);
+		double v = argv[0].as_float();
+		double base = argv[1].as_float();
+		return value(script_type_manager::get_float_type(), std::floor(v / base) * base);
 	}
 	value BaseFunction::_script_absolute(int argc, const value* argv) {
-		return value(script_type_manager::get_real_type(), std::fabs(argv->as_real()));
+		return value(script_type_manager::get_float_type(), std::fabs(argv->as_float()));
 	}
 	SCRIPT_DECLARE_OP(absolute);
 
-#define BITWISE_RET if (_is_force_convert_real(argv[0].get_type()) || _is_force_convert_real(argv[1].get_type())) \
-						return value(script_type_manager::get_real_type(), (double)res); \
+#define BITWISE_RET if (_is_force_convert_float(argv[0].get_type()) || _is_force_convert_float(argv[1].get_type())) \
+						return value(script_type_manager::get_float_type(), (double)res); \
 					else \
 						return value(argv->get_type(), res);
 	value BaseFunction::bitwiseNot(script_machine* machine, int argc, const value* argv) {
@@ -1420,8 +1441,8 @@ namespace gstd {
 		int64_t val1 = argv[0].as_int();
 		int64_t val2 = argv[1].as_int();
 		int64_t res = val1 << val2;
-		if (_is_force_convert_real(argv[0].get_type()))
-			return value(script_type_manager::get_real_type(), (double)res);
+		if (_is_force_convert_float(argv[0].get_type()))
+			return value(script_type_manager::get_float_type(), (double)res);
 		else
 			return value(argv->get_type(), res);
 	}
@@ -1429,8 +1450,8 @@ namespace gstd {
 		int64_t val1 = argv[0].as_int();
 		int64_t val2 = argv[1].as_int();
 		int64_t res = val1 >> val2;
-		if (_is_force_convert_real(argv[0].get_type()))
-			return value(script_type_manager::get_real_type(), (double)res);
+		if (_is_force_convert_float(argv[0].get_type()))
+			return value(script_type_manager::get_float_type(), (double)res);
 		else
 			return value(argv->get_type(), res);
 	}

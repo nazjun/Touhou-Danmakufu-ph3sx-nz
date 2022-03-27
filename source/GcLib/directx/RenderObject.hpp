@@ -48,7 +48,10 @@ namespace directx {
 		size_t strideVertexStreamZero_;			//byte size per vertex data
 		std::vector<byte> vertex_;				//vertex data
 		std::vector<uint16_t> vertexIndices_;	//Index data
+
 		shared_ptr<Texture> texture_;
+		weak_ptr<Texture> renderTarget_;
+
 		D3DXVECTOR3 posWeightCenter_;
 
 		D3DXVECTOR3 position_;
@@ -69,10 +72,14 @@ namespace directx {
 
 		virtual void CalculateWeightCenter() {}
 		D3DXVECTOR3 GetWeightCenter() { return posWeightCenter_; }
+
+		void SetTexture(shared_ptr<Texture> texture) { texture_ = texture; }
 		shared_ptr<Texture> GetTexture() { return texture_; }
+		void SetRenderTarget(shared_ptr<Texture> texture) { renderTarget_ = texture; }
 
 		size_t _GetPrimitiveCount();
-		size_t _GetPrimitiveCount(size_t count);
+		size_t _GetPrimitiveCount(size_t count) { return  _GetPrimitiveCount(typePrimitive_, count); }
+		static size_t _GetPrimitiveCount(D3DPRIMITIVETYPE typePrim, size_t count);
 
 		void SetRalativeMatrix(shared_ptr<D3DXMATRIX>& mat) { matRelative_ = mat; }
 
@@ -114,8 +121,6 @@ namespace directx {
 
 		void SetScale(const D3DXVECTOR3& scale) { SetScaleXYZ(scale.x, scale.y, scale.z); }
 		void SetScaleXYZ(float sx = 1.0f, float sy = 1.0f, float sz = 1.0f);
-
-		void SetTexture(shared_ptr<Texture> texture) { texture_ = texture; }
 
 		bool IsCoordinate2D() { return bCoordinate2D_; }
 		void SetCoordinate2D(bool b) { bCoordinate2D_ = b; }
@@ -505,7 +510,7 @@ namespace directx {
 		void SetDxObjectReference(DxScriptRenderObject* obj) { dxObjParent_ = obj; }
 
 		//gstd::ref_count_ptr<RenderBlocks> CreateRenderBlocks() { return nullptr; }
-		virtual D3DXMATRIX GetAnimationMatrix(const std::wstring& nameAnime, double time, const std::wstring& nameBone) {
+		virtual D3DXMATRIX GetAnimationMatrix(const std::wstring& nameAnime, double time) {
 			D3DXMATRIX mat; 
 			D3DXMatrixIdentity(&mat); 
 			return mat; 
@@ -555,7 +560,7 @@ namespace directx {
 		void SetInfoPanel(shared_ptr<DxMeshInfoPanel> panel) { panelInfo_ = panel; }
 	};
 
-	class DxMeshInfoPanel : public gstd::WindowLogger::Panel, public gstd::Thread {
+	class DxMeshInfoPanel : public gstd::WindowLogger::Panel {
 	protected:
 		enum {
 			ROW_ADDRESS,
@@ -563,15 +568,14 @@ namespace directx {
 			ROW_FULLNAME,
 			ROW_COUNT_REFFRENCE,
 		};
-		int timeUpdateInterval_;
 		gstd::WListView wndListView_;
+
 		virtual bool _AddedLogger(HWND hTab);
-		void _Run();
 	public:
 		DxMeshInfoPanel();
 		~DxMeshInfoPanel();
 
 		virtual void LocateParts();
-		virtual void Update(DxMeshManager* manager);
+		virtual void PanelUpdate();
 	};
 }

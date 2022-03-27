@@ -12,8 +12,8 @@
 StgShotManager::StgShotManager(StgStageController* stageController) {
 	stageController_ = stageController;
 
-	listPlayerShotData_ = new StgShotDataList();
-	listEnemyShotData_ = new StgShotDataList();
+	listPlayerShotData_ = std::make_unique<StgShotDataList>();
+	listEnemyShotData_ = std::make_unique<StgShotDataList>();
 
 	rcDeleteClip_ = DxRect<LONG>(-64, -64, 64, 64);
 
@@ -22,14 +22,17 @@ StgShotManager::StgShotManager(StgStageController* stageController) {
 
 	{
 		RenderShaderLibrary* shaderManager_ = ShaderManager::GetBase()->GetRenderLib();
-		effectLayer_ = shaderManager_->GetRender2DShader();
-		handleEffectWorld_ = effectLayer_->GetParameterBySemantic(nullptr, "WORLD");
+		effectShot_ = shaderManager_->GetRender2DShader();
 	}
 	{
-		auto objectManager = stageController_->GetMainObjectManager();
-		listRenderQueue_.resize(objectManager->GetRenderBucketCapacity());
-		for (auto& iLayer : listRenderQueue_)
-			iLayer.second.resize(32);
+		size_t renderPriMax = stageController_->GetMainObjectManager()->GetRenderBucketCapacity();
+
+		listRenderQueuePlayer_.resize(renderPriMax);
+		listRenderQueueEnemy_.resize(renderPriMax);
+		for (size_t i = 0; i < renderPriMax; ++i) {
+			listRenderQueuePlayer_[i].listShot.resize(32);
+			listRenderQueueEnemy_[i].listShot.resize(32);
+		}
 	}
 
 	SetDeleteEventEnableByType(StgStageItemScript::EV_DELETE_SHOT_IMMEDIATE, true);
@@ -41,9 +44,6 @@ StgShotManager::~StgShotManager() {
 		if (obj)
 			obj->ClearShotObject();
 	}
-
-	ptr_delete(listPlayerShotData_);
-	ptr_delete(listEnemyShotData_);
 }
 void StgShotManager::Work() {
 	for (auto itr = listObj_.begin(); itr != listObj_.end(); ) {
@@ -58,14 +58,27 @@ void StgShotManager::Work() {
 		else ++itr;
 	}
 }
-void StgShotManager::Render(int targetPriority) {
-	if (targetPriority < 0 || targetPriority >= listRenderQueue_.size()) return;
 
-	auto& renderQueueLayer = listRenderQueue_[targetPriority];
-	if (renderQueueLayer.first == 0) return;
+std::array<BlendMode, StgShotManager::BLEND_COUNT> StgShotManager::blendTypeRenderOrder = {
+	MODE_BLEND_ADD_ARGB,
+	MODE_BLEND_ADD_RGB,
+	MODE_BLEND_SHADOW,
+	MODE_BLEND_MULTIPLY,
+	MODE_BLEND_SUBTRACT,
+	MODE_BLEND_INV_DESTRGB,
+	MODE_BLEND_ALPHA,
+	MODE_BLEND_ALPHA_INV,
+};
+void StgShotManager::Render(int targetPriority) {
+	if (targetPriority < 0 || targetPriority >= listRenderQueueEnemy_.size()) return;
+
+	const RenderQueue& renderQueuePlayer = listRenderQueuePlayer_[targetPriority];
+	const RenderQueue& renderQueueEnemy = listRenderQueueEnemy_[targetPriority];
+	if (renderQueuePlayer.count == 0 && renderQueueEnemy.count == 0) return;
 
 	DirectGraphics* graphics = DirectGraphics::GetBase();
 	IDirect3DDevice9* device = graphics->GetDevice();
+	RenderShaderLibrary* shaderManager = ShaderManager::GetBase()->GetRenderLib();
 
 	graphics->SetZBufferEnable(false);
 	graphics->SetZWriteEnable(false);
@@ -81,86 +94,37 @@ void StgShotManager::Render(int targetPriority) {
 	ref_count_ptr<DxCamera> camera3D = graphics->GetCamera();
 	ref_count_ptr<DxCamera2D> camera2D = graphics->GetCamera2D();
 
-	{
-		D3DXMATRIX matProj;
-		D3DXMatrixMultiply(&matProj, &camera2D->GetMatrix(), &graphics->GetViewPortMatrix());
-		effectLayer_->SetMatrix(handleEffectWorld_, &matProj);
-	}
-
-	for (size_t i = 0; i < renderQueueLayer.first; ++i) {
-		renderQueueLayer.second[i]->RenderOnShotManager();
-	}
-
-	size_t countBlendType = StgShotDataList::RENDER_TYPE_COUNT;
-	BlendMode blendMode[] =
-	{
-		MODE_BLEND_ADD_ARGB,
-		MODE_BLEND_ADD_RGB,
-		MODE_BLEND_SHADOW,
-		MODE_BLEND_MULTIPLY,
-		MODE_BLEND_SUBTRACT,
-		MODE_BLEND_INV_DESTRGB,
-		MODE_BLEND_ALPHA,
-		MODE_BLEND_ALPHA_INV,
-	};
-
-	RenderShaderLibrary* shaderManager = ShaderManager::GetBase()->GetRenderLib();
-	VertexBufferManager* bufferManager = VertexBufferManager::GetBase();
+	D3DXMatrixMultiply(&matProj_, &camera2D->GetMatrix(), &graphics->GetViewPortMatrix());
 
 	device->SetFVF(VERTEX_TLX::fvf);
 	device->SetVertexDeclaration(shaderManager->GetVertexDeclarationTLX());
 
-	device->SetStreamSource(0, bufferManager->GetGrowableVertexBuffer()->GetBuffer(), 0, sizeof(VERTEX_TLX));
-	device->SetIndices(bufferManager->GetGrowableIndexBuffer()->GetBuffer());
-
-	//Should I regroup these as texture->blend? I'll consider it later, I guess
-	{
-		UINT cPass = 1U;
-
-		//Always renders enemy shots above player shots, completely obliterates TAΣ's wet dream.
-		for (size_t iBlend = 0; iBlend < countBlendType; ++iBlend) {
-			bool hasPolygon = false;
-			std::vector<StgShotRenderer*>& listPlayer = listPlayerShotData_->GetRendererList(blendMode[iBlend] - 1);
-
-			//In an attempt to minimize D3D calls in SetBlendMode.
-			for (auto itr = listPlayer.begin(); itr != listPlayer.end() && !hasPolygon; ++itr)
-				hasPolygon = (*itr)->countRenderIndex_ >= 3U;
-			if (!hasPolygon) continue;
-
-			graphics->SetBlendMode(blendMode[iBlend]);
-			effectLayer_->SetTechnique(blendMode[iBlend] == MODE_BLEND_ALPHA_INV ? "RenderInv" : "Render");
-
-			effectLayer_->Begin(&cPass, 0);
-			if (cPass >= 1) {
-				effectLayer_->BeginPass(0);
-				for (auto itrRender = listPlayer.begin(); itrRender != listPlayer.end(); ++itrRender)
-					(*itrRender)->Render(this);
-				effectLayer_->EndPass();
-			}
-			effectLayer_->End();
-		}
-		for (size_t iBlend = 0; iBlend < countBlendType; ++iBlend) {
-			bool hasPolygon = false;
-			std::vector<StgShotRenderer*>& listEnemy = listEnemyShotData_->GetRendererList(blendMode[iBlend] - 1);
-
-			for (auto itr = listEnemy.begin(); itr != listEnemy.end() && !hasPolygon; ++itr)
-				hasPolygon = (*itr)->countRenderIndex_ >= 3U;
-			if (!hasPolygon) continue;
-
-			graphics->SetBlendMode(blendMode[iBlend]);
-			effectLayer_->SetTechnique(blendMode[iBlend] == MODE_BLEND_ALPHA_INV ? "RenderInv" : "Render");
-
-			effectLayer_->Begin(&cPass, 0);
-			if (cPass >= 1) {
-				effectLayer_->BeginPass(0);
-				for (auto itrRender = listEnemy.begin(); itrRender != listEnemy.end(); ++itrRender)
-					(*itrRender)->Render(this);
-				effectLayer_->EndPass();
-			}
-			effectLayer_->End();
-		}
+	if (D3DXHANDLE handle = effectShot_->GetParameterBySemantic(nullptr, "VIEWPROJECTION")) {
+		effectShot_->SetMatrix(handle, &matProj_);
 	}
 
+	auto _RenderQueue = [&](const RenderQueue& renderQueue) {
+		if (renderQueue.count == 0) return;
+
+		for (size_t iBlend = 0; iBlend < blendTypeRenderOrder.size(); ++iBlend) {
+			BlendMode blend = blendTypeRenderOrder[iBlend];
+
+			graphics->SetBlendMode(blend);
+			effectShot_->SetTechnique(blend == MODE_BLEND_ALPHA_INV ? "RenderInv" : "Render");
+
+			for (size_t i = 0; i < renderQueue.count; ++i) {
+				StgShotObject* pShot = renderQueue.listShot[i];
+				pShot->Render(blend);
+			}
+		}
+	};
+
+	//Always renders enemy shots above player shots, completely obliterates TAΣ's wet dream.
+	_RenderQueue(renderQueuePlayer);
+	_RenderQueue(renderQueueEnemy);
+
+	device->SetVertexShader(nullptr);
+	device->SetPixelShader(nullptr);
 	device->SetVertexDeclaration(nullptr);
 	device->SetIndices(nullptr);
 
@@ -168,15 +132,20 @@ void StgShotManager::Render(int targetPriority) {
 		graphics->SetFogEnable(true);
 }
 void StgShotManager::LoadRenderQueue() {
-	for (auto& iLayer : listRenderQueue_)
-		iLayer.first = 0;
+	for (size_t i = 0; i < listRenderQueuePlayer_.size(); ++i) {
+		listRenderQueuePlayer_[i].count = 0;
+		listRenderQueueEnemy_[i].count = 0;
+	}
 
 	for (ref_unsync_ptr<StgShotObject>& obj : listObj_) {
-		if (obj->IsDeleted() || !obj->IsActive()) continue;
-		auto& iQueue = listRenderQueue_[obj->GetRenderPriorityI()];
-		while (iQueue.first >= iQueue.second.size())
-			iQueue.second.resize(iQueue.second.size() * 2);
-		iQueue.second[(iQueue.first)++] = obj.get();
+		if (obj->IsDeleted() || !obj->IsActive() || !obj->IsVisible()) continue;
+
+		auto& [count, listShot] = (obj->GetOwnerType() == StgShotObject::OWNER_PLAYER ?
+			listRenderQueuePlayer_ : listRenderQueueEnemy_)[obj->GetRenderPriorityI()];
+
+		while (count >= listShot.size())
+			listShot.resize(listShot.size() * 2);
+		listShot[count++] = obj.get();
 	}
 }
 
@@ -197,10 +166,7 @@ size_t StgShotManager::DeleteInCircle(int typeDelete, int typeTo, int typeOwner,
 	int r = radius ? *radius : 0;
 	int rr = r * r;
 
-	int rect_x1 = cx - r;
-	int rect_y1 = cy - r;
-	int rect_x2 = cx + r;
-	int rect_y2 = cy + r;
+	DxRect<int> rcBox(cx - r, cy - r, cx + r, cy + r);
 
 	size_t res = 0;
 
@@ -212,12 +178,7 @@ size_t StgShotManager::DeleteInCircle(int typeDelete, int typeTo, int typeOwner,
 		int sx = obj->GetPositionX();
 		int sy = obj->GetPositionY();
 
-		bool bInCircle = radius == nullptr;
-		if (!bInCircle) {
-			bool bPassAABB = (sx > rect_x1 && sy > rect_y1) && (sx < rect_x2 && sy < rect_y2);
-			bInCircle = bPassAABB && Math::HypotSq<int64_t>(cx - sx, cy - sy) <= rr;
-		}
-		if (bInCircle) {
+		if (radius == nullptr || (rcBox.IsPointIntersected(sx, sy) && Math::HypotSq<int64_t>(cx - sx, cy - sy) <= rr)) {
 			if (obj->GetObjectType() == TypeObject::Shot)
 				++res;
 			else {
@@ -296,10 +257,7 @@ std::vector<int> StgShotManager::GetShotIdInCircle(int typeOwner, int cx, int cy
 	int r = radius ? *radius : 0;
 	int rr = r * r;
 
-	int rect_x1 = cx - r;
-	int rect_y1 = cy - r;
-	int rect_x2 = cx + r;
-	int rect_y2 = cy + r;
+	DxRect<int> rcBox(cx - r, cy - r, cx + r, cy + r);
 
 	std::vector<int> res;
 	for (ref_unsync_ptr<StgShotObject>& obj : listObj_) {
@@ -309,13 +267,9 @@ std::vector<int> StgShotManager::GetShotIdInCircle(int typeOwner, int cx, int cy
 		int sx = obj->GetPositionX();
 		int sy = obj->GetPositionY();
 
-		bool bInCircle = radius == nullptr;
-		if (!bInCircle) {
-			bool bPassAABB = (sx > rect_x1 && sy > rect_y1) && (sx < rect_x2 && sy < rect_y2);
-			bInCircle = bPassAABB && Math::HypotSq<int64_t>(cx - sx, cy - sy) <= rr;
-		}
-		if (bInCircle)
+		if (radius == nullptr || (rcBox.IsPointIntersected(sx, sy) && Math::HypotSq<int64_t>(cx - sx, cy - sy) <= rr)) {
 			res.push_back(obj->GetObjectID());
+		}
 	}
 
 	return res;
@@ -405,23 +359,90 @@ bool StgShotManager::LoadEnemyShotData(const std::wstring& path, bool bReload) {
 //StgShotDataList
 //****************************************************************************
 StgShotDataList::StgShotDataList() {
-	listRenderer_.resize(RENDER_TYPE_COUNT);
+	defaultDelayData_ = -1;
 	defaultDelayColor_ = 0xffffffff;	//Solid white
 }
 StgShotDataList::~StgShotDataList() {
-	for (std::vector<StgShotRenderer*>& renderList : listRenderer_) {
-		for (StgShotRenderer*& renderer : renderList)
-			ptr_delete(renderer);
-		renderList.clear();
-	}
-	listRenderer_.clear();
+}
+void StgShotDataList::_LoadVertexBuffers(std::map<std::wstring, VBContainerList>::iterator placement, 
+	shared_ptr<Texture> texture, std::vector<StgShotData*>& listAddData)
+{
+	DirectGraphics* graphics = DirectGraphics::GetBase();
+	IDirect3DDevice9* device = graphics->GetDevice();
 
-	for (StgShotData*& shotData : listData_)
-		ptr_delete(shotData);
-	listData_.clear();
+	float texW = texture->GetWidth();
+	float texH = texture->GetHeight();
+
+	size_t countFrame = 0;
+	for (StgShotData* iData : listAddData)
+		countFrame += iData->GetFrameCount();
+
+	size_t iBuffer = 0;
+	while (countFrame > 0) {
+		size_t thisCountFrame = std::min<size_t>(countFrame, StgShotVertexBufferContainer::MAX_DATA);
+
+		placement->second.push_back(unique_ptr<StgShotVertexBufferContainer>(
+			new StgShotVertexBufferContainer()));
+		StgShotVertexBufferContainer* pVertexBufferContainer = placement->second.back().get();
+		pVertexBufferContainer->SetTexture(texture);
+
+		std::vector<VERTEX_TLX> bufferVertex(4 * thisCountFrame);
+		size_t iVertex = 0;
+
+		VERTEX_TLX verts[4];
+		for (size_t iData = 0; iData < listAddData.size(); ++iData) {
+			StgShotData* data = listAddData[iData];
+			for (size_t iAnim = 0; iAnim < data->GetFrameCount(); ++iAnim) {
+				StgShotDataFrame* pFrame = &data->listFrame_[iAnim];
+				pFrame->listShotData_ = this;
+
+				LONG* ptrSrc = reinterpret_cast<LONG*>(&pFrame->rcSrc_);
+				float* ptrDst = reinterpret_cast<float*>(&pFrame->rcDst_);
+
+				for (size_t iVert = 0; iVert < 4; ++iVert) {
+					VERTEX_TLX* pv = &verts[iVert];
+
+					//((iVert & 1) << 1)
+					//   0 -> 0
+					//   1 -> 2
+					//   2 -> 0
+					//   3 -> 2
+					//(iVert | 1)
+					//   0 -> 1
+					//   1 -> 1
+					//   2 -> 3
+					//   3 -> 3
+
+					StgShotObject::_SetVertexUV(pv,
+						ptrSrc[(iVert & 1) << 1] / texW, ptrSrc[iVert | 1] / texH);
+					StgShotObject::_SetVertexPosition(pv, ptrDst[(iVert & 1) << 1], ptrDst[iVert | 1], 0);
+					StgShotObject::_SetVertexColorARGB(pv, 0xffffffff);
+				}
+
+				pFrame->pVertexBuffer_ = pVertexBufferContainer;
+				pFrame->vertexOffset_ = iVertex;
+
+				for (size_t j = 0; j < 4; ++j)
+					bufferVertex[iVertex + j] = verts[j];
+				iVertex += 4;
+			}
+		}
+
+		HRESULT hr = pVertexBufferContainer->LoadData(bufferVertex, thisCountFrame);
+		if (FAILED(hr)) {
+			std::wstring err = StringUtility::Format(L"AddShotDataList::Failed to load shot data buffer: "
+				"\t\r\n%s: %s",
+				DXGetErrorString(hr), DXGetErrorDescription(hr));
+			throw gstd::wexception(err);
+		}
+
+		++iBuffer;
+		countFrame -= thisCountFrame;
+	}
 }
 bool StgShotDataList::AddShotDataList(const std::wstring& path, bool bReload) {
-	if (!bReload && listReadPath_.find(path) != listReadPath_.end()) return true;
+	auto itrVB = mapVertexBuffer_.find(path);
+	if (!bReload && itrVB != mapVertexBuffer_.end()) return true;
 
 	std::wstring pathReduce = PathProperty::ReduceModuleDirectory(path);
 
@@ -434,11 +455,8 @@ bool StgShotDataList::AddShotDataList(const std::wstring& path, bool bReload) {
 	bool res = false;
 	Scanner scanner(source);
 	try {
-		std::vector<StgShotData*> listData;
-		std::wstring pathImage = L"";
-
-		DxRect<LONG> rcDelay(-1, -1, -1, -1);
-		DxRect<float> rcDelayDest(-1, -1, -1, -1);
+		std::map<int, unique_ptr<StgShotData>> mapData;
+		std::wstring pathImage;
 
 		while (scanner.HasNext()) {
 			Token& tok = scanner.Next();
@@ -447,11 +465,15 @@ bool StgShotDataList::AddShotDataList(const std::wstring& path, bool bReload) {
 			else if (tok.GetType() == Token::Type::TK_ID) {
 				std::wstring element = tok.GetElement();
 				if (element == L"ShotData") {
-					_ScanShot(listData, scanner);
+					_ScanShot(mapData, scanner);
 				}
 				else if (element == L"shot_image") {
 					scanner.CheckType(scanner.Next(), Token::Type::TK_EQUAL);
 					pathImage = scanner.Next().GetString();
+				}
+				else if (element == L"delay_id") {
+					scanner.CheckType(scanner.Next(), Token::Type::TK_EQUAL);
+					defaultDelayData_ = scanner.Next().GetInteger();
 				}
 				else if (element == L"delay_color") {
 					std::vector<std::wstring> list = scanner.GetArgumentList();
@@ -464,19 +486,7 @@ bool StgShotDataList::AddShotDataList(const std::wstring& path, bool bReload) {
 						StringUtility::ToInteger(list[1]),
 						StringUtility::ToInteger(list[2]));
 				}
-				else if (element == L"delay_rect") {
-					std::vector<std::wstring> list = scanner.GetArgumentList();
-
-					if (list.size() < 4)
-						throw wexception("Invalid argument list size (expected 4)");
-
-					DxRect<LONG> rect(StringUtility::ToInteger(list[0]), StringUtility::ToInteger(list[1]),
-						StringUtility::ToInteger(list[2]), StringUtility::ToInteger(list[3]));
-
-					rcDelay = DxRect<LONG>(StringUtility::ToInteger(list[0]), StringUtility::ToInteger(list[1]),
-						StringUtility::ToInteger(list[2]), StringUtility::ToInteger(list[3]));
-					rcDelayDest = StgShotData::AnimationData::SetDestRect(&rcDelay);
-				}
+				
 				if (scanner.HasNext())
 					tok = scanner.Next();
 			}
@@ -487,54 +497,55 @@ bool StgShotDataList::AddShotDataList(const std::wstring& path, bool bReload) {
 		pathImage = StringUtility::Replace(pathImage, L"./", dir);
 		pathImage = PathProperty::GetUnique(pathImage);
 
-		shared_ptr<Texture> texture(new Texture());
-		bool bTexture = texture->CreateFromFile(pathImage, false, false);
-		if (!bTexture) throw gstd::wexception("The specified shot texture cannot be found.");
+		shared_ptr<Texture> texture;
+		{
+			TextureManager* textureManager = TextureManager::GetBase();
 
-		int textureIndex = -1;
-		for (int iTexture = 0; iTexture < listTexture_.size(); iTexture++) {
-			shared_ptr<Texture> tSearch = listTexture_[iTexture];
-			if (tSearch->GetName() == texture->GetName()) {
-				textureIndex = iTexture;
-				break;
+			if ((texture = textureManager->GetTexture(pathImage)) == nullptr) {
+				texture = std::make_shared<Texture>();
+				if (!texture->CreateFromFile(pathImage, false, false))
+					texture = nullptr;
 			}
 		}
-		if (textureIndex < 0) {
-			textureIndex = listTexture_.size();
-			listTexture_.push_back(texture);
-			for (size_t iRender = 0; iRender < listRenderer_.size(); ++iRender) {
-				StgShotRenderer* render = new StgShotRenderer();
-				render->SetTexture(texture);
-				listRenderer_[iRender].push_back(render);
+		if (texture == nullptr) {
+			throw gstd::wexception("Failed to load the specified shot texture.");
+		}
+
+		std::vector<StgShotData*> listAddData;
+
+		size_t countFrame = 0;
+		{
+			size_t i = 0;
+			for (auto itr = mapData.begin(); itr != mapData.end(); ++itr, ++i) {
+				int id = itr->first;
+				unique_ptr<StgShotData>& data = itr->second;
+				if (data == nullptr) continue;
+
+				for (auto& iFrame : data->listFrame_)
+					iFrame.listShotData_ = this;
+				countFrame += data->GetFrameCount();
+
+				listAddData.push_back(data.get());
+				if (listData_.size() <= id)
+					listData_.resize(id + 1);
+				listData_[id] = std::move(data);		//Moves unique_ptr object, do not use mapData after this point
 			}
 		}
 
-		if (listData_.size() < listData.size())
-			listData_.resize(listData.size());
-		for (size_t iData = 0; iData < listData.size(); iData++) {
-			StgShotData* data = listData[iData];
-			if (data == nullptr) continue;
-
-			data->indexTexture_ = textureIndex;
-			{
-				shared_ptr<Texture>& texture = listTexture_[data->indexTexture_];
-				data->textureSize_.x = texture->GetWidth();
-				data->textureSize_.y = texture->GetHeight();
-			}
-
-			if (data->delay_.rcSrc_.left < 0) {
-				data->delay_.rcSrc_ = rcDelay;
-				data->delay_.rcDst_ = rcDelayDest;
-			}
-			listData_[iData] = data;
+		if (itrVB != mapVertexBuffer_.end()) {
+			itrVB->second.clear();
+			_LoadVertexBuffers(itrVB, texture, listAddData);
+		}
+		else {
+			itrVB = mapVertexBuffer_.insert({ path, VBContainerList() }).first;
+			_LoadVertexBuffers(itrVB, texture, listAddData);
 		}
 
-		listReadPath_.insert(path);
 		Logger::WriteTop(StringUtility::Format(L"Loaded shot data: %s", pathReduce.c_str()));
 		res = true;
 	}
 	catch (gstd::wexception& e) {
-		std::wstring log = StringUtility::Format(L"Failed to load shot data: %s\r\n\t[Line=%d] (%s)", 
+		std::wstring log = StringUtility::Format(L"Failed to load shot data: %s\r\n\t[Line=%d] (%s)",
 			pathReduce.c_str(), scanner.GetCurrentLine(), e.what());
 		Logger::WriteTop(log);
 		res = false;
@@ -548,7 +559,7 @@ bool StgShotDataList::AddShotDataList(const std::wstring& path, bool bReload) {
 
 	return res;
 }
-void StgShotDataList::_ScanShot(std::vector<StgShotData*>& listData, Scanner& scanner) {
+void StgShotDataList::_ScanShot(std::map<int, unique_ptr<StgShotData>>& mapData, Scanner& scanner) {
 	Token& tok = scanner.Next();
 	if (tok.GetType() == Token::Type::TK_NEWLINE) tok = scanner.Next();
 	scanner.CheckType(tok, Token::Type::TK_OPENC);
@@ -558,6 +569,7 @@ void StgShotDataList::_ScanShot(std::vector<StgShotData*>& listData, Scanner& sc
 		int id = -1;
 	} data;
 	data.shotData = new StgShotData(this);
+	data.shotData->idDefaultDelay_ = defaultDelayData_;
 	data.shotData->colorDelay_ = defaultDelayColor_;
 
 	//--------------------------------------------------------------
@@ -575,25 +587,16 @@ void StgShotDataList::_ScanShot(std::vector<StgShotData*>& listData, Scanner& sc
 		DxRect<LONG> rect(StringUtility::ToInteger(list[0]), StringUtility::ToInteger(list[1]),
 			StringUtility::ToInteger(list[2]), StringUtility::ToInteger(list[3]));
 
-		StgShotData::AnimationData anime;
-		anime.rcSrc_ = rect;
-		anime.rcDst_ = StgShotData::AnimationData::SetDestRect(&rect);
+		StgShotDataFrame dFrame;
+		dFrame.rcSrc_ = rect;
+		dFrame.rcDst_ = StgShotDataFrame::LoadDestRect(&rect);
 
-		i->shotData->listAnime_.resize(1);
-		i->shotData->listAnime_[0] = anime;
-		i->shotData->totalAnimeFrame_ = 1;
+		i->shotData->listFrame_ = { dFrame };
+		i->shotData->totalFrame_ = 1;
 	};
-	auto funcSetDelayRect = [](Data* i, Scanner& s) {
-		std::vector<std::wstring> list = s.GetArgumentList();
-
-		if (list.size() < 4)
-			throw wexception("Invalid argument list size (expected 4)");
-
-		DxRect<LONG> rect(StringUtility::ToInteger(list[0]), StringUtility::ToInteger(list[1]),
-			StringUtility::ToInteger(list[2]), StringUtility::ToInteger(list[3]));
-
-		i->shotData->delay_.rcSrc_ = rect;
-		i->shotData->delay_.rcDst_ = StgShotData::AnimationData::SetDestRect(&rect);
+	auto funcSetDelayID = [](Data* i, Scanner& s) {
+		s.CheckType(s.Next(), Token::Type::TK_EQUAL);
+		i->shotData->idDefaultDelay_ = s.Next().GetInteger();
 	};
 	auto funcSetDelayColor = [](Data* i, Scanner& s) {
 		std::vector<std::wstring> list = s.GetArgumentList();
@@ -653,8 +656,8 @@ void StgShotDataList::_ScanShot(std::vector<StgShotData*>& listData, Scanner& sc
 		}
 	};
 	auto funcLoadAnimation = [](Data* i, Scanner& s) {
-		i->shotData->listAnime_.clear();
-		i->shotData->totalAnimeFrame_ = 0;
+		i->shotData->listFrame_.clear();
+		i->shotData->totalFrame_ = 0;
 		_ScanAnimation(i->shotData, s);
 	};
 
@@ -662,7 +665,7 @@ void StgShotDataList::_ScanShot(std::vector<StgShotData*>& listData, Scanner& sc
 	static const std::unordered_map<std::wstring, std::function<void(Data*, Scanner&)>> mapFunc = {
 		{ L"id", LAMBDA_SETV(id, GetInteger) },
 		{ L"rect", funcSetRect },
-		{ L"delay_rect", funcSetDelayRect },
+		{ L"delay_id", funcSetDelayID },
 		{ L"delay_color", funcSetDelayColor },
 		{ L"collision", funcSetCollision },
 		{ L"render", LAMBDA_SETBLEND(typeRender_) },
@@ -696,19 +699,17 @@ void StgShotDataList::_ScanShot(std::vector<StgShotData*>& listData, Scanner& sc
 	if (data.id >= 0) {
 		if (data.shotData->listCol_.size() == 0) {
 			float r = 0;
-			if (data.shotData->listAnime_.size() > 0) {
-				DxRect<LONG>& rect = data.shotData->listAnime_[0].rcSrc_;
+			if (data.shotData->listFrame_.size() > 0) {
+				DxRect<LONG>& rect = data.shotData->listFrame_[0].rcSrc_;
 				r = std::min(abs(rect.GetWidth()), abs(rect.GetHeight())) / 3.0f - 3.0f;
 			}
 			data.shotData->listCol_.push_back(DxCircle(0, 0, r));
 		}
 
-		if (listData.size() <= data.id)
-			listData.resize(data.id + 1);
-		listData[data.id] = data.shotData;
+		mapData[data.id] = unique_ptr<StgShotData>(data.shotData);
 	}
 }
-void StgShotDataList::_ScanAnimation(StgShotData*& shotData, Scanner& scanner) {
+void StgShotDataList::_ScanAnimation(StgShotData* shotData, Scanner& scanner) {
 	Token& tok = scanner.Next();
 	if (tok.GetType() == Token::Type::TK_NEWLINE) tok = scanner.Next();
 	scanner.CheckType(tok, Token::Type::TK_OPENC);
@@ -728,19 +729,34 @@ void StgShotDataList::_ScanAnimation(StgShotData*& shotData, Scanner& scanner) {
 					throw wexception("Invalid argument list size (expected 5)");
 
 				int frame = StringUtility::ToInteger(list[0]);
-				DxRect<LONG> rcSrc(StringUtility::ToInteger(list[1]), StringUtility::ToInteger(list[2]),
+				DxRect<LONG> rect(StringUtility::ToInteger(list[1]), StringUtility::ToInteger(list[2]),
 					StringUtility::ToInteger(list[3]), StringUtility::ToInteger(list[4]));
 
-				StgShotData::AnimationData anime;
-				anime.frame_ = frame;
-				anime.rcSrc_ = rcSrc;
-				anime.rcDst_ = StgShotData::AnimationData::SetDestRect(&rcSrc);
+				StgShotDataFrame dFrame;
+				dFrame.frame_ = frame;
+				dFrame.rcSrc_ = rect;
+				dFrame.rcDst_ = StgShotDataFrame::LoadDestRect(&rect);
 
-				shotData->listAnime_.push_back(anime);
-				shotData->totalAnimeFrame_ += frame;
+				shotData->listFrame_.push_back(dFrame);
+				shotData->totalFrame_ += frame;
 			}
 		}
 	}
+}
+
+//*******************************************************************
+//StgShotDataFrame
+//*******************************************************************
+StgShotDataFrame::StgShotDataFrame() {
+	listShotData_ = nullptr;
+	pVertexBuffer_ = nullptr;
+	vertexOffset_ = 0;
+	frame_ = 0;
+}
+DxRect<float> StgShotDataFrame::LoadDestRect(DxRect<LONG>* src) {
+	float width = src->GetWidth() / 2.0f;
+	float height = src->GetHeight() / 2.0f;
+	return DxRect<float>(-width, -height, width, height);
 }
 
 //*******************************************************************
@@ -749,18 +765,15 @@ void StgShotDataList::_ScanAnimation(StgShotData*& shotData, Scanner& scanner) {
 StgShotData::StgShotData(StgShotDataList* listShotData) {
 	listShotData_ = listShotData;
 
-	indexTexture_ = -1;
-	textureSize_ = D3DXVECTOR2(0, 0);
-
 	typeRender_ = MODE_BLEND_ALPHA;
 	typeDelayRender_ = MODE_BLEND_ADD_ARGB;
 
 	alpha_ = 255;
 
-	delay_.rcSrc_ = DxRect<LONG>(-1, -1, -1, -1);
+	idDefaultDelay_ = -1;
 	colorDelay_ = D3DCOLOR_ARGB(255, 255, 255, 255);
 
-	totalAnimeFrame_ = 0;
+	totalFrame_ = 0;
 
 	angularVelocityMin_ = 0;
 	angularVelocityMax_ = 0;
@@ -768,112 +781,55 @@ StgShotData::StgShotData(StgShotDataList* listShotData) {
 }
 StgShotData::~StgShotData() {
 }
-StgShotRenderer* StgShotData::GetRenderer(BlendMode blendType) {
-	if (blendType < MODE_BLEND_ALPHA || blendType > MODE_BLEND_ALPHA_INV)
-		return listShotData_->GetRenderer(indexTexture_, 0);
-	return listShotData_->GetRenderer(indexTexture_, blendType - 1);
-}
 
-StgShotData::AnimationData* StgShotData::GetData(size_t frame) {
-	if (totalAnimeFrame_ <= 1U)
-		return &listAnime_[0];
+StgShotDataFrame* StgShotData::GetFrame(size_t frame) {
+	if (totalFrame_ <= 1U)
+		return &listFrame_[0];
 
-	frame = frame % totalAnimeFrame_;
+	frame = frame % totalFrame_;
 	size_t total = 0;
 
-	for (auto itr = listAnime_.begin(); itr != listAnime_.end(); ++itr) {
+	for (auto itr = listFrame_.begin(); itr != listFrame_.end(); ++itr) {
 		total += itr->frame_;
 		if (total >= frame)
 			return &(*itr);
 	}
-	return &listAnime_[0];
-}
-DxRect<float> StgShotData::AnimationData::SetDestRect(DxRect<LONG>* src) {
-	float width = src->GetWidth() / 2.0f;
-	float height = src->GetHeight() / 2.0f;
-	return DxRect<float>(-width, -height, width, height);
+	return &listFrame_[0];
 }
 
 //****************************************************************************
-//StgShotRenderer
+//StgShotVertexBufferContainer
 //****************************************************************************
-StgShotRenderer::StgShotRenderer() {
-	countRenderVertex_ = 0U;
-	countMaxVertex_ = 8192U;
-	countRenderIndex_ = 0U;
-	countMaxIndex_ = 16384U;
-
-	SetVertexCount(countMaxVertex_);
-	vecIndex_.resize(countMaxIndex_);
+StgShotVertexBufferContainer::StgShotVertexBufferContainer() {
+	pVertexBuffer_ = nullptr;
+	countData_ = 0;
 }
-StgShotRenderer::~StgShotRenderer() {
-
+StgShotVertexBufferContainer::~StgShotVertexBufferContainer() {
+	ptr_release(pVertexBuffer_);
 }
-void StgShotRenderer::Render(StgShotManager* manager) {
-	if (countRenderIndex_ < 3) return;
 
+HRESULT StgShotVertexBufferContainer::LoadData(const std::vector<VERTEX_TLX>& data, size_t countFrame) {
 	DirectGraphics* graphics = DirectGraphics::GetBase();
 	IDirect3DDevice9* device = graphics->GetDevice();
-	IDirect3DTexture9* pTexture = texture_ ? texture_->GetD3DTexture() : nullptr;
-	device->SetTexture(0, pTexture);
-	//device->SetTexture(1, pTexture);
 
-	VertexBufferManager* bufferManager = VertexBufferManager::GetBase();
+	if (pVertexBuffer_ == nullptr) {
+		pVertexBuffer_ = new FixedVertexBuffer(device);
+		pVertexBuffer_->Setup(data.size(), StgShotVertexBufferContainer::STRIDE, VERTEX_TLX::fvf);
 
-	GrowableVertexBuffer* vertexBuffer = bufferManager->GetGrowableVertexBuffer();
-	GrowableIndexBuffer* indexBuffer = bufferManager->GetGrowableIndexBuffer();
-	vertexBuffer->Expand(countMaxVertex_);
-	indexBuffer->Expand(countMaxIndex_);
-
-	{
-		BufferLockParameter lockParam = BufferLockParameter(D3DLOCK_DISCARD);
-
-		lockParam.SetSource(vertex_, countRenderVertex_, sizeof(VERTEX_TLX));
-		vertexBuffer->UpdateBuffer(&lockParam);
-
-		lockParam.SetSource(vecIndex_, countRenderIndex_, sizeof(uint32_t));
-		indexBuffer->UpdateBuffer(&lockParam);
+		HRESULT hr = pVertexBuffer_->Create(0, D3DPOOL_MANAGED);
+		if (FAILED(hr)) {
+			ptr_release(pVertexBuffer_);
+			return hr;
+		}
 	}
 
-	device->SetStreamSource(0, vertexBuffer->GetBuffer(), 0, sizeof(VERTEX_TLX));
-	device->SetIndices(indexBuffer->GetBuffer());
+	BufferLockParameter lockParam = BufferLockParameter(D3DLOCK_DISCARD);
+	lockParam.SetSource(const_cast<std::vector<VERTEX_TLX>&>(data), pVertexBuffer_->GetSize(), sizeof(VERTEX_TLX));
 
-	device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, countRenderVertex_, 0, countRenderIndex_ / 3U);
+	HRESULT hr = pVertexBuffer_->UpdateBuffer(&lockParam);
+	countData_ = countFrame;
 
-	countRenderVertex_ = 0U;
-	countRenderIndex_ = 0U;
-}
-void StgShotRenderer::AddSquareVertex(VERTEX_TLX* listVertex) {
-	TryExpandVertex(countRenderVertex_ + 4U);
-	memcpy((VERTEX_TLX*)vertex_.data() + countRenderVertex_, listVertex, strideVertexStreamZero_ * 4U);
-
-	TryExpandIndex(countRenderIndex_ + 6U);
-	vecIndex_[countRenderIndex_ + 0] = countRenderVertex_ + 0;
-	vecIndex_[countRenderIndex_ + 1] = countRenderVertex_ + 2;
-	vecIndex_[countRenderIndex_ + 2] = countRenderVertex_ + 1;
-	vecIndex_[countRenderIndex_ + 3] = countRenderVertex_ + 1;
-	vecIndex_[countRenderIndex_ + 4] = countRenderVertex_ + 2;
-	vecIndex_[countRenderIndex_ + 5] = countRenderVertex_ + 3;
-
-	countRenderVertex_ += 4U;
-	countRenderIndex_ += 6U;
-}
-void StgShotRenderer::AddSquareVertex_CurveLaser(VERTEX_TLX* listVertex, bool bAddIndex) {
-	TryExpandVertex(countRenderVertex_ + 2U);
-	memcpy((VERTEX_TLX*)vertex_.data() + countRenderVertex_, listVertex, strideVertexStreamZero_ * 2U);
-
-	if (bAddIndex) {
-		TryExpandIndex(countRenderIndex_ + 6U);
-		vecIndex_[countRenderIndex_ + 0] = countRenderVertex_ + 0;
-		vecIndex_[countRenderIndex_ + 1] = countRenderVertex_ + 2;
-		vecIndex_[countRenderIndex_ + 2] = countRenderVertex_ + 1;
-		vecIndex_[countRenderIndex_ + 3] = countRenderVertex_ + 1;
-		vecIndex_[countRenderIndex_ + 4] = countRenderVertex_ + 2;
-		vecIndex_[countRenderIndex_ + 5] = countRenderVertex_ + 3;
-		countRenderIndex_ += 6U;
-	}
-
-	countRenderVertex_ += 2U;
+	return hr;
 }
 
 //****************************************************************************
@@ -964,7 +920,7 @@ void StgShotObject::_RequestPlayerDeleteEvent(int hitObjectID) {	//A super ugly 
 
 			value listScriptValue[4];
 			listScriptValue[0] = scriptPlayer->CreateIntValue(idObject_);
-			listScriptValue[1] = scriptPlayer->CreateRealArrayValue(listPos, 2U);
+			listScriptValue[1] = scriptPlayer->CreateFloatArrayValue(listPos, 2U);
 			listScriptValue[2] = scriptPlayer->CreateIntValue(GetShotDataID());
 			listScriptValue[3] = scriptPlayer->CreateIntValue(hitObjectID);
 			scriptPlayer->RequestEvent(StgStagePlayerScript::EV_DELETE_SHOT_PLAYER, listScriptValue, 4);
@@ -979,10 +935,11 @@ void StgShotObject::_DeleteInAutoClip() {
 
 	DxRect<LONG>* const rcStgFrame = stageController_->GetStageInformation()->GetStgFrameRect();
 	DxRect<LONG>* const rcClipBase = stageController_->GetShotManager()->GetShotDeleteClip();
+	DxRect<LONG> rcDeleteClip(rcClipBase->left, rcClipBase->top,
+		rcStgFrame->GetWidth() + rcClipBase->right,
+		rcStgFrame->GetHeight() + rcClipBase->bottom);
 
-	if ((LONG)posX_ < rcClipBase->left || (LONG)posX_ > rcStgFrame->GetWidth() + rcClipBase->right
-		|| (LONG)posY_ < rcClipBase->top || (LONG)posY_ > rcStgFrame->GetHeight() + rcClipBase->bottom)
-	{
+	if (!rcDeleteClip.IsPointIntersected(posX_, posY_)) {
 		auto objectManager = stageController_->GetMainObjectManager();
 		objectManager->DeleteObject(this);
 	}
@@ -1087,13 +1044,10 @@ void StgShotObject::Intersect(StgIntersectionTarget* ownTarget, StgIntersectionT
 		_RequestPlayerDeleteEvent(obj.IsExists() ? obj->GetDxScriptObjectID() : DxScript::ID_INVALID);
 }
 StgShotData* StgShotObject::_GetShotData(int id) {
-	StgShotData* res = nullptr;
 	StgShotManager* shotManager = stageController_->GetShotManager();
 	StgShotDataList* dataList = (typeOwner_ == OWNER_PLAYER) ?
 		shotManager->GetPlayerShotDataList() : shotManager->GetEnemyShotDataList();
-
-	if (dataList) res = dataList->GetData(id);
-	return res;
+	return dataList ? dataList->GetData(id) : nullptr;
 }
 
 void StgShotObject::_SetVertexPosition(VERTEX_TLX* vertex, float x, float y, float z, float w) {
@@ -1126,7 +1080,7 @@ void StgShotObject::SetColor(int r, int g, int b) {
 void StgShotObject::ConvertToItem() {
 	if (IsDeleted()) return;
 
-	_SendDeleteEvent(bChangeItemEnable_ ? StgShotManager::BIT_EV_DELETE_TO_ITEM 
+	_SendDeleteEvent(bChangeItemEnable_ ? StgShotManager::BIT_EV_DELETE_TO_ITEM
 		: StgShotManager::BIT_EV_DELETE_IMMEDIATE);
 
 	auto objectManager = stageController_->GetMainObjectManager();
@@ -1181,8 +1135,7 @@ void StgShotObject::_ProcessTransformAct() {
 			double agvel = transform.param[1];
 			double spin = transform.param[2];
 
-			StgNormalShotObject* shot = (StgNormalShotObject*)this;
-			if (shot)
+			if (StgNormalShotObject* shot = dynamic_cast<StgNormalShotObject*>(this))
 				shot->angularVelocity_ = Math::DegreeToRadian(spin);
 
 			{
@@ -1350,8 +1303,8 @@ void StgShotObject::_ProcessTransformAct() {
 			double angle = transform.param[2];
 
 			double accel = transform.param[3];
-			double agvel = transform.param[4];
-			double maxsp = transform.param[5];
+			double maxsp = transform.param[4];
+			double agvel = transform.param[5];
 
 			int shotID = transform.param[6];
 			int relativeObj = transform.param[7];
@@ -1361,8 +1314,8 @@ void StgShotObject::_ProcessTransformAct() {
 			ADD_CMD(StgMovePattern_Angle::SET_SPEED, speed);
 			ADD_CMD2(StgMovePattern_Angle::SET_ANGLE, angle, Math::DegreeToRadian(angle));
 			ADD_CMD(StgMovePattern_Angle::SET_ACCEL, accel);
-			ADD_CMD2(StgMovePattern_Angle::SET_AGVEL, agvel, Math::DegreeToRadian(agvel));
 			ADD_CMD(StgMovePattern_Angle::SET_SPMAX, maxsp);
+			ADD_CMD2(StgMovePattern_Angle::SET_AGVEL, agvel, Math::DegreeToRadian(agvel));
 
 			pattern->SetShotDataID(shotID);
 			pattern->SetRelativeObject(relativeObj);
@@ -1579,8 +1532,8 @@ bool StgNormalShotObject::GetIntersectionTargetList_NoVector(StgShotData* shotDa
 			pTarget = new StgIntersectionTarget_Circle();
 			pPair->second = pTarget;
 		}
-		
-		DxCircle* pSrcCircle = &listCircle[i];
+
+		const DxCircle* pSrcCircle = &listCircle[i];
 		DxCircle* pDstCircle = &pTarget->GetCircle();
 		if (pSrcCircle->GetR() <= 0)
 			continue;
@@ -1607,90 +1560,70 @@ bool StgNormalShotObject::GetIntersectionTargetList_NoVector(StgShotData* shotDa
 	return true;
 }
 
-void StgNormalShotObject::RenderOnShotManager() {
-	if (!IsVisible()) return;
+void StgShotObject::_DefaultShotRender(StgShotData* shotData, StgShotDataFrame* shotFrame, const D3DXMATRIX& matWorld, D3DCOLOR color) {
+	if (shotFrame == nullptr) return;
+	StgShotManager* shotManager = stageController_->GetShotManager();
+
+	StgShotVertexBufferContainer* pVB = shotFrame->GetVertexBufferContainer();
+	DWORD vertexOffset = shotFrame->vertexOffset_;
+
+	if (pVB) {
+		DirectGraphics* graphics = DirectGraphics::GetBase();
+		IDirect3DDevice9* device = graphics->GetDevice();
+
+		if (graphics->IsAllowRenderTargetChange()) {
+			if (auto pRT = renderTarget_.lock())
+				graphics->SetRenderTarget(pRT);
+			else graphics->SetRenderTarget(nullptr);
+		}
+
+		device->SetTexture(0, pVB->GetD3DTexture());
+		device->SetStreamSource(0, pVB->GetD3DBuffer(), vertexOffset * sizeof(VERTEX_TLX), sizeof(VERTEX_TLX));
+
+		{
+			ID3DXEffect* effect = shotManager->GetEffect();
+			if (shader_) {
+				effect = shader_->GetEffect();
+				if (shader_->LoadTechnique()) {
+					shader_->LoadParameter();
+				}
+			}
+
+			if (effect) {
+				D3DXHANDLE handle = nullptr;
+				if (handle = effect->GetParameterBySemantic(nullptr, "WORLD")) {
+					effect->SetMatrix(handle, &matWorld);
+				}
+				if (shader_) {
+					if (handle = effect->GetParameterBySemantic(nullptr, "VIEWPROJECTION")) {
+						effect->SetMatrix(handle, shotManager->GetProjectionMatrix());
+					}
+				}
+				if (handle = effect->GetParameterBySemantic(nullptr, "ICOLOR")) {
+					//To normalized RGBA vector
+					D3DXVECTOR4 vColor = ColorAccess::ToVec4Normalized(color, ColorAccess::PERMUTE_RGBA);
+					effect->SetVector(handle, &vColor);
+				}
+
+				UINT countPass = 1;
+				effect->Begin(&countPass, D3DXFX_DONOTSAVESHADERSTATE);
+				for (UINT iPass = 0; iPass < countPass; ++iPass) {
+					effect->BeginPass(iPass);
+					device->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
+					effect->EndPass();
+				}
+				effect->End();
+			}
+		}
+	}
+}
+
+void StgNormalShotObject::Render(BlendMode targetBlend) {
+	//if (!IsVisible()) return;
+	StgShotManager* shotManager = stageController_->GetShotManager();
 
 	StgShotData* shotData = _GetShotData();
-	StgShotData* delayData = delay_.id >= 0 ? _GetShotData(delay_.id) : shotData;
-	if (shotData == nullptr || delayData == nullptr) return;
-
-	StgShotRenderer* renderer = nullptr;
-
-	BlendMode shotBlendType = MODE_BLEND_ALPHA;
-	if (delay_.time > 0) {
-		BlendMode objDelayBlendType = GetDelayBlendType();
-		if (objDelayBlendType == MODE_BLEND_NONE) {
-			renderer = delayData->GetRenderer(shotData->GetDelayRenderType());
-		}
-		else {
-			renderer = delayData->GetRenderer(objDelayBlendType);
-		}
-	}
-	else {
-		BlendMode objBlendType = GetBlendType();
-		if (objBlendType == MODE_BLEND_NONE) {
-			renderer = shotData->GetRenderer();
-			shotBlendType = shotData->GetRenderType();
-		}
-		else {
-			renderer = shotData->GetRenderer(objBlendType);
-		}
-	}
-
-	if (renderer == nullptr) return;
-
-	D3DXVECTOR2* textureSize = &shotData->GetTextureSize();
-
-	float scaleX = 1.0f;
-	float scaleY = 1.0f;
-
-	DxRect<LONG>* rcSrc = nullptr;
-	DxRect<float>* rcDest = nullptr;
-	D3DCOLOR color;
-
-	if (delay_.time > 0) {
-		float expa = delay_.GetScale();
-		scaleX = expa;
-		scaleY = expa;
-
-		if (delay_.id >= 0) {
-			textureSize = &delayData->GetTextureSize();
-
-			StgShotData::AnimationData* anime = delayData->GetData(frameWork_);
-			rcSrc = anime->GetSource();
-			rcDest = anime->GetDest();
-		}
-		else {
-			rcSrc = delayData->GetDelayRect();
-			rcDest = delayData->GetDelayDest();
-		}
-
-		color = (delay_.colorRep != 0) ? delay_.colorRep : shotData->GetDelayColor();
-		if (delay_.colorMix) ColorAccess::MultiplyColor(color, color_);
-		{
-			byte alpha = ColorAccess::ClampColorRet(((color >> 24) & 0xff) * delay_.GetAlpha());
-			color = (color & 0x00ffffff) | (alpha << 24);
-		}
-	}
-	else {
-		scaleX = scale_.x;
-		scaleY = scale_.y;
-
-		StgShotData::AnimationData* anime = shotData->GetData(frameWork_);
-		rcSrc = anime->GetSource();
-		rcDest = anime->GetDest();
-
-		color = color_;
-
-		float alphaRate = shotData->GetAlpha() / 255.0f;
-		if (frameFadeDelete_ >= 0) alphaRate *= (float)frameFadeDelete_ / FRAME_FADEDELETE;
-		{
-			byte alpha = ColorAccess::ClampColorRet(((color >> 24) & 0xff) * alphaRate);
-			color = (color & 0x00ffffff) | (alpha << 24);
-		}
-	}
-
-	//if (bIntersected_) color = D3DCOLOR_ARGB(255, 255, 0, 0);
+	if (shotData == nullptr) return;
 
 	FLOAT sposx = position_.x;
 	FLOAT sposy = position_.y;
@@ -1699,32 +1632,65 @@ void StgNormalShotObject::RenderOnShotManager() {
 		sposy = roundf(sposy);
 	}
 
-	VERTEX_TLX verts[4];
-	LONG* ptrSrc = reinterpret_cast<LONG*>(rcSrc);
-	float* ptrDst = reinterpret_cast<float*>(rcDest);
+	float scaleX = 1.0f;
+	float scaleY = 1.0f;
+	D3DCOLOR color;
 
-	for (size_t iVert = 0U; iVert < 4U; ++iVert) {
-		//((iVert & 1) << 1)
-		//   0 -> 0
-		//   1 -> 2
-		//   2 -> 0
-		//   3 -> 2
-		//(iVert | 1)
-		//   0 -> 1
-		//   1 -> 1
-		//   2 -> 3
-		//   3 -> 3
+	auto _Render = [&](StgShotData* pData, StgShotDataFrame* pFrame) {
+		if (pData == nullptr || pFrame == nullptr) return;
 
-		VERTEX_TLX* pv = &verts[iVert];
+		D3DXMATRIX matTransform(
+			scaleX * move_.x, scaleX * move_.y, 0, 0,
+			scaleY * -move_.y, scaleY * move_.x, 0, 0,
+			0, 0, 1, 0,
+			sposx, sposy, 0, 1
+		);
+		_DefaultShotRender(pData, pFrame, matTransform, color);
+	};
 
-		_SetVertexUV(pv, ptrSrc[(iVert & 1) << 1], ptrSrc[iVert | 1]);
-		_SetVertexPosition(pv, ptrDst[(iVert & 1) << 1], ptrDst[iVert | 1], position_.z);
-		_SetVertexColorARGB(pv, color);
+	if (delay_.time > 0) {
+		BlendMode objBlendType = GetDelayBlendType();
+		objBlendType = objBlendType == MODE_BLEND_NONE ? shotData->GetDelayRenderType() : objBlendType;
+		if (objBlendType != targetBlend) return;
+
+		StgShotData* delayData = _GetShotData(delay_.id >= 0 ? delay_.id : shotData->GetDefaultDelayID());
+		if (delayData) {
+			StgShotDataFrame* delayFrame = delayData ? delayData->GetFrame(frameWork_) : nullptr;
+
+			scaleX = scaleY = delay_.GetScale();
+
+			color = (delay_.colorRep != 0) ? delay_.colorRep : shotData->GetDelayColor();
+			if (delay_.colorMix) ColorAccess::MultiplyColor(color, color_);
+			{
+				byte alpha = ColorAccess::ClampColorRet(((color >> 24) & 0xff) * delay_.GetAlpha());
+				color = (color & 0x00ffffff) | (alpha << 24);
+			}
+
+			_Render(delayData, delayFrame);
+		}
 	}
-	D3DXVECTOR2 texSizeInv = D3DXVECTOR2(1.0f / textureSize->x, 1.0f / textureSize->y);
-	DxMath::TransformVertex2D(verts, &D3DXVECTOR2(scaleX, scaleY), &move_, &D3DXVECTOR2(sposx, sposy), &texSizeInv);
+	else {
+		BlendMode objBlendType = GetBlendType();
+		objBlendType = objBlendType == MODE_BLEND_NONE ? shotData->GetRenderType() : objBlendType;
+		if (objBlendType != targetBlend) return;
 
-	renderer->AddSquareVertex(verts);
+		scaleX = scale_.x;
+		scaleY = scale_.y;
+		color = color_;
+
+		{
+			float alphaRate = shotData->GetAlpha() / 255.0f;
+			if (frameFadeDelete_ >= 0)
+				alphaRate *= std::clamp<float>((float)frameFadeDelete_ / FRAME_FADEDELETE, 0, 1);
+			byte alpha = ColorAccess::ClampColorRet(((color >> 24) & 0xff) * alphaRate);
+			color = (color & 0x00ffffff) | (alpha << 24);
+		}
+
+		StgShotDataFrame* shotFrame = shotData->GetFrame(frameWork_);
+		_Render(shotData, shotFrame);
+	}
+
+	//if (bIntersected_) color = D3DCOLOR_ARGB(255, 255, 0, 0);
 }
 
 void StgNormalShotObject::_SendDeleteEvent(int type) {
@@ -1756,14 +1722,14 @@ void StgNormalShotObject::_SendDeleteEvent(int type) {
 
 		gstd::value listScriptValue[3];
 		listScriptValue[0] = DxScript::CreateIntValue(idObject_);
-		listScriptValue[1] = DxScript::CreateRealArrayValue(pos);
+		listScriptValue[1] = DxScript::CreateFloatArrayValue(pos);
 		listScriptValue[2] = DxScript::CreateIntValue(GetShotDataID());
 		itemScript->RequestEvent(typeEvent, listScriptValue, 3);
 
 		if (typeEvent == StgStageItemScript::EV_DELETE_SHOT_TO_ITEM && itemManager->IsDefaultBonusItemEnable()) {
 			if (itemManager->GetItemCount() < StgItemManager::ITEM_MAX) {
 				ref_unsync_ptr<StgItemObject> obj = new StgItemObject_Bonus(stageController_);
-					
+
 				int id = objectManager->AddObject(obj);
 				if (id != DxScript::ID_INVALID) {
 					itemManager->AddItem(obj);
@@ -1776,24 +1742,29 @@ void StgNormalShotObject::_SendDeleteEvent(int type) {
 }
 
 void StgNormalShotObject::SetShotDataID(int id) {
+	bool bPreserveSpin = id < 0;	//If id is negative, preserve angle and spin
+
 	StgShotData* oldData = _GetShotData();
-	StgShotObject::SetShotDataID(id);
+	StgShotObject::SetShotDataID(abs(id));
 
 	StgShotData* shotData = _GetShotData();
 	if (shotData != nullptr && oldData != shotData) {
-		if (angularVelocity_ != 0) {
-			angularVelocity_ = 0;
-			angle_.z = 0;
-		}
+		double newSpin = 0;
 
 		double avMin = shotData->GetAngularVelocityMin();
 		double avMax = shotData->GetAngularVelocityMax();
-		bFixedAngle_ = shotData->IsFixedAngle();
-		if (avMin != 0 || avMax != 0) {
+		if (avMin != avMax) {
 			ref_count_ptr<StgStageInformation> stageInfo = stageController_->GetStageInformation();
 			shared_ptr<RandProvider> rand = stageInfo->GetRandProvider();
-			angularVelocity_ = rand->GetReal(avMin, avMax);
+			newSpin = rand->GetReal(avMin, avMax);
 		}
+		else newSpin = avMin;
+
+		if (!bPreserveSpin) {
+			angularVelocity_ = newSpin;
+			angle_.z = 0;
+		}
+		bFixedAngle_ = shotData->IsFixedAngle();
 	}
 }
 
@@ -1877,20 +1848,23 @@ void StgLaserObject::_ExtendLength() {
 StgLooseLaserObject::StgLooseLaserObject(StgStageController* stageController) : StgLaserObject(stageController) {
 	typeObject_ = TypeObject::LooseLaser;
 
+	posTail_ = { 0, 0 };
 	posOrigin_ = D3DXVECTOR2(0, 0);
+
+	currentLength_ = 0;
 
 	listIntersectionTarget_.push_back(CreateEmptyIntersection());
 }
 void StgLooseLaserObject::Work() {
 	if (frameWork_ == 0) {
-		posXE_ = posOrigin_.x = posX_;
-		posYE_ = posOrigin_.y = posY_;
+		posTail_[0] = posOrigin_.x = posX_;
+		posTail_[1] = posOrigin_.y = posY_;
 	}
 
 	if (bEnableMovement_) {
 		_ProcessTransformAct();
 		_Move();
-		
+
 
 		if (delay_.time > 0) {
 			--(delay_.time);
@@ -1912,11 +1886,11 @@ void StgLooseLaserObject::_Move() {
 	double angleZ = GetDirectionAngle();
 
 	if (delay_.time <= 0 || bEnableMotionDelay_) {
-		float dist = Math::HypotSq(posXE_ - posX_, posYE_ - posY_);
-		if (dist >= (length_ * length_)) {
-			float speed = GetSpeed();
-			posXE_ += speed * move_.x;
-			posYE_ += speed * move_.y;
+		currentLength_ = hypot(posTail_[0] - posX_, posTail_[1] - posY_);
+		if (currentLength_ >= length_) {
+			//float speed = GetSpeed();
+			posTail_[0] = posX_ - length_ * move_.x;
+			posTail_[1] = posY_ - length_ * move_.y;
 		}
 	}
 	if (lastAngle_ != angleZ) {
@@ -1929,16 +1903,11 @@ void StgLooseLaserObject::_DeleteInAutoClip() {
 
 	DxRect<LONG>* const rcStgFrame = stageController_->GetStageInformation()->GetStgFrameRect();
 	DxRect<LONG>* const rcClipBase = stageController_->GetShotManager()->GetShotDeleteClip();
+	DxRect<LONG> rcDeleteClip(rcClipBase->left, rcClipBase->top,
+		rcStgFrame->GetWidth() + rcClipBase->right,
+		rcStgFrame->GetHeight() + rcClipBase->bottom);
 
-	LONG rcLeft = rcClipBase->left;
-	LONG rcTop = rcClipBase->top;
-	LONG rcRight = rcStgFrame->GetWidth() + rcClipBase->right;
-	LONG rcBottom = rcStgFrame->GetHeight() + rcClipBase->bottom;
-
-	bool bDelete = (posX_ < rcLeft && posXE_ < rcLeft) || (posX_ > rcRight && posXE_ > rcRight)
-		|| (posY_ < rcTop && posYE_ < rcTop) || (posY_ > rcBottom && posYE_ > rcBottom);
-
-	if (bDelete) {
+	if (!rcDeleteClip.IsPointIntersected(posX_, posY_) && !rcDeleteClip.IsPointIntersected(posTail_)) {
 		auto objectManager = stageController_->GetMainObjectManager();
 		objectManager->DeleteObject(this);
 	}
@@ -1951,10 +1920,10 @@ bool StgLooseLaserObject::GetIntersectionTargetList_NoVector(StgShotData* shotDa
 	float invLengthS = (1.0f - (1.0f - invalidLengthStart_) * hitboxScale_.y) * 0.5f;
 	float invLengthE = (1.0f - (1.0f - invalidLengthEnd_) * hitboxScale_.y) * 0.5f;
 
-	float lineXS = Math::Lerp::Linear(posX_, posXE_, invLengthS);
-	float lineYS = Math::Lerp::Linear(posY_, posYE_, invLengthS);
-	float lineXE = Math::Lerp::Linear(posXE_, posX_, invLengthE);
-	float lineYE = Math::Lerp::Linear(posYE_, posY_, invLengthE);
+	float lineXS = Math::Lerp::Linear(posX_, posTail_[0], invLengthS);
+	float lineYS = Math::Lerp::Linear(posY_, posTail_[1], invLengthS);
+	float lineXE = Math::Lerp::Linear(posTail_[0], posX_, invLengthE);
+	float lineYE = Math::Lerp::Linear(posTail_[1], posY_, invLengthE);
 
 	{
 		IntersectionPairType* pPair = &listIntersectionTarget_[0];
@@ -1978,142 +1947,100 @@ bool StgLooseLaserObject::GetIntersectionTargetList_NoVector(StgShotData* shotDa
 	return true;
 }
 
-void StgLooseLaserObject::RenderOnShotManager() {
-	if (!IsVisible()) return;
+void StgLooseLaserObject::Render(BlendMode targetBlend) {
+	//if (!IsVisible()) return;
+	StgShotManager* shotManager = stageController_->GetShotManager();
 
 	StgShotData* shotData = _GetShotData();
-	StgShotData* delayData = delay_.id >= 0 ? _GetShotData(delay_.id) : shotData;
-	if (shotData == nullptr || delayData == nullptr) return;
+	if (shotData == nullptr) return;
 
-	D3DXVECTOR2* textureSize = nullptr;
-
-	float scaleX = 1.0f;
-	float scaleY = 1.0f;
-	D3DXVECTOR2 renderF = D3DXVECTOR2(1, 0);
-
-	FLOAT sposx = position_.x;
-	FLOAT sposy = position_.y;
-
-	DxRect<LONG>* rcSrc = nullptr;
-	DxRect<float> rcDest;
-	D3DCOLOR color;
-
-	auto _LoadVerts = [&](StgShotRenderer* renderer) {
-		VERTEX_TLX verts[4];
-		LONG* ptrSrc = reinterpret_cast<LONG*>(rcSrc);
-		float* ptrDst = reinterpret_cast<float*>(&rcDest);
-
-		for (size_t iVert = 0U; iVert < 4U; ++iVert) {
-			VERTEX_TLX* pv = &verts[iVert];
-
-			_SetVertexUV(pv, ptrSrc[(iVert & 0b1) << 1], ptrSrc[iVert | 0b1]);
-			_SetVertexPosition(pv, ptrDst[iVert | 0b1], ptrDst[(iVert & 0b1) << 1], position_.z);
-			_SetVertexColorARGB(pv, color);
-		}
-
-		D3DXVECTOR2 texSizeInv = D3DXVECTOR2(1.0f / textureSize->x, 1.0f / textureSize->y);
-		DxMath::TransformVertex2D(verts, &D3DXVECTOR2(scaleX, scaleY), &renderF, &D3DXVECTOR2(sposx, sposy), &texSizeInv);
-
-		renderer->AddSquareVertex(verts);
-	};
+	D3DXVECTOR2 rPos;
+	D3DXVECTOR2 rScale;
+	D3DXVECTOR2 rAngle;		//[cos, sin]
+	D3DCOLOR rColor;
 
 	//Render delay
 	if (delay_.time > 0) {
-		textureSize = &delayData->GetTextureSize();
+		BlendMode objBlendType = GetDelayBlendType();
+		objBlendType = objBlendType == MODE_BLEND_NONE ? MODE_BLEND_ADD_ARGB : objBlendType;
 
-		StgShotRenderer* renderer = nullptr;
+		if (objBlendType == targetBlend) {
+			StgShotData* delayData = _GetShotData(delay_.id >= 0 ? delay_.id : shotData->GetDefaultDelayID());
+			if (delayData) {
+				StgShotDataFrame* delayFrame = delayData ? delayData->GetFrame(frameWork_) : nullptr;
 
-		BlendMode objDelayBlendType = GetDelayBlendType();
-		if (objDelayBlendType == MODE_BLEND_NONE) {
-			renderer = delayData->GetRenderer(MODE_BLEND_ADD_ARGB);
+				rPos = bEnableMotionDelay_ ? posOrigin_ : D3DXVECTOR2(position_);
+				if (bRoundingPosition_) {
+					rPos.x = roundf(rPos.x);
+					rPos.y = roundf(rPos.y);
+				}
+				rScale.x = rScale.y = delay_.GetScale();
+				rAngle = (delay_.angle.y != 0) ? D3DXVECTOR2(cosf(delay_.angle.x), sinf(delay_.angle.x)) : move_;
+
+				rColor = (delay_.colorRep != 0) ? delay_.colorRep : shotData->GetDelayColor();
+				if (delay_.colorMix) ColorAccess::MultiplyColor(rColor, color_);
+				{
+					byte alpha = ColorAccess::ClampColorRet(((rColor >> 24) & 0xff) * delay_.GetAlpha());
+					rColor = (rColor & 0x00ffffff) | (alpha << 24);
+				}
+
+				D3DXMATRIX matTransform(
+					rScale.x * rAngle.x, rScale.x * rAngle.y, 0, 0,
+					rScale.y * -rAngle.y, rScale.y * rAngle.x, 0, 0,
+					0, 0, 1, 0,
+					rPos.x, rPos.y, 0, 1
+				);
+				_DefaultShotRender(delayData, delayFrame, matTransform, rColor);
+			}
 		}
-		else {
-			renderer = delayData->GetRenderer(objDelayBlendType);
-		}
-
-		if (renderer == nullptr) return;
-
-		float expa = delay_.GetScale();
-		scaleX = expa;
-		scaleY = expa;
-
-		renderF = (delay_.angle.y != 0) ? D3DXVECTOR2(cosf(delay_.angle.x), sinf(delay_.angle.x)) : move_;
-
-		if (bEnableMotionDelay_) {
-			sposx = posOrigin_.x;
-			sposy = posOrigin_.y;
-		}
-
-		if (delay_.id >= 0) {
-			StgShotData::AnimationData* anime = delayData->GetData(frameWork_);
-			rcSrc = anime->GetSource();
-			rcDest = *anime->GetDest();
-		}
-		else {
-			rcSrc = delayData->GetDelayRect();
-			rcDest = *delayData->GetDelayDest();
-		}
-
-		color = (delay_.colorRep != 0) ? delay_.colorRep : shotData->GetDelayColor();
-		if (delay_.colorMix) ColorAccess::MultiplyColor(color, color_);
-		{
-			byte alpha = ColorAccess::ClampColorRet(((color >> 24) & 0xff) * delay_.GetAlpha());
-			color = (color & 0x00ffffff) | (alpha << 24);
-		}
-
-		if (bRoundingPosition_) {
-			sposx = roundf(sposx);
-			sposy = roundf(sposy);
-		}
-
-		_LoadVerts(renderer);
 	}
 
 	//Render laser
 	if (delay_.time == 0 || bEnableMotionDelay_) {
-		textureSize = &shotData->GetTextureSize();
-
-		StgShotRenderer* renderer = nullptr;
-
 		BlendMode objBlendType = GetBlendType();
-		if (objBlendType == MODE_BLEND_NONE) {
-			renderer = shotData->GetRenderer(MODE_BLEND_ADD_ARGB);
+		objBlendType = objBlendType == MODE_BLEND_NONE ? MODE_BLEND_ADD_ARGB : objBlendType;
+
+		if (objBlendType == targetBlend) {
+			StgShotDataFrame* shotFrame = shotData->GetFrame(frameWork_);
+
+			float dx = posTail_[0] - posX_;
+			float dy = posTail_[1] - posY_;
+
+			if (currentLength_ > 0 && widthRender_ != 0) {
+				rPos = D3DXVECTOR2(posX_ + posTail_[0], posY_ + posTail_[1]) / 2;	//Render from the laser center
+				if (bRoundingPosition_) {
+					rPos.x = roundf(rPos.x);
+					rPos.y = roundf(rPos.y);
+				}
+
+				DxRect<float>* rcDst = shotFrame->GetDestRect();
+				rScale.x = widthRender_ / rcDst->GetWidth() * scale_.x;
+				rScale.y = currentLength_ / rcDst->GetHeight() * scale_.y;
+
+				rAngle = D3DXVECTOR2(dy, -dx) / currentLength_;
+
+				rColor = color_;
+				{
+					float alphaRate = shotData->GetAlpha() / 255.0f;
+					if (frameFadeDelete_ >= 0)
+						alphaRate *= std::clamp<float>((float)frameFadeDelete_ / FRAME_FADEDELETE, 0, 1);
+					byte alpha = ColorAccess::ClampColorRet(((rColor >> 24) & 0xff) * alphaRate);
+					rColor = (rColor & 0x00ffffff) | (alpha << 24);
+				}
+
+				D3DXMATRIX matTransform(
+					rScale.x * rAngle.x, rScale.x * rAngle.y, 0, 0,
+					rScale.y * -rAngle.y, rScale.y * rAngle.x, 0, 0,
+					0, 0, 1, 0,
+					rPos.x, rPos.y, 0, 1
+				);
+				_DefaultShotRender(shotData, shotFrame, matTransform, rColor);
+			}
+
 		}
-		else {
-			renderer = shotData->GetRenderer(objBlendType);
-		}
-
-		if (renderer == nullptr) return;
-
-		sposx = position_.x;
-		sposy = position_.y;
-		scaleX = scale_.x;
-		scaleY = scale_.y;
-
-		float dx = posXE_ - posX_;
-		float dy = posYE_ - posY_;
-		float radius = hypotf(dx, dy);
-
-		renderF = D3DXVECTOR2(dx, dy) / radius;
-		
-		StgShotData::AnimationData* anime = shotData->GetData(frameWork_);
-		rcSrc = anime->GetSource();
-
-		color = color_;
-
-		float alphaRate = shotData->GetAlpha() / 255.0f;
-		if (frameFadeDelete_ >= 0) alphaRate *= (float)frameFadeDelete_ / FRAME_FADEDELETE;
-		{
-			byte alpha = ColorAccess::ClampColorRet(((color >> 24) & 0xff) * alphaRate);
-			color = (color & 0x00ffffff) | (alpha << 24);
-		}
-
-		//color = ColorAccess::ApplyAlpha(color, alpha);
-		rcDest.Set(widthRender_ / 2.0f, 0, -widthRender_ / 2.0f, radius);
-
-		_LoadVerts(renderer);
 	}
 }
+
 void StgLooseLaserObject::_SendDeleteEvent(int type) {
 	if (typeOwner_ != OWNER_ENEMY) return;
 
@@ -2142,19 +2069,15 @@ void StgLooseLaserObject::_SendDeleteEvent(int type) {
 		double ex = GetPositionX();
 		double ey = GetPositionY();
 
-		double dx = posXE_ - posX_;
-		double dy = posYE_ - posY_;
-		double length = hypot(dx, dy);
-
 		Math::DVec2 pos;
 		gstd::value listScriptValue[3];
 
-		for (double itemPos = 0; itemPos < length; itemPos += itemDistance_) {
+		for (double itemPos = 0; itemPos < currentLength_; itemPos += itemDistance_) {
 			pos = { ex - itemPos * move_.x, ey - itemPos * move_.y };
 
 			gstd::value listScriptValue[3];
 			listScriptValue[0] = DxScript::CreateIntValue(idObject_);
-			listScriptValue[1] = DxScript::CreateRealArrayValue(pos);
+			listScriptValue[1] = DxScript::CreateFloatArrayValue(pos);
 			listScriptValue[2] = DxScript::CreateIntValue(GetShotDataID());
 			itemScript->RequestEvent(typeEvent, listScriptValue, 3);
 
@@ -2212,7 +2135,7 @@ void StgStraightLaserObject::Work() {
 			--(delay_.time);
 		else if (bLaserExpand_)
 			scaleX_ = std::min(1.0f, scaleX_ + 0.1f);
-		
+
 		delay_.angle.x += delay_.angle.y;
 
 		if (lastAngle_ != angLaser_) {
@@ -2229,18 +2152,14 @@ void StgStraightLaserObject::_DeleteInAutoClip() {
 
 	DxRect<LONG>* const rcStgFrame = stageController_->GetStageInformation()->GetStgFrameRect();
 	DxRect<LONG>* const rcClipBase = stageController_->GetShotManager()->GetShotDeleteClip();
+	DxRect<LONG> rcDeleteClip(rcClipBase->left, rcClipBase->top,
+		rcStgFrame->GetWidth() + rcClipBase->right,
+		rcStgFrame->GetHeight() + rcClipBase->bottom);
 
-	LONG rcLeft = rcClipBase->left;
-	LONG rcTop = rcClipBase->top;
-	LONG rcRight = rcStgFrame->GetWidth() + rcClipBase->right;
-	LONG rcBottom = rcStgFrame->GetHeight() + rcClipBase->bottom;
+	double posXE = posX_ + length_ * move_.x;
+	double posYE = posY_ + length_ * move_.y;
 
-	int posXE = posX_ + length_ * move_.x;
-	int posYE = posY_ + length_ * move_.y;
-	bool bDelete = (posX_ < rcLeft && posXE < rcLeft) || (posX_ > rcRight && posXE > rcRight)
-		|| (posY_ < rcTop && posYE < rcTop) || (posY_ > rcBottom && posYE > rcBottom);
-
-	if (bDelete) {
+	if (!rcDeleteClip.IsPointIntersected(posX_, posY_) && rcDeleteClip.IsPointIntersected(posXE, posYE)) {
 		auto objectManager = stageController_->GetMainObjectManager();
 		objectManager->DeleteObject(this);
 	}
@@ -2252,7 +2171,7 @@ bool StgStraightLaserObject::GetIntersectionTargetList_NoVector(StgShotData* sho
 	float length = length_ * hitboxScale_.y;
 	if (abs(hitboxScale_.x) < 0.01f || abs(length) < 0.01f)
 		return false;
-	
+
 	double posXE = posX_ + length * move_.x;
 	double posYE = posY_ + length * move_.y;
 	float invLenHalfS = invalidLengthStart_ * 0.5f;
@@ -2284,146 +2203,107 @@ bool StgStraightLaserObject::GetIntersectionTargetList_NoVector(StgShotData* sho
 
 	return true;
 }
-void StgStraightLaserObject::RenderOnShotManager() {
-	if (!IsVisible()) return;
+
+void StgStraightLaserObject::Render(BlendMode targetBlend) {
+	//if (!IsVisible()) return;
+	StgShotManager* shotManager = stageController_->GetShotManager();
 
 	StgShotData* shotData = _GetShotData();
 	if (shotData == nullptr) return;
 
-	D3DXVECTOR2* textureSize = &shotData->GetTextureSize();
-
-	FLOAT sposx = position_.x;
-	FLOAT sposy = position_.y;
-
-	DxRect<LONG>* rcSrc = nullptr;
-	D3DCOLOR color;
-
-	BlendMode objBlendType = GetBlendType();
-	BlendMode shotBlendType = objBlendType;
+	D3DCOLOR rColor;
 
 	//Render laser
 	{
-		StgShotRenderer* renderer = nullptr;
-		if (objBlendType == MODE_BLEND_NONE) {
-			renderer = shotData->GetRenderer(MODE_BLEND_ADD_ARGB);
-			shotBlendType = MODE_BLEND_ADD_ARGB;
-		}
-		else {
-			renderer = shotData->GetRenderer(objBlendType);
-		}
-		if (renderer == nullptr) return;
+		BlendMode objBlendType = GetBlendType();
+		objBlendType = objBlendType == MODE_BLEND_NONE ? MODE_BLEND_ADD_ARGB : objBlendType;
 
-		StgShotData::AnimationData* anime = shotData->GetData(frameWork_);
-		rcSrc = anime->GetSource();
-		//rcDest = anime->rcDst_;
-		color = color_;
+		if (objBlendType == targetBlend) {
+			StgShotDataFrame* shotFrame = shotData->GetFrame(frameWork_);
 
-		float alphaRate = shotData->GetAlpha() / 255.0f;
-		if (frameFadeDelete_ >= 0) alphaRate *= (float)frameFadeDelete_ / FRAME_FADEDELETE;
-		{
-			byte alpha = ColorAccess::ClampColorRet(((color >> 24) & 0xff) * alphaRate);
-			color = (color & 0x00ffffff) | (alpha << 24);
-		}
+			D3DXVECTOR2 rAngle(move_.y, -move_.x);
 
-		if (widthRender_ > 0) {
-			float _rWidth = fabs(widthRender_ / 2.0f) * scaleX_;
-			_rWidth = std::max(_rWidth, 1.0f);
-			D3DXVECTOR4 rcDest(_rWidth, length_, -_rWidth, 0);
+			float _renderWd = std::max<float>(abs(widthRender_) * scaleX_, 2.0f) * scale_.x;
+			float _renderLn = length_ * scale_.y;
 
-			VERTEX_TLX verts[4];
-			LONG* ptrSrc = reinterpret_cast<LONG*>(rcSrc);
-			FLOAT* ptrDst = reinterpret_cast<FLOAT*>(&rcDest);
-
-			for (size_t iVert = 0U; iVert < 4U; ++iVert) {
-				VERTEX_TLX* pv = &verts[iVert];
-
-				_SetVertexUV(pv, ptrSrc[(iVert & 1) << 1], ptrSrc[iVert | 1]);
-				_SetVertexPosition(pv, ptrDst[(iVert & 1) << 1], ptrDst[iVert | 1]);
-				_SetVertexColorARGB(pv, color);
+			//Render from the laser center
+			D3DXVECTOR2 rPos = D3DXVECTOR2(posX_ * 2 + move_.x * _renderLn, posY_ * 2 + move_.y * _renderLn) / 2;
+			if (bRoundingPosition_) {
+				rPos.x = roundf(rPos.x);
+				rPos.y = roundf(rPos.y);
 			}
 
-			D3DXVECTOR2 texSizeInv = D3DXVECTOR2(1.0f / textureSize->x, 1.0f / textureSize->y);
-			DxMath::TransformVertex2D(verts, (D3DXVECTOR2*)&scale_, 
-				&D3DXVECTOR2(move_.y, -move_.x), &D3DXVECTOR2(sposx, sposy), &texSizeInv);
+			DxRect<float>* rcDst = shotFrame->GetDestRect();
+			D3DXVECTOR2 rScale(_renderWd / rcDst->GetWidth(), _renderLn / rcDst->GetHeight());
 
-			renderer->AddSquareVertex(verts);
+			rColor = color_;
+			{
+				float alphaRate = shotData->GetAlpha() / 255.0f;
+				if (frameFadeDelete_ >= 0)
+					alphaRate *= std::clamp<float>((float)frameFadeDelete_ / FRAME_FADEDELETE_LASER, 0, 1);
+				byte alpha = ColorAccess::ClampColorRet(((rColor >> 24) & 0xff) * alphaRate);
+				rColor = (rColor & 0x00ffffff) | (alpha << 24);
+			}
+
+			D3DXMATRIX matTransform(
+				rScale.x * -rAngle.x, rScale.x * -rAngle.y, 0, 0,
+				rScale.y * rAngle.y, rScale.y * -rAngle.x, 0, 0,
+				0, 0, 1, 0,
+				rPos.x, rPos.y, 0, 1
+			);
+			_DefaultShotRender(shotData, shotFrame, matTransform, rColor);
 		}
 	}
 
 	//Render delay(s)
-	{
-		BlendMode objSourceBlendType = GetDelayBlendType();
+	if ((bUseSouce_ || bUseEnd_) && (frameFadeDelete_ < 0)) {
+		BlendMode objBlendType = GetDelayBlendType();
+		objBlendType = objBlendType == MODE_BLEND_NONE ? MODE_BLEND_ADD_ARGB : objBlendType;
 
-		if ((bUseSouce_ || bUseEnd_) && (frameFadeDelete_ < 0)) {	//Delay cloud(s)
-			color = (delay_.colorRep != 0) ? delay_.colorRep : shotData->GetDelayColor();
-			if (delay_.colorMix) ColorAccess::MultiplyColor(color, color_);
+		if (objBlendType == targetBlend) {
+			rColor = (delay_.colorRep != 0) ? delay_.colorRep : shotData->GetDelayColor();
+			if (delay_.colorMix) ColorAccess::MultiplyColor(rColor, color_);
 
-			float sourceWidth = widthRender_ * 2 / 3.0f;
-			DxRect<float> rcDest(-sourceWidth, -sourceWidth, sourceWidth, sourceWidth);
+			const float delaySizeBase = widthRender_ * 4 / 3.0f;
 
-			auto _AddDelay = [&](D3DXVECTOR2 delayPos, int shotImageId, float delaySize) {
+			auto _AddDelay = [&](D3DXVECTOR2 delayPos, int delayID, float delaySize) {
 				if (bRoundingPosition_) {
 					delayPos.x = roundf(delayPos.x);
 					delayPos.y = roundf(delayPos.y);
 				}
+				delaySize *= delaySizeBase;
 
-				StgShotData* delayData = nullptr;
-				DxRect<LONG>* delayRect = nullptr;
+				StgShotData* delayData = _GetShotData(delay_.id >= 0 ? delay_.id : shotData->GetDefaultDelayID());
+				if (delayData) {
+					StgShotDataFrame* delayFrame = delayData->GetFrame(frameWork_);
 
-				if (shotImageId >= 0) {
-					delayData = _GetShotData(shotImageId);
-					if (delayData == nullptr) return;
-					StgShotData::AnimationData* anime = delayData->GetData(frameWork_);
-					delayRect = anime->GetSource();
+					D3DXVECTOR2 rAngle = (delay_.angle.y != 0) ? D3DXVECTOR2(cosf(delay_.angle.x), sinf(delay_.angle.x)) : move_;
+					float rScaleX = delaySize / delayFrame->GetDestRect()->GetWidth();
+					float rScaleY = delaySize / delayFrame->GetDestRect()->GetHeight();
+
+					D3DXMATRIX matTransform(
+						rScaleX * rAngle.x, rScaleX * rAngle.y, 0, 0,
+						rScaleY * -rAngle.y, rScaleY * rAngle.x, 0, 0,
+						0, 0, 1, 0,
+						delayPos.x, delayPos.y, 0, 1
+					);
+					_DefaultShotRender(delayData, delayFrame, matTransform, rColor);
 				}
-				else {
-					delayData = shotData;
-					delayRect = shotData->GetDelayRect();
-				}
-
-				StgShotRenderer* renderer = nullptr;
-
-				if (objSourceBlendType == MODE_BLEND_NONE)
-					renderer = delayData->GetRenderer(shotBlendType);
-				else
-					renderer = delayData->GetRenderer(objSourceBlendType);
-				if (renderer == nullptr) return;
-
-				VERTEX_TLX verts[4];
-				LONG* ptrSrc = reinterpret_cast<LONG*>(delayRect);
-				float* ptrDst = reinterpret_cast<float*>(&rcDest);
-
-				D3DXVECTOR2 move = (delay_.angle.y != 0) ? D3DXVECTOR2(cosf(delay_.angle.x), sinf(delay_.angle.x)) : move_;
-
-				for (size_t iVert = 0U; iVert < 4U; ++iVert) {
-					VERTEX_TLX* pv = &verts[iVert];
-
-					_SetVertexUV(pv, ptrSrc[(iVert & 1) << 1], ptrSrc[iVert | 1]);
-					_SetVertexPosition(pv, ptrDst[(iVert & 1) << 1], ptrDst[iVert | 1]);
-					_SetVertexColorARGB(pv, color);
-				}
-
-				D3DXVECTOR2 texSizeInv = D3DXVECTOR2(1.0f / delayData->GetTextureSize().x, 1.0f / delayData->GetTextureSize().y);
-				DxMath::TransformVertex2D(verts, &D3DXVECTOR2(delaySize, delaySize),
-					&D3DXVECTOR2(move.y, -move.x), &delayPos, &texSizeInv);
-
-				renderer->AddSquareVertex(verts);
 			};
 
 			if (bUseSouce_) {
-				D3DXVECTOR2 delayPos = D3DXVECTOR2(sposx, sposy);
-
+				D3DXVECTOR2 delayPos(position_);
 				_AddDelay(delayPos, delay_.id, delaySize_.x);
 			}
 			if (bUseEnd_) {
-				D3DXVECTOR2 delayPos = D3DXVECTOR2(sposx + length_ * cosf(angLaser_), 
-					sposy + length_ * sinf(angLaser_));
-				
+				D3DXVECTOR2 delayPos(position_.x + length_ * cosf(angLaser_),
+					position_.y + length_ * sinf(angLaser_));
 				_AddDelay(delayPos, idImageEnd_, delaySize_.y);
 			}
 		}
 	}
 }
+
 void StgStraightLaserObject::_SendDeleteEvent(int type) {
 	if (typeOwner_ != OWNER_ENEMY) return;
 
@@ -2457,7 +2337,7 @@ void StgStraightLaserObject::_SendDeleteEvent(int type) {
 
 			gstd::value listScriptValue[3];
 			listScriptValue[0] = DxScript::CreateIntValue(idObject_);
-			listScriptValue[1] = DxScript::CreateRealArrayValue(pos);
+			listScriptValue[1] = DxScript::CreateFloatArrayValue(pos);
 			listScriptValue[2] = DxScript::CreateIntValue(GetShotDataID());
 			itemScript->RequestEvent(typeEvent, listScriptValue, 3);
 
@@ -2599,16 +2479,14 @@ void StgCurveLaserObject::_DeleteInAutoClip() {
 
 	DxRect<LONG>* const rcStgFrame = stageController_->GetStageInformation()->GetStgFrameRect();
 	DxRect<LONG>* const rcClipBase = stageController_->GetShotManager()->GetShotDeleteClip();
-	LONG rcRight = rcStgFrame->GetWidth() + rcClipBase->right;
-	LONG rcBottom = rcStgFrame->GetHeight() + rcClipBase->bottom;
+	DxRect<LONG> rcDeleteClip(rcClipBase->left, rcClipBase->top,
+		rcStgFrame->GetWidth() +          rcClipBase->right,
+		rcStgFrame->GetHeight() + rcClipBase->bottom);
 
 	//Checks if the node is within the bounding rect
 	auto PredicateNodeInRect = [&](LaserNode& node) {
-		D3DXVECTOR2* pos = &node.pos;
-		return pos->x >= rcClipBase->left && pos->x <= rcRight
-			&& pos->y >= rcClipBase->top && pos->y <= rcBottom;
+		return rcDeleteClip.IsPointIntersected((float*)&node.pos);
 	};
-
 	std::list<LaserNode>::iterator itrFind = std::find_if(listPosition_.begin(), listPosition_.end(),
 		PredicateNodeInRect);
 
@@ -2674,226 +2552,264 @@ bool StgCurveLaserObject::GetIntersectionTargetList_NoVector(StgShotData* shotDa
 	return true;
 }
 
-void StgCurveLaserObject::RenderOnShotManager() {
-	if (!IsVisible()) return;
+void StgCurveLaserObject::Render(BlendMode targetBlend) {
+	//if (!IsVisible()) return;
+	StgShotManager* shotManager = stageController_->GetShotManager();
 
 	StgShotData* shotData = _GetShotData();
-	StgShotData* delayData = delay_.id >= 0 ? _GetShotData(delay_.id) : shotData;
 	if (shotData == nullptr) return;
 
-	BlendMode shotBlendType = MODE_BLEND_ADD_ARGB;
-	StgShotRenderer* renderer = nullptr;
+	//Render delay
+	if (delay_.time > 0) {
+		BlendMode objBlendType = GetDelayBlendType();
+		objBlendType = objBlendType == MODE_BLEND_NONE ? MODE_BLEND_ADD_ARGB : objBlendType;
 
-	if (delayData != nullptr && delay_.time > 0) {
-		BlendMode objDelayBlendType = GetDelayBlendType();
-		if (objDelayBlendType == MODE_BLEND_NONE) {
-			renderer = delayData->GetRenderer(MODE_BLEND_ADD_ARGB);
-			shotBlendType = MODE_BLEND_ADD_ARGB;
+		if (objBlendType == targetBlend) {
+			StgShotData* delayData = _GetShotData(delay_.id >= 0 ? delay_.id : shotData->GetDefaultDelayID());
+			if (delayData) {
+				StgShotDataFrame* shotFrame = delayData->GetFrame(frameWork_);
+
+				D3DXVECTOR2 rScale;
+				D3DXVECTOR2 rAngle;		//[cos, sin]
+				D3DCOLOR rColor;
+
+				D3DXVECTOR2 rPos = bEnableMotionDelay_ ? posOrigin_ : D3DXVECTOR2(position_);
+				if (bRoundingPosition_) {
+					rPos.x = roundf(rPos.x);
+					rPos.y = roundf(rPos.y);
+				}
+				rScale.x = rScale.y = delay_.GetScale();
+				rAngle = (delay_.angle.y != 0) ? D3DXVECTOR2(cosf(delay_.angle.x), sinf(delay_.angle.x)) : move_;
+
+				rColor = (delay_.colorRep != 0) ? delay_.colorRep : shotData->GetDelayColor();
+				if (delay_.colorMix) ColorAccess::MultiplyColor(rColor, color_);
+				{
+					byte alpha = ColorAccess::ClampColorRet(((rColor >> 24) & 0xff) * delay_.GetAlpha());
+					rColor = (rColor & 0x00ffffff) | (alpha << 24);
+				}
+
+				D3DXMATRIX matTransform(
+					rScale.x * rAngle.x, rScale.x * rAngle.y, 0, 0,
+					rScale.y * -rAngle.y, rScale.y * rAngle.x, 0, 0,
+					0, 0, 1, 0,
+					rPos.x, rPos.y, 0, 1
+				);
+				_DefaultShotRender(delayData, shotFrame, matTransform, rColor);
+			}
 		}
-		else {
-			renderer = delayData->GetRenderer(objDelayBlendType);
-		}
-		if (renderer == nullptr) return;
-
-		DxRect<LONG>* rcSrc = nullptr;
-		DxRect<float>* rcDest = nullptr;
-		D3DXVECTOR2* delaySize = &delayData->GetTextureSize();
-
-		if (delay_.id >= 0) {
-			StgShotData::AnimationData* anime = delayData->GetData(frameWork_);
-			rcSrc = anime->GetSource();
-			rcDest = anime->GetDest();
-		}
-		else {
-			rcSrc = shotData->GetDelayRect();
-			rcDest = shotData->GetDelayDest();
-		}
-
-		float expa = delay_.GetScale();
-
-		FLOAT sX = posOrigin_.x;
-		FLOAT sY = posOrigin_.y;
-		if (bRoundingPosition_) {
-			sX = roundf(sX);
-			sY = roundf(sY);
-		}
-
-		D3DCOLOR color = (delay_.colorRep != 0) ? delay_.colorRep : shotData->GetDelayColor();
-		if (delay_.colorMix) ColorAccess::MultiplyColor(color, color_);
-		{
-			byte alpha = ColorAccess::ClampColorRet(((color >> 24) & 0xff) * delay_.GetAlpha());
-			color = (color & 0x00ffffff) | (alpha << 24);
-		}
-
-		VERTEX_TLX verts[4];
-		LONG* ptrSrc = reinterpret_cast<LONG*>(rcSrc);
-		float* ptrDst = reinterpret_cast<float*>(rcDest);
-
-		D3DXVECTOR2 move = (delay_.angle.y != 0) ? D3DXVECTOR2(cosf(delay_.angle.x), sinf(delay_.angle.x)) : move_;
-
-		for (size_t iVert = 0U; iVert < 4U; ++iVert) {
-			VERTEX_TLX* pv = &verts[iVert];
-
-			_SetVertexUV(pv, ptrSrc[(iVert & 1) << 1], ptrSrc[iVert | 1]);
-			_SetVertexPosition(pv, ptrDst[(iVert & 1) << 1], ptrDst[iVert | 1], position_.z);
-			_SetVertexColorARGB(pv, color);
-		}
-
-		D3DXVECTOR2 delaySizeInv = D3DXVECTOR2(1.0f / delaySize->x, 1.0f / delaySize->y);
-		DxMath::TransformVertex2D(verts, &D3DXVECTOR2(expa, expa), &move, &D3DXVECTOR2(sX, sY), &delaySizeInv);
-
-		renderer->AddSquareVertex(verts);
 	}
-	if (listPosition_.size() > 1U) {
+
+	auto& listPos = bConnect_ ? listPositionC_ : listPosition_;
+
+	//Render laser
+	if (listPos.size() > 1U) {
 		BlendMode objBlendType = GetBlendType();
-		BlendMode shotBlendType = objBlendType;
-		if (objBlendType == MODE_BLEND_NONE) {
-			renderer = shotData->GetRenderer(MODE_BLEND_ADD_ARGB);
-			shotBlendType = MODE_BLEND_ADD_ARGB;
-		}
-		else {
-			renderer = shotData->GetRenderer(objBlendType);
-		}
-		if (renderer == nullptr) return;
+		objBlendType = objBlendType == MODE_BLEND_NONE ? MODE_BLEND_ADD_ARGB : objBlendType;
 
-		D3DXVECTOR2* textureSize = &shotData->GetTextureSize();
-		StgShotData::AnimationData* anime = shotData->GetData(frameWork_);
+		if (objBlendType == targetBlend) {
+			StgShotDataFrame* shotFrame = shotData->GetFrame(frameWork_);
 
-		//---------------------------------------------------
+			size_t countPos = listPos.size();
+			size_t countRect = countPos - 1U;
+			size_t halfPos = countRect / 2U;
 
-		auto& listPos = bConnect_ ? listPositionC_ : listPosition_;
-		
-		size_t countPos = listPos.size();
-		size_t countRect = countPos - 1U;
-		size_t halfPos = countRect / 2U;
+			shared_ptr<Texture> texture = shotFrame->GetVertexBufferContainer()->GetTexture();
+			D3DXVECTOR2 texSizeInv = D3DXVECTOR2(1.0f / texture->GetWidth(), 1.0f / texture->GetHeight());
 
-		float alphaRateShot = shotData->GetAlpha() / 255.0f;
-		if (frameFadeDelete_ >= 0) alphaRateShot *= (float)frameFadeDelete_ / FRAME_FADEDELETE;
+			const DxRect<LONG>* rcSrcOrg = shotFrame->GetSourceRect();
+			const LONG* ptrSrc = reinterpret_cast<const LONG*>(rcSrcOrg);
 
-		float baseAlpha = (color_ >> 24) & 0xff;
-		float tipAlpha = baseAlpha * (1.0f - tipDecrement_);
+			float alphaRateShot = shotData->GetAlpha() / 255.0f;
+			if (frameFadeDelete_ >= 0)
+				alphaRateShot *= std::clamp<float>((float)frameFadeDelete_ / FRAME_FADEDELETE, 0, 1);
 
-		D3DXVECTOR2 texSizeInv = D3DXVECTOR2(1.0f / textureSize->x, 1.0f / textureSize->y);
+			float baseAlpha = (color_ >> 24) & 0xff;
+			float tipAlpha = baseAlpha * (1.0f - tipDecrement_);
 
-		DxRect<LONG>* rcSrcOrg = anime->GetSource();
+			float rcLen = rcSrcOrg->bottom - rcSrcOrg->top;
+			float rcLenH = rcLen * 0.5f;
 
-		float rcLen = rcSrcOrg->bottom - rcSrcOrg->top;
-		float rcLenH = rcLen * 0.5f;
+			float rcInc = (rcLen / (float)countRect) * texSizeInv.y;
+			float rectV = rcSrcOrg->top * texSizeInv.y;
 
-		float rcInc = (rcLen / (float)countRect) * texSizeInv.y;
+			float incDistFactor = rcLen * texSizeInv.y / widthRender_;
+			float rcMidPt = rcLenH * texSizeInv.y;
 
-		float rcHeigh = rcLen * texSizeInv.y;
-		float rcMidPt = rcLenH * texSizeInv.y;
-			
-		float rectV = rcSrcOrg->top * texSizeInv.y;
-
-		LONG* ptrSrc = reinterpret_cast<LONG*>(rcSrcOrg);
-
-		std::vector<float> arrInc(countPos);
-
-		bool bCappable = false;
-		if (bCap_) {
-			// :WHAT:
-
-			size_t i = 0;
-			size_t iPos = 0;
-			float remLen = rcMidPt;
-
-			auto tryCap = [&](auto itr) -> bool {
-				if (i > halfPos) // Auto-fails if cap crosses the half-way point
-					return false;
-
-				auto itrNext = std::next(itr);
-				D3DXVECTOR2* pos = &itr->pos;
-				D3DXVECTOR2* posNext = &itrNext->pos;
-				// D3DXVECTOR2* off = &itr->vertOff[0];
-				// float wid = std::max(hypotf(off->x, off->y) * 2, 1.0f);
-				float incDist = hypotf(posNext->x - pos->x, posNext->y - pos->y) * rcHeigh / widthRender_;
-
-				float& ref = arrInc[iPos];
-				if (ref == 0) // Fails if element was already written to
-					ref = std::min(incDist, remLen);
-				else
-					return false;
-					
-				remLen -= incDist;
-				return true;
-			};
-
-			bCappable = true;
-			for (auto itr = listPos.begin(); remLen > 0 && itr != --listPos.end() && bCappable; ++itr, ++i, ++iPos)
-				bCappable = tryCap(itr);
-
-			i = 0;
-			iPos = countPos - 2; // Ends straight up do not work otherwise?
-			remLen = rcMidPt;
-			for (auto itr = listPos.rbegin(); remLen > 0 && itr != --listPos.rend() && bCappable; ++itr, ++i, --iPos)
-				bCappable = tryCap(itr);
-		}
-
-		if (!bCappable) // If capping fails (or is disabled), just use the regular increment
-			std::fill(arrInc.begin(), arrInc.end(), rcInc);
-
-		size_t iPos = 0U;
-		
-
-		for (auto itr = listPos.begin(); itr != listPos.end(); ++itr, ++iPos) {
-			D3DXVECTOR2 pos = itr->pos;
-			D3DXVECTOR2 vertOff[2]{ itr->vertOff[0], itr->vertOff[1] };
-
-			if (smooth_ > 0 && countPos > 1) {
-				auto itrNext = listPos.begin();
-				auto itrPrev = listPos.begin();
-				if (bConnect_) {
-					std::advance(itrNext, (iPos + smooth_) % (countPos - 1));
-					std::advance(itrPrev, (iPos - smooth_ + countPos - 1) % (countPos - 1));
-				}
-				else {
-					std::advance(itrNext, std::clamp((int)iPos + smooth_, 0, (int)countPos - 1));
-					std::advance(itrPrev, std::clamp((int)iPos - smooth_, 0, (int)countPos - 1));
-				}
-				
-				D3DXVECTOR2* posNext = &itrNext->pos;
-				D3DXVECTOR2* posPrev = &itrPrev->pos;
-
-				float arc = atan2f(posNext->y - posPrev->y, posNext->x - posPrev->x);
-
-				D3DXVECTOR2 vecNew(-sinf(arc), cosf(arc));
-				vertOff[0] = vecNew;
-				vertOff[1] = -vecNew;
-			}
-
-			float nodeAlpha = baseAlpha;
-			if (iPos > halfPos)
-				nodeAlpha = Math::Lerp::Linear(baseAlpha, tipAlpha, (iPos - halfPos + 1) / (float)halfPos);
-			else if (iPos < halfPos)
-				nodeAlpha = Math::Lerp::Linear(tipAlpha, baseAlpha, iPos / (halfPos - 1.0f));
-			nodeAlpha = std::max(0.0f, nodeAlpha);
-
-			float renderWd = std::max(widthRender_ * itr->widthMul / 2.0f, 1.0f);
-
-			D3DCOLOR thisColor = color_;
+			listRectIncrement_.resize(countPos);
+			std::fill(listRectIncrement_.begin(), listRectIncrement_.end(), 0);
 			{
-				byte alpha = ColorAccess::ClampColorRet(nodeAlpha * alphaRateShot);
-				thisColor = (thisColor & 0x00ffffff) | (alpha << 24);
+				bool bCappable = false;
+				if (bCap_) {
+					// :WHAT:
+
+					size_t i = 0;
+					size_t iPos = 0;
+					float remLen = rcMidPt;
+
+					auto tryCap = [&](auto itr) -> bool {
+						if (i > halfPos) // Auto-fails if cap crosses the half-way point
+							return false;
+
+						auto itrNext = std::next(itr);
+						D3DXVECTOR2* pos = &itr->pos;
+						D3DXVECTOR2* posNext = &itrNext->pos;
+						// D3DXVECTOR2* off = &itr->vertOff[0];
+						// float wid = std::max(hypotf(off->x, off->y) * 2, 1.0f);
+						float incDist = hypotf(posNext->x - pos->x, posNext->y - pos->y) * incDistFactor;
+
+						if (listRectIncrement_[iPos] == 0) // Fails if element was already written to
+							listRectIncrement_[iPos] = std::min(incDist, remLen);
+						else
+							return false;
+
+						remLen -= incDist;
+						return true;
+					};
+
+						auto itrHead = listPos.begin();
+						auto itrTail = listPos.rbegin().base();
+
+					bCappable = true;
+					for (auto itr = itrHead; bCappable && remLen > 0 && itr != itrTail; ++itr, ++i, ++iPos)
+						bCappable = tryCap(itr);
+
+					i = 0;
+					iPos = countPos - 2; // Ends straight up do not work otherwise?
+					remLen = rcMidPt;
+					for (auto itr = itrTail; bCappable && remLen > 0 && itr != itrHead; ++itr, ++i, --iPos)
+						bCappable = tryCap(itr);
+				}
+				if (!bCappable) // If capping fails (or is disabled), just use the regular increment
+					std::fill(listRectIncrement_.begin(), listRectIncrement_.end(), rcInc);
 			}
-			if (itr->color != 0xffffffff) ColorAccess::MultiplyColor(thisColor, itr->color);
 
-			VERTEX_TLX verts[2];
-			for (size_t iVert = 0U; iVert < 2U; ++iVert) {
-				VERTEX_TLX* pv = &verts[iVert];
+			vertexData_.resize(countPos * 2U);
 
-				_SetVertexUV(pv, ptrSrc[(iVert & 1) << 1] * texSizeInv.x, rectV);
-				_SetVertexPosition(pv, itr->pos.x + vertOff[iVert].x * renderWd,
-					itr->pos.y + vertOff[iVert].y * renderWd, position_.z);
-				_SetVertexColorARGB(pv, thisColor);
+			float inv_halfPos = 1.0f / halfPos, inv_halfPosDec = 1.0f / (halfPos - 1);
+			float halfWidthRender = widthRender_ / 2.0f;
+
+				size_t iPos = 0U;
+				for (auto itr = listPos.begin(); itr != listPos.end(); ++itr, ++iPos) {
+					D3DXVECTOR2 pos = itr->pos;
+					D3DXVECTOR2 vertOff[2]{ itr->vertOff[0], itr->vertOff[1] };
+
+					if (smooth_ > 0 && countPos > 1) {
+						auto itrNext = listPos.begin();
+						auto itrPrev = listPos.begin();
+						if (bConnect_) {
+							std::advance(itrNext, (iPos + smooth_) % (countPos - 1));
+							std::advance(itrPrev, (iPos - smooth_ + countPos - 1) % (countPos - 1));
+						}
+						else {
+							std::advance(itrNext, std::clamp((int)iPos + smooth_, 0, (int)countPos - 1));
+							std::advance(itrPrev, std::clamp((int)iPos - smooth_, 0, (int)countPos - 1));
+						}
+
+						D3DXVECTOR2* posNext = &itrNext->pos;
+						D3DXVECTOR2* posPrev = &itrPrev->pos;
+
+						float arc = atan2f(posNext->y - posPrev->y, posNext->x - posPrev->x);
+
+						D3DXVECTOR2 vecNew(-sinf(arc), cosf(arc));
+						vertOff[0] = vecNew;
+						vertOff[1] = -vecNew;
+					}
+
+					float nodeAlpha = baseAlpha;
+					if (iPos > halfPos)
+						nodeAlpha = Math::Lerp::Linear(baseAlpha, tipAlpha, (iPos - halfPos + 1) * inv_halfPos);
+					else if (iPos < halfPos)
+						nodeAlpha = Math::Lerp::Linear(tipAlpha, baseAlpha, iPos * inv_halfPosDec);
+					nodeAlpha = std::max(0.0f, nodeAlpha);
+
+				float renderWd = std::max(halfWidthRender * itr->widthMul, 1.0f) * scale_.x;
+
+				D3DCOLOR thisColor = 0xffffffff;
+				{
+					byte alpha = ColorAccess::ClampColorRet(nodeAlpha * alphaRateShot);
+					thisColor = (thisColor & 0x00ffffff) | (alpha << 24);
+				}
+				if (itr->color != 0xffffffff) ColorAccess::MultiplyColor(thisColor, itr->color);
+
+				for (size_t iVert = 0U; iVert < 2U; ++iVert) {
+					VERTEX_TLX* pv = &vertexData_[iPos * 2 + iVert];
+
+					_SetVertexUV(pv, ptrSrc[(iVert & 1) << 1] * texSizeInv.x, rectV);
+					_SetVertexPosition(pv, itr->pos.x + vertOff[iVert].x * renderWd,
+						itr->pos.y + vertOff[iVert].y * renderWd, position_.z);
+					_SetVertexColorARGB(pv, thisColor);
+				}
+
+				rectV += listRectIncrement_[iPos];
 			}
-			renderer->AddSquareVertex_CurveLaser(verts, std::next(itr) != listPos.end());
 
-			rectV += arrInc[iPos];
+			{
+				DirectGraphics* graphics = DirectGraphics::GetBase();
+				IDirect3DDevice9* device = graphics->GetDevice();
+
+				VertexBufferManager* vbManager = VertexBufferManager::GetBase();
+				FixedVertexBuffer* vertexBuffer = vbManager->GetVertexBufferTLX();
+
+				if (graphics->IsAllowRenderTargetChange()) {
+					if (auto pRT = renderTarget_.lock())
+						graphics->SetRenderTarget(pRT);
+					else graphics->SetRenderTarget(nullptr);
+				}
+
+				device->SetTexture(0, texture->GetD3DTexture());
+
+				size_t countVert = vertexData_.size();
+				size_t countPrim = RenderObject::_GetPrimitiveCount(D3DPT_TRIANGLESTRIP, countVert);
+
+				{
+					BufferLockParameter lockParam = BufferLockParameter(D3DLOCK_DISCARD);
+
+					lockParam.SetSource(vertexData_, countVert, sizeof(VERTEX_TLX));
+					vertexBuffer->UpdateBuffer(&lockParam);
+				}
+
+				device->SetStreamSource(0, vertexBuffer->GetBuffer(), 0, sizeof(VERTEX_TLX));
+
+				{
+					ID3DXEffect* effect = shotManager->GetEffect();
+					if (shader_) {
+						effect = shader_->GetEffect();
+						if (shader_->LoadTechnique()) {
+							shader_->LoadParameter();
+						}
+					}
+
+					if (effect) {
+						D3DXHANDLE handle = nullptr;
+						if (handle = effect->GetParameterBySemantic(nullptr, "WORLD")) {
+							effect->SetMatrix(handle, &graphics->GetCamera()->GetIdentity());
+						}
+						if (shader_) {
+							if (handle = effect->GetParameterBySemantic(nullptr, "VIEWPROJECTION")) {
+								effect->SetMatrix(handle, shotManager->GetProjectionMatrix());
+							}
+						}
+						if (handle = effect->GetParameterBySemantic(nullptr, "ICOLOR")) {
+							//To normalized RGBA vector
+							D3DXVECTOR4 vColor = ColorAccess::ToVec4Normalized(color_, ColorAccess::PERMUTE_RGBA);
+							effect->SetVector(handle, &vColor);
+						}
+
+						UINT countPass = 1;
+						effect->Begin(&countPass, D3DXFX_DONOTSAVESHADERSTATE);
+						for (UINT iPass = 0; iPass < countPass; ++iPass) {
+							effect->BeginPass(iPass);
+							device->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, countPrim);
+							effect->EndPass();
+						}
+						effect->End();
+					}
+				}
+			}
 		}
 	}
 }
+
 void StgCurveLaserObject::_SendDeleteEvent(int type) {
 	if (typeOwner_ != OWNER_ENEMY) return;
 
@@ -2925,7 +2841,7 @@ void StgCurveLaserObject::_SendDeleteEvent(int type) {
 
 		size_t countToItem = 0U;
 		auto _RequestItem = [&](double ix, double iy) {
-			listScriptValue[1] = itemScript->CreateRealArrayValue(Math::DVec2{ ix, iy });
+			listScriptValue[1] = itemScript->CreateFloatArrayValue(Math::DVec2{ ix, iy });
 			itemScript->RequestEvent(typeEvent, listScriptValue, 3);
 
 			if (delay_.time == 0 || bEnableMotionDelay_) {
@@ -3092,6 +3008,14 @@ void StgPatternShotObjectGenerator::FireSet(void* scriptData, StgStageController
 		case TypeObject::LooseLaser:
 		{
 			ref_unsync_ptr<StgLooseLaserObject> ptrShot = new StgLooseLaserObject(controller);
+			ptrShot->SetLength(laserLength_);
+			ptrShot->SetRenderWidth(laserWidth_);
+			objShot = ptrShot;
+			break;
+		}
+		case TypeObject::StraightLaser:
+		{
+			ref_unsync_ptr<StgStraightLaserObject> ptrShot = new StgStraightLaserObject(controller);
 			ptrShot->SetLength(laserLength_);
 			ptrShot->SetRenderWidth(laserWidth_);
 			objShot = ptrShot;

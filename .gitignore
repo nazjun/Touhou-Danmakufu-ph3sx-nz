@@ -263,6 +263,9 @@ __pycache__/
 
 # Other files
 
+# Code Backups
+/.bk/
+
 # Compiled Binaries & Script Files
 /bin_ext/*
 /bin_th_dnh/*
@@ -282,6 +285,9 @@ __pycache__/
 /source/ext/zlib/*
 /library/zlibstatic.lib
 /library/zlibdynamic.lib
+
+# kissfft
+/source/ext/kissfft/*
 
 # Steam API
 /source/ext/steam_api/*

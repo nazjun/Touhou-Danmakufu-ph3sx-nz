@@ -18,13 +18,33 @@ StgSystemController::StgSystemController() {
 	bPrevWindowFocused_ = true;
 }
 StgSystemController::~StgSystemController() {
+	_ResetSystem();
+}
+void StgSystemController::_ResetSystem() {
+	DirectGraphics* graphics = DirectGraphics::GetBase();
+	graphics->ResetCamera();
+	graphics->ResetDeviceState();
+	graphics->ResetDisplaySettings();
+
+	ScriptClientBase::randCalls_ = 0;
+	ScriptClientBase::prandCalls_ = 0;
 	if (scriptEngineCache_)
 		scriptEngineCache_->Clear();
+
 	if (DxScriptResourceCache* dxRsrcCache = DxScriptResourceCache::GetBase())
 		dxRsrcCache->ClearResource();
 
-	if (auto camera2D = DirectGraphics::GetBase()->GetCamera2D())
-		camera2D->ResetAll();
+	DirectSoundManager* soundManager = DirectSoundManager::GetBase();
+	soundManager->Clear();
+
+	EFpsController* fpsController = EFpsController::GetInstance();
+	fpsController->SetFastModeKey(DIK_LCONTROL);
+
+	EDirectInput* input = EDirectInput::GetInstance();
+	input->ResetVirtualKeyMap();
+
+	EFileManager* fileManager = EFileManager::GetInstance();
+	fileManager->ClearArchiveFileCache();
 }
 void StgSystemController::Initialize(ref_count_ptr<StgSystemInformation> infoSystem) {
 	base_ = this;
@@ -36,33 +56,18 @@ void StgSystemController::Initialize(ref_count_ptr<StgSystemInformation> infoSys
 	infoControlScript_ = new StgControlScriptInformation();
 }
 void StgSystemController::Start(ref_count_ptr<ScriptInformation> infoPlayer, ref_count_ptr<ReplayInformation> infoReplay) {
-	DirectGraphics* graphics = DirectGraphics::GetBase();
-	ref_count_ptr<DxCamera> camera3D = graphics->GetCamera();
-	ref_count_ptr<DxCamera2D> camera2D = graphics->GetCamera2D();
-
-	ScriptClientBase::randCalls_ = 0;
-	ScriptClientBase::prandCalls_ = 0;
-	scriptEngineCache_->Clear();
-
-	camera3D->SetPerspectiveWidth(384);
-	camera3D->SetPerspectiveHeight(448);
-	camera3D->SetPerspectiveClip(10, 2000);
-	camera3D->thisProjectionChanged_ = true;
-	camera2D->Reset();
-
-	EDirectInput* input = EDirectInput::GetInstance();
-	input->ResetVirtualKeyMap();
+	_ResetSystem();
 
 	ref_count_ptr<ScriptInformation> infoMain = infoSystem_->GetMainScriptInformation();
 
 	EFileManager* fileManager = EFileManager::GetInstance();
-	const std::wstring& archiveMain = infoMain->GetArchivePath();
+	const std::wstring& archiveMain = infoMain->pathArchive_;
 	if (archiveMain.size() > 0) {
 		fileManager->AddArchiveFile(archiveMain, 0);
 	}
 
 	if (infoPlayer) {
-		const std::wstring& archivePlayer = infoPlayer->GetArchivePath();
+		const std::wstring& archivePlayer = infoPlayer->pathArchive_;
 		if (archivePlayer.size() > 0) {
 			fileManager->AddArchiveFile(archivePlayer, 0);
 		}
@@ -132,12 +137,6 @@ void StgSystemController::Work() {
 	}
 
 	if (infoSystem_->IsError() || infoSystem_->IsStgEnd()) {
-		EFileManager* fileManager = EFileManager::GetInstance();
-		fileManager->ClearArchiveFileCache();
-
-		DirectGraphics* graphics = DirectGraphics::GetBase();
-		graphics->GetCamera2D()->Reset();
-
 		bool bRetry = false;
 		if (infoSystem_->IsError()) {
 			std::wstring error = infoSystem_->GetErrorMessage();
@@ -156,9 +155,6 @@ void StgSystemController::Work() {
 
 		ELogger* logger = ELogger::GetInstance();
 		logger->UpdateCommonDataInfoPanel();
-
-		EFpsController* fpsController = EFpsController::GetInstance();
-		fpsController->SetFastModeKey(DIK_LCONTROL);
 
 		DoEnd();
 		return;
@@ -398,6 +394,7 @@ void StgSystemController::RenderScriptObject(int priMin, int priMax) {
 			camera3D->SetProjectionMatrix();
 			camera3D->UpdateDeviceViewProjectionMatrix();
 			graphics->SetViewPort(rcStgFrame->left, rcStgFrame->top, stgWidth, stgHeight);
+			//graphics->SetViewPortMatrix(rcStgFrame->left, rcStgFrame->top, stgWidth, stgHeight);
 
 			bRunMinStgFrame = true;
 			bClearZBufferFor2DCoordinate = false;
@@ -441,8 +438,11 @@ void StgSystemController::RenderScriptObject(int priMin, int priMax) {
 			if (effect) effect->End();
 
 			//Intersection visualizer
-			if (iPri == priMaxStgFrame - 1 /*&& graphics->IsMainRenderLoop()*/) {
-				stageController_->GetIntersectionManager()->RenderVisualizer();
+			{
+				StgIntersectionManager* itscMgr = stageController_->GetIntersectionManager();
+				if (iPri == itscMgr->GetVisualizerRenderPriority() && graphics->IsMainRenderLoop()) {
+					itscMgr->RenderVisualizer();
+				}
 			}
 		}
 
@@ -528,7 +528,7 @@ bool StgSystemController::CheckMeshAndClearZBuffer(DxScriptRenderObject* obj) {
 
 void StgSystemController::_ControlScene() {
 	DnhConfiguration* config = DnhConfiguration::GetInstance();
-	if (config->IsEnableUnfocusedProcessing()) {
+	if (config->bEnableUnfocusedProcessing_) {
 		bool bNowWindowFocused = EApplication::GetInstance()->IsWindowFocused();
 
 		if (bPrevWindowFocused_ != bNowWindowFocused) {
@@ -693,16 +693,16 @@ ref_count_ptr<ReplayInformation> StgSystemController::CreateReplayInformation() 
 	//メインスクリプト関連
 	ref_count_ptr<StgStageInformation> infoLastStage = stageController_->GetStageInformation();
 	ref_count_ptr<ScriptInformation> infoMain = infoSystem_->GetMainScriptInformation();
-	const std::wstring& pathMainScript = infoMain->GetScriptPath();
+	const std::wstring& pathMainScript = infoMain->pathScript_;
 	std::wstring nameMainScript = PathProperty::GetFileName(pathMainScript);
 
 	//自機関連
 	ref_count_ptr<ScriptInformation> infoPlayer = infoLastStage->GetPlayerScriptInformation();
-	const std::wstring& pathPlayerScript = infoPlayer->GetScriptPath();
+	const std::wstring& pathPlayerScript = infoPlayer->pathScript_;
 	std::wstring filenamePlayerScript = PathProperty::GetFileName(pathPlayerScript);
 	res->SetPlayerScriptFileName(filenamePlayerScript);
-	res->SetPlayerScriptID(infoPlayer->GetID());
-	res->SetPlayerScriptReplayName(infoPlayer->GetReplayName());
+	res->SetPlayerScriptID(infoPlayer->id_);
+	res->SetPlayerScriptReplayName(infoPlayer->replayName_);
 
 	//システム関連
 	int64_t totalScore = infoLastStage->GetScore();
@@ -816,8 +816,7 @@ std::wstring StgSystemInformation::GetErrorMessage() {
 	return res;
 }
 bool StgSystemInformation::IsPackageMode() {
-	bool res = infoMain_->GetType() == ScriptInformation::TYPE_PACKAGE;
-	return res;
+	return infoMain_->type_ == ScriptInformation::TYPE_PACKAGE;
 }
 void StgSystemInformation::ResetRetry() {
 	bEndStg_ = false;

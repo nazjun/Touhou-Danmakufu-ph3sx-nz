@@ -98,19 +98,18 @@ public:
 	static gstd::value Func_SetSkipModeKey(gstd::script_machine* machine, int argc, const gstd::value* argv);
 
 	//STG制御共通関数：システム関連
-	static gstd::value Func_GetScore(gstd::script_machine* machine, int argc, const gstd::value* argv);
-	static gstd::value Func_AddScore(gstd::script_machine* machine, int argc, const gstd::value* argv);
-	static gstd::value Func_GetGraze(gstd::script_machine* machine, int argc, const gstd::value* argv);
-	static gstd::value Func_AddGraze(gstd::script_machine* machine, int argc, const gstd::value* argv);
-	static gstd::value Func_GetPoint(gstd::script_machine* machine, int argc, const gstd::value* argv);
-	static gstd::value Func_AddPoint(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	template<int64_t(StgStageInformation::* Func)()>
+	DNH_FUNCAPI_DECL_(Func_StgStageInformation_int64_void);
+	template<void(StgStageInformation::* Func)(int64_t)>
+	DNH_FUNCAPI_DECL_(Func_StgStageInformation_void_int64);
 
 	static gstd::value Func_IsReplay(gstd::script_machine* machine, int argc, const gstd::value* argv);
 
 	static gstd::value Func_AddArchiveFile(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	DNH_FUNCAPI_DECL_(Func_GetArchiveFilePathList);
 
-	static gstd::value Func_GetCurrentFps(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	DNH_FUNCAPI_DECL_(Func_GetCurrentUpdateFps);
+	DNH_FUNCAPI_DECL_(Func_GetCurrentRenderFps);
 	DNH_FUNCAPI_DECL_(Func_GetLastFrameUpdateSpeed);
 	DNH_FUNCAPI_DECL_(Func_GetLastFrameRenderSpeed);
 	static gstd::value Func_GetStageTime(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -175,10 +174,8 @@ public:
 //*******************************************************************
 //ScriptInfoPanel
 //*******************************************************************
-class ScriptInfoPanel : public WindowLogger::Panel, public gstd::Thread {
+class ScriptInfoPanel : public WindowLogger::Panel {
 protected:
-	int timeUpdateInterval_;
-
 	gstd::CriticalSection lock_;
 
 	WButton buttonTerminateAllScript_;
@@ -192,10 +189,8 @@ protected:
 
 	std::list<weak_ptr<ManagedScript>> listScript_;
 
-	virtual void _Run();
-
 	virtual bool _AddedLogger(HWND hTab);
-	virtual LRESULT _WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);//オーバーライド用プロシージャ
+	virtual LRESULT _WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 	void _TerminateScriptAll();
 
@@ -205,6 +200,6 @@ public:
 	~ScriptInfoPanel();
 
 	virtual void LocateParts();
-
-	virtual void Update(StgSystemController* systemController);
+	virtual void PanelUpdate();
+	void Update(StgSystemController* systemController);
 };

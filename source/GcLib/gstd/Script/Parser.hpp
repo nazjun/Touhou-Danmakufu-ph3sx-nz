@@ -121,11 +121,16 @@ namespace gstd {
 
 		script_block(uint32_t the_level, block_kind the_kind);
 	};
+#pragma pack(push, 1)
 	struct code {
-		command_kind command = command_kind::pc_nop;
-		int line = -1;
 #ifdef _DEBUG
+		command_kind command;
+		uint32_t line;
 		std::string var_name;	//For assign/push_variable
+#else
+		//MSB 00000000 00000000 00000000 00000000 LSB
+		//    <----------LINE----------> <OPCODE>
+		uint32_t opc_line = (uint32_t)command_kind::pc_nop;
 #endif
 
 		union {
@@ -139,7 +144,6 @@ namespace gstd {
 					script_block* block;
 				};
 				uint32_t arg1;
-				uint32_t arg2;
 			};
 			struct {	//push_value
 				value data;
@@ -147,25 +151,32 @@ namespace gstd {
 		};
 
 		code();
-
 		code(command_kind _command);
 		code(command_kind _command, uint32_t _a0);
 		code(command_kind _command, uint32_t _a0, uint32_t _a1);
-		code(command_kind _command, uint32_t _a0, uint32_t _a1, uint32_t _a2);
 		code(command_kind _command, uint32_t _a0, const std::string& _name);
 		code(command_kind _command, uint32_t _a0, uint32_t _a1, const std::string& _name);
-		code(command_kind _command, uint32_t _a0, uint32_t _a1, uint32_t _a2, const std::string& _name);
 		code(command_kind _command, const value& _data);
-
-		code(int _line, command_kind _command, uint32_t _a0) : code(_command, _a0) { line = _line; }
-		code(int _line, command_kind _command, const value& _data) : code(_command, _data) { line = _line; }
-
+		code(int _line, command_kind _command, uint32_t _a0);
+		code(int _line, command_kind _command, const value& _data);
 		code(const code& src);
-
 		~code();
 
 		code& operator=(const code& src);
+
+#ifdef _DEBUG
+		uint32_t GetLine() const { return line; }
+		command_kind GetOp() const { return command; }
+		void SetLine(uint32_t _line) { line = _line; }
+		void SetOp(command_kind op) { command = op; }
+#else
+		uint32_t GetLine() const { return (opc_line & 0xffffff00) >> 8; }
+		command_kind GetOp() const { return (command_kind)(opc_line & 0xff); }
+		void SetLine(uint32_t line) { opc_line = ((line & 0xffffff) << 8) | (opc_line & 0x000000ff); }
+		void SetOp(command_kind op) { opc_line = (opc_line & 0xffffff00) | ((uint32_t)op & 0xff); }
+#endif
 	};
+#pragma pack(pop)
 
 	class parser {
 	private:
@@ -191,7 +202,7 @@ namespace gstd {
 
 			void AddCode(script_block* bk, const code& cd) {
 				bk->codes.push_back(cd);
-				bk->codes.back().line = lex->line;
+				bk->codes.back().SetLine(lex->line);
 				++ip;
 			}
 			void PopCode(script_block* bk) {
@@ -368,7 +379,7 @@ namespace gstd {
 		switch (tk) {
 		case token_kind::tk_decl_auto:
 		case token_kind::tk_decl_void:
-		case token_kind::tk_decl_real:
+		case token_kind::tk_decl_float:
 		case token_kind::tk_decl_int:
 		case token_kind::tk_decl_char:
 		case token_kind::tk_decl_bool:

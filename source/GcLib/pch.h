@@ -49,24 +49,13 @@
 //------------------------------Header Includes---------------------------------
 
 //Windows
-#include <windows.h>
-#include <windowsx.h>
-#include <mmsystem.h>
-#include <commctrl.h>
-#include <pdh.h>
-#include <process.h>
-#include <wingdi.h>
-#include <shlwapi.h>
-
-#include <mlang.h>
-#include <psapi.h>
-
-#pragma comment (lib, "winmm.lib")
+#include <windows.h>	//Obviously
+#include <commctrl.h>	//For a lot of stuff in Window.cpp
+#include <pdh.h>		//For performance queries in Logger.cpp
+#include <wingdi.h>		//For font generation in DxText.cpp
 #pragma comment (lib, "comctl32.lib")
 #pragma comment (lib, "pdh.lib")
 #pragma comment (lib, "gdi32.lib")
-#pragma comment (lib, "shlwapi.lib")
-#pragma comment (lib, "psapi.lib")
 
 //-----------------------------------DirectX------------------------------------
 
@@ -80,34 +69,19 @@
 #include <d3dx9.h>
 #include <dinput.h>
 #include <DxErr.h>
-
 #pragma comment(lib, "dxguid.lib")
 #pragma comment(lib, "d3d9.lib")
 #pragma comment(lib, "d3dx9.lib")
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxerr.lib")
+#pragma comment(lib, "d3dcompiler.lib")
 
 #if defined(DNH_PROJ_EXECUTOR)
 
 #define DIRECTSOUND_VERSION 0x0900
-
-//for acm
-#include <mmreg.h> 
-#include <msacm.h>
-
-#include <basetsd.h>
+#include <mmreg.h>		//For some wave format constants
 #include <dsound.h>
-
-/*
-#pragma warning(push)
-#pragma warning (disable : 4838)	//require narrowing conversion
-#include <xnamath.h>
-#pragma warning(pop)
-*/
-
-#pragma comment(lib, "msacm32.lib")
 #pragma comment(lib, "dsound.lib")
-#pragma comment(lib, "d3dxof.lib")
 
 #endif	//defined(DNH_PROJ_EXECUTOR)
 
@@ -129,13 +103,12 @@
 
 #include <cwchar>
 #include <exception>
+#include <cassert>
 
 #include <cmath>
 #include <cctype>
 #include <cwctype>
 #include <cstdio>
-#include <clocale>
-#include <locale>
 #include <string>
 
 #include <array>
@@ -145,6 +118,7 @@
 #include <map>
 #include <unordered_map>
 #include <bitset>
+#include <complex>
 
 #include <memory>
 #include <algorithm>
@@ -154,14 +128,9 @@
 #include <fstream>
 #include <sstream>
 
-#include <cassert>
-
 #include <regex>
 
 //-------------------------------External stuffs--------------------------------
-
-//OpenMP
-#include <omp.h>
 
 //zlib
 #if defined(DNH_PROJ_EXECUTOR) || defined(DNH_PROJ_FILEARCHIVER)
@@ -199,6 +168,8 @@
 namespace stdfs = std::filesystem;
 using path_t = stdfs::path;
 #endif
+
+namespace stdch = std::chrono;
 
 //------------------------------------------------------------------------------
 

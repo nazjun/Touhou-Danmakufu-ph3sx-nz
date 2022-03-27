@@ -26,15 +26,31 @@ public:
 //*******************************************************************
 //ELogger
 //*******************************************************************
-class ELogger : public Singleton<ELogger>, public WindowLogger {
+class ELogger : public Singleton<ELogger>, public WindowLogger, public gstd::Thread {
+	struct PanelData {
+		shared_ptr<gstd::WindowLogger::Panel> panel;
+		DWORD updateFreq;
+		DWORD timer;
+		bool bPrevVisible;
+	};
+protected:
 	shared_ptr<gstd::ScriptCommonDataInfoPanel> panelCommonData_;
+
+	std::list<PanelData> listPanel_;
+
+	uint64_t time_;
+protected:
+	void _Run();
 public:
 	ELogger();
+	virtual ~ELogger();
 
 	void Initialize(bool bFile, bool bWindow);
 
 	shared_ptr<gstd::ScriptCommonDataInfoPanel> GetScriptCommonDataInfoPanel() { return panelCommonData_; }
 	void UpdateCommonDataInfoPanel();
+
+	bool EAddPanel(shared_ptr<Panel> panel, const std::wstring& name, DWORD updateFreq);
 };
 
 
@@ -50,14 +66,15 @@ public:
 
 	void SetFps(int fps) { controller_->SetFps(fps); }
 	int GetFps() { return controller_->GetFps(); }
-	void SetTimerEnable(bool b) { controller_->SetTimerEnable(b); }
 
-	void Wait() { controller_->Wait(); }
-	bool IsSkip() { return controller_->IsSkip(); }
+	std::array<bool, 2> Advance() { return controller_->Advance(); }
+
 	void SetCriticalFrame() { controller_->SetCriticalFrame(); }
+
 	float GetCurrentFps() { return controller_->GetCurrentFps(); }
 	float GetCurrentWorkFps() { return controller_->GetCurrentWorkFps(); }
 	float GetCurrentRenderFps() { return controller_->GetCurrentRenderFps(); }
+
 	bool IsFastMode() { return controller_->IsFastMode(); }
 	void SetFastMode(bool b) { controller_->SetFastMode(b); }
 	void SetFastModeRate(size_t rate) { controller_->SetFastModeRate(rate); }
