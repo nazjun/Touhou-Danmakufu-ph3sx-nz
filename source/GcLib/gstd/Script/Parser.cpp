@@ -18,10 +18,11 @@ script_block::script_block(uint32_t the_level, block_kind the_kind) {
 #pragma push_macro("new")
 #undef new
 code::code() {
-	line = 0;
+	//For viewing structure sizes
+	//sizeof(type_data); sizeof(value); sizeof(code); sizeof(script_block);
 }
 code::code(command_kind _command) : code() {
-	command = _command;
+	SetOp(_command);
 }
 code::code(command_kind _command, uint32_t _a0) : code(_command) {
 	arg0 = _a0;
@@ -29,30 +30,31 @@ code::code(command_kind _command, uint32_t _a0) : code(_command) {
 code::code(command_kind _command, uint32_t _a0, uint32_t _a1) : code(_command, _a0) {
 	arg1 = _a1;
 }
-code::code(command_kind _command, uint32_t _a0, uint32_t _a1, uint32_t _a2) : code(_command, _a0, _a1) {
-	arg2 = _a2;
-}
-code::code(command_kind _command, uint32_t _a0, const std::string& _name) : code(_command, _a0) 	{
+code::code(command_kind _command, uint32_t _a0, const std::string& _name) : code(_command, _a0)
+{
 #ifdef _DEBUG
 	var_name = _name;
 #endif
 }
 code::code(command_kind _command, uint32_t _a0, uint32_t _a1, const std::string& _name)
-	: code(_command, _a0, _name) 	{
+	: code(_command, _a0, _name)
+{
 	arg1 = _a1;
-}
-code::code(command_kind _command, uint32_t _a0, uint32_t _a1, uint32_t _a2, const std::string& _name)
-	: code(_command, _a0, _a1, _name) 	{
-	arg2 = _a2;
 }
 code::code(command_kind _command, const value& _data) : code(_command) {
 	new (&data) value(_data);	//Reassign data without calling its destructor
+}
+code::code(int _line, command_kind _command, uint32_t _a0) : code(_command, _a0) {
+	SetLine(_line);
+}
+code::code(int _line, command_kind _command, const value& _data) : code(_command, _data) {
+	SetLine(_line);
 }
 code::code(const code& src) {
 	*this = src;
 }
 code::~code() {
-	switch (command) {
+	switch (GetOp()) {
 	case command_kind::pc_push_value:
 		data.~value();
 		break;
@@ -63,20 +65,22 @@ code& code::operator=(const code& src) {
 	if (this == std::addressof(src)) return *this;
 	this->~code();
 
-	switch (src.command) {
+	switch (src.GetOp()) {
 	case command_kind::pc_push_value:
 		new (&data) value(src.data);
 		break;
 	default:
 		arg0 = src.arg0;
 		arg1 = src.arg1;
-		arg2 = src.arg2;
 		break;
 	}
+	
+#ifdef _DEBUG
 	command = src.command;
 	line = src.line;
-#ifdef _DEBUG
 	var_name = src.var_name;
+#else
+	opc_line = src.opc_line;
 #endif
 
 	return *this;
@@ -140,8 +144,10 @@ static const std::vector<function> base_operations = {
 	{ "apo", BaseFunction::apo, 1 },
 	{ "power", BaseFunction::power, 2 },
 
+	{ "as_x", BaseFunction::cast_x, 2 },
+
 	{ "as_int_array", BaseFunction::cast_int_array, 1 },
-	{ "as_real_array", BaseFunction::cast_real_array, 1 },
+	{ "as_float_array", BaseFunction::cast_float_array, 1 },
 	{ "as_bool_array", BaseFunction::cast_bool_array, 1 },
 	{ "as_char_array", BaseFunction::cast_char_array, 1 },
 	{ "as_x_array", BaseFunction::cast_x_array, 2 },
@@ -264,8 +270,8 @@ void parser::load_constants(std::vector<constant>* list_const) {
 		case type_data::tk_int:
 			const_value.reset(script_type_manager::get_int_type(), (int64_t&)pConst->data);
 			break;
-		case type_data::tk_real:
-			const_value.reset(script_type_manager::get_real_type(), (double&)pConst->data);
+		case type_data::tk_float:
+			const_value.reset(script_type_manager::get_float_type(), (double&)pConst->data);
 			break;
 		case type_data::tk_char:
 			const_value.reset(script_type_manager::get_char_type(), (wchar_t&)pConst->data);
@@ -434,8 +440,8 @@ type_data* _token_kind_to_type_data(token_kind token) {
 	switch (token) {
 	case token_kind::tk_decl_int:
 		return script_type_manager::get_int_type();
-	case token_kind::tk_decl_real:
-		return script_type_manager::get_real_type();
+	case token_kind::tk_decl_float:
+		return script_type_manager::get_float_type();
 	case token_kind::tk_decl_char:
 		return script_type_manager::get_char_type();
 	case token_kind::tk_decl_bool:
@@ -688,7 +694,7 @@ int parser::scan_current_scope(parser_state_t* state, int level, int initVar, co
 			break;
 
 			case token_kind::tk_decl_mod_const:
-			case token_kind::tk_decl_real:
+			case token_kind::tk_decl_float:
 			case token_kind::tk_decl_int:
 			case token_kind::tk_decl_char:
 			case token_kind::tk_decl_bool:
@@ -798,9 +804,9 @@ void parser::parse_clause(script_block* block, parser_state_t* state) {
 			value(script_type_manager::get_int_type(), state->lex->int_value)));
 		state->advance();
 		return;
-	case token_kind::tk_real:
+	case token_kind::tk_float:
 		state->AddCode(block, code(command_kind::pc_push_value,
-			value(script_type_manager::get_real_type(), state->lex->real_value)));
+			value(script_type_manager::get_float_type(), state->lex->float_value)));
 		state->advance();
 		return;
 	case token_kind::tk_char:
@@ -882,26 +888,36 @@ continue_as_variadic:
 		return;
 	}
 	case token_kind::tk_cast_int:
-	case token_kind::tk_cast_real:
+	case token_kind::tk_cast_float:
 	case token_kind::tk_cast_char:
 	case token_kind::tk_cast_bool:
 	case token_kind::tk_cast_string:
+	case token_kind::tk_decl_int:
+	case token_kind::tk_decl_float:
+	case token_kind::tk_decl_char:
+	case token_kind::tk_decl_bool:
+	case token_kind::tk_decl_string:
 	{
 		type_data* target = nullptr;
 		switch (state->next()) {
 		case token_kind::tk_cast_int:
+		case token_kind::tk_decl_int:
 			target = script_type_manager::get_int_type();
 			break;
-		case token_kind::tk_cast_real:
-			target = script_type_manager::get_real_type();
+		case token_kind::tk_cast_float:
+		case token_kind::tk_decl_float:
+			target = script_type_manager::get_float_type();
 			break;
 		case token_kind::tk_cast_char:
+		case token_kind::tk_decl_char:
 			target = script_type_manager::get_char_type();
 			break;
 		case token_kind::tk_cast_bool:
+		case token_kind::tk_decl_bool:
 			target = script_type_manager::get_boolean_type();
 			break;
 		case token_kind::tk_cast_string:
+		case token_kind::tk_decl_string:
 			target = script_type_manager::get_string_type();
 			break;
 		}
@@ -1262,6 +1278,8 @@ void parser::parse_single_statement(script_block* block, parser_state_t* state,
 		}
 	};
 
+#define MAKE_ARG1_LEVEL_VAR(_LEV, _VAR) ((((uint32_t)(_LEV) & 0xfff) << 20) | ((uint32_t)(_VAR) & 0xfffff))
+
 	bool need_terminator = true;
 
 	switch (state->next()) {
@@ -1335,7 +1353,7 @@ void parser::parse_single_statement(script_block* block, parser_state_t* state,
 			if (isArrayElement)
 				state->AddCode(block, code(f, false, name));
 			else
-				state->AddCode(block, code(f, true, s->level, s->var, name));
+				state->AddCode(block, code(f, true, MAKE_ARG1_LEVEL_VAR(s->level, s->var), name));
 			break;
 		}
 		case token_kind::tk_inc:
@@ -1348,7 +1366,7 @@ void parser::parse_single_statement(script_block* block, parser_state_t* state,
 			if (isArrayElement)
 				state->AddCode(block, code(f, false, true, name));
 			else
-				state->AddCode(block, code(f, true, s->level, s->var, name));
+				state->AddCode(block, code(f, true, MAKE_ARG1_LEVEL_VAR(s->level, s->var), name));
 			break;
 		}
 		default:
@@ -1377,7 +1395,7 @@ void parser::parse_single_statement(script_block* block, parser_state_t* state,
 
 		break;
 	}
-	case token_kind::tk_decl_real:
+	case token_kind::tk_decl_float:
 	case token_kind::tk_decl_int:
 	case token_kind::tk_decl_char:
 	case token_kind::tk_decl_bool:
@@ -1450,7 +1468,7 @@ void parser::parse_single_statement(script_block* block, parser_state_t* state,
 				state->AddCode(block, code(command_kind::pc_pop, 1));
 
 				//Try to optimize looped yield to a wait
-				if (blockParam.size == 1U && block->codes[ip_block_begin].command == command_kind::pc_yield) {
+				if (blockParam.size == 1U && block->codes[ip_block_begin].GetOp() == command_kind::pc_yield) {
 					while (state->ip > ip_loop_begin)
 						state->PopCode(block);
 					state->AddCode(block, code(command_kind::pc_wait));
@@ -1522,7 +1540,7 @@ void parser::parse_single_statement(script_block* block, parser_state_t* state,
 			state->AddCode(block, code(command_kind::pc_pop, 1));
 
 			//Try to optimize looped yield to a wait
-			if (blockParam.size == 1U && block->codes[ip_block_begin].command == command_kind::pc_yield) {
+			if (blockParam.size == 1U && block->codes[ip_block_begin].GetOp() == command_kind::pc_yield) {
 				while (state->ip > ip_loop_begin)
 					state->PopCode(block);
 				state->AddCode(block, code(command_kind::pc_wait));
@@ -1845,7 +1863,7 @@ void parser::parse_single_statement(script_block* block, parser_state_t* state,
 			}
 			frame.pop_back();
 
-			if (codeBlockSize == 0U) {
+			if (codeBlockSize == 0U && (ip_back - ip_continue == 1U)) {
 				while (newState.ip > ip_for_begin)
 					newState.PopCode(block);
 			}
@@ -1992,11 +2010,15 @@ void parser::parse_single_statement(script_block* block, parser_state_t* state,
 		//Replace labels with actual code offset
 		for (; ip_begin < ip_end; ++ip_begin) {
 			code* c = &block->codes[ip_begin];
-			if (c->command == command_kind::_pc_jump_if || c->command == command_kind::_pc_jump_if_not
-				|| c->command == command_kind::_pc_jump) 				{
+			switch (c->GetOp()) {
+			case command_kind::_pc_jump:
+			case command_kind::_pc_jump_if:
+			case command_kind::_pc_jump_if_not:
+			{
 				auto itrMap = mapLabelCode.find(c->arg0);
-				c->command = get_replacing_jump(c->command);
+				c->SetOp(get_replacing_jump(c->GetOp()));
 				c->arg0 = (itrMap != mapLabelCode.end()) ? itrMap->second : ip_end;
+			}
 			}
 		}
 
@@ -2056,11 +2078,15 @@ void parser::parse_single_statement(script_block* block, parser_state_t* state,
 		//Replace labels with actual code offset
 		for (; ip_begin < ip_end; ++ip_begin) {
 			code* c = &block->codes[ip_begin];
-			if (c->command == command_kind::_pc_jump_if || c->command == command_kind::_pc_jump_if_not
-				|| c->command == command_kind::_pc_jump) 				{
+			switch (c->GetOp()) {
+			case command_kind::_pc_jump:
+			case command_kind::_pc_jump_if:
+			case command_kind::_pc_jump_if_not:
+			{
 				auto itrMap = mapLabelCode.find(c->arg0);
-				c->command = get_replacing_jump(c->command);
+				c->SetOp(get_replacing_jump(c->GetOp()));
 				c->arg0 = (itrMap != mapLabelCode.end()) ? itrMap->second : ip_end;
+			}
 			}
 		}
 
@@ -2303,6 +2329,8 @@ void parser::parse_single_statement(script_block* block, parser_state_t* state,
 	}
 	}
 
+#undef MAKE_ARG1_LEVEL_VAR
+
 	//_parser_assert_nend(state);
 	if (check_terminator) {
 		if (need_terminator && state->next() != statement_terminator)
@@ -2400,16 +2428,16 @@ void parser::optimize_expression(script_block* block, parser_state_t* state) {
 	std::vector<code> newCodes;
 
 	for (auto iSrcCode = block->codes.begin(); iSrcCode != block->codes.end(); ++iSrcCode) {
-		switch (iSrcCode->command) {
+		switch (iSrcCode->GetOp()) {
 		case command_kind::pc_inline_neg:
 		case command_kind::pc_inline_not:
 		case command_kind::pc_inline_abs:
 		{
 			code* ptrBack = &newCodes.back();
-			if (ptrBack->command == command_kind::pc_push_value) {
+			if (ptrBack->GetOp() == command_kind::pc_push_value) {
 				value* arg = &(ptrBack->data);
 				value res;
-				switch (iSrcCode->command) {
+				switch (iSrcCode->GetOp()) {
 				case command_kind::pc_inline_neg:
 					res = BaseFunction::_script_negative(1, arg);
 					break;
@@ -2421,7 +2449,7 @@ void parser::optimize_expression(script_block* block, parser_state_t* state) {
 					break;
 				}
 				newCodes.pop_back();
-				newCodes.push_back(code(iSrcCode->line, command_kind::pc_push_value, res));
+				newCodes.push_back(code(iSrcCode->GetLine(), command_kind::pc_push_value, res));
 				--(state->ip);
 			}
 			else {
@@ -2437,10 +2465,10 @@ void parser::optimize_expression(script_block* block, parser_state_t* state) {
 		case command_kind::pc_inline_pow:
 		{
 			code* ptrBack = &newCodes.back();
-			if (ptrBack[-1].command == command_kind::pc_push_value && ptrBack->command == command_kind::pc_push_value) {
+			if (ptrBack[-1].GetOp() == command_kind::pc_push_value && ptrBack->GetOp() == command_kind::pc_push_value) {
 				value arg[] = { ptrBack[-1].data, ptrBack->data };
 				value res;
-				switch (iSrcCode->command) {
+				switch (iSrcCode->GetOp()) {
 				case command_kind::pc_inline_add:
 					res = BaseFunction::_script_add(2, arg);
 					break;
@@ -2462,7 +2490,7 @@ void parser::optimize_expression(script_block* block, parser_state_t* state) {
 				}
 				newCodes.pop_back();
 				newCodes.pop_back();
-				newCodes.push_back(code(iSrcCode->line, command_kind::pc_push_value, res));
+				newCodes.push_back(code(iSrcCode->GetLine(), command_kind::pc_push_value, res));
 				state->ip -= 2;
 			}
 			else {
@@ -2494,11 +2522,11 @@ void parser::optimize_expression(script_block* block, parser_state_t* state) {
 					code* ptrPushValueCode = ptrBack + 1;
 					for (size_t i = 0; i < sizeArray; ++i) {
 						--ptrPushValueCode;
-						if (ptrPushValueCode->command != command_kind::pc_push_value)
+						if (ptrPushValueCode->GetOp() != command_kind::pc_push_value)
 							goto lab_opt_construct_array_cancel;
 					}
 					//Make sure the previous value was not part of a ternary statement
-					if (newCodes.size() >= sizeArray + 1 && (ptrPushValueCode[-1]).command == command_kind::pc_jump)
+					if (newCodes.size() >= sizeArray + 1 && (ptrPushValueCode[-1]).GetOp() == command_kind::pc_jump)
 						goto lab_opt_construct_array_cancel;
 
 					type_data* type_elem = ptrPushValueCode->data.get_type();
@@ -2526,7 +2554,7 @@ void parser::optimize_expression(script_block* block, parser_state_t* state) {
 				for (size_t i = 0; i < sizeArray; ++i)
 					newCodes.pop_back();
 				arrayVal.make_unique();
-				newCodes.push_back(code(iSrcCode->line, command_kind::pc_push_value, arrayVal));
+				newCodes.push_back(code(iSrcCode->GetLine(), command_kind::pc_push_value, arrayVal));
 				state->ip -= sizeArray;
 			}
 			else {
@@ -2538,9 +2566,9 @@ lab_opt_construct_array_cancel:
 		case command_kind::pc_load_ptr:
 		{
 			code* ptrBack = &newCodes.back();
-			if (ptrBack->command == command_kind::pc_push_variable && (iSrcCode->arg0 == 0)) {
-				ptrBack->line = iSrcCode->line;
-				ptrBack->command = command_kind::pc_push_variable2;
+			if (ptrBack->GetOp() == command_kind::pc_push_variable && (iSrcCode->arg0 == 0)) {
+				ptrBack->SetLine(iSrcCode->GetLine());
+				ptrBack->SetOp(command_kind::pc_push_variable2);
 				--(state->ip);
 			}
 			else {
@@ -2568,7 +2596,7 @@ void parser::link_jump(script_block* block, parser_state_t* state, size_t ip_off
 		size_t ip = 0;
 		size_t removing = 0;
 		for (auto itr = block->codes.begin(); itr != block->codes.end(); ++itr, ++ip) {
-			switch (itr->command) {
+			switch (itr->GetOp()) {
 			case command_kind::pc_jump_target:
 				mapLabelCode.insert(std::make_pair(itr->arg0, ip - removing));
 				++removing;
@@ -2579,7 +2607,7 @@ void parser::link_jump(script_block* block, parser_state_t* state, size_t ip_off
 	if (mapLabelCode.size() == 0U) return;
 
 	for (auto itr = block->codes.begin(); itr != block->codes.end(); ++itr) {
-		switch (itr->command) {
+		switch (itr->GetOp()) {
 		case command_kind::pc_jump_target:
 			//--(state->ip);
 			break;
@@ -2591,7 +2619,7 @@ void parser::link_jump(script_block* block, parser_state_t* state, size_t ip_off
 		{
 			auto itrFind = mapLabelCode.find(itr->arg0);
 			if (itrFind != mapLabelCode.end())
-				newCodes.push_back(code(itr->line, get_replacing_jump(itr->command), itrFind->second + ip_off));
+				newCodes.push_back(code(itr->GetLine(), get_replacing_jump(itr->GetOp()), itrFind->second + ip_off));
 			break;
 		}
 		default:
@@ -2602,20 +2630,21 @@ void parser::link_jump(script_block* block, parser_state_t* state, size_t ip_off
 
 	block->codes = newCodes;
 }
-///Replaces breaks and continues with jumps
+//Replaces breaks and continues with jumps
 void parser::link_break_continue(script_block* block, parser_state_t* state,
-	size_t ip_begin, size_t ip_end, size_t ip_break, size_t ip_continue) 	{
+	size_t ip_begin, size_t ip_end, size_t ip_break, size_t ip_continue)
+{
 	auto itrBegin = block->codes.begin() + ip_begin;
 	auto itrEnd = block->codes.begin() + ip_end + 1;
 	for (auto itr = itrBegin; itr != itrEnd; ++itr) {
 		if (itr == block->codes.end()) return;
-		switch (itr->command) {
+		switch (itr->GetOp()) {
 		case command_kind::pc_loop_break:
-			itr->command = command_kind::pc_jump;
+			itr->SetOp(command_kind::pc_jump);
 			itr->arg0 = ip_break;
 			break;
 		case command_kind::pc_loop_continue:
-			itr->command = command_kind::pc_jump;
+			itr->SetOp(command_kind::pc_jump);
 			itr->arg0 = ip_continue;
 			break;
 		}
@@ -2624,9 +2653,9 @@ void parser::link_break_continue(script_block* block, parser_state_t* state,
 
 void parser::scan_final(script_block* block, parser_state_t* state) {
 	for (auto itr = block->codes.begin(); itr != block->codes.end(); ++itr) {
-		parser_assert(itr->line, itr->command != command_kind::pc_loop_break,
+		parser_assert(itr->GetLine(), itr->GetOp() != command_kind::pc_loop_break,
 			"\"break\" may only be used inside a loop.");
-		parser_assert(itr->line, itr->command != command_kind::pc_loop_continue,
+		parser_assert(itr->GetLine(), itr->GetOp() != command_kind::pc_loop_continue,
 			"\"continue\" may only be used inside a loop.");
 	}
 }

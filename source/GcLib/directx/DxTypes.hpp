@@ -60,6 +60,7 @@ namespace directx {
 		KEY_HOLD = 3,	 //Key is being pressed, both in the previous and current frame
 	} DIKeyState;
 
+#if defined(DNH_PROJ_EXECUTOR)
 	//*******************************************************************
 	//DirectSound
 	//*******************************************************************
@@ -67,7 +68,6 @@ namespace directx {
 		Unknown,	//Invalid
 		Wave,		//WAVE RIFF
 		Ogg,		//Ogg Vorbis
-		Mp3,		//MPEG3
 	};
 
 	//*******************************************************************
@@ -156,6 +156,7 @@ namespace directx {
 	//*******************************************************************
 	//Rect
 	//*******************************************************************
+	class DxPoint;
 	template<typename T>
 	class DxRect {
 	public:
@@ -199,13 +200,21 @@ namespace directx {
 			bottom = b;
 		}
 
-		RECT AsRect() const { return { left, top, right, bottom }; }
+		RECT AsRect() const { return RECT{ left, top, right, bottom }; }
 		T GetWidth() const { return right - left; }
 		T GetHeight() const { return bottom - top; }
 
-		bool IsIntersected(const DxRect<T>& other) const {
+		inline bool IsIntersected(const DxRect<T>& other) const {
 			return !(other.left > right || other.right < left
 				|| other.top > bottom || other.bottom < top);
+		}
+
+		inline bool IsPointIntersected(const DxPoint* point) const;
+		inline bool IsPointIntersected(const gstd::Math::DVec2& point) const { return IsPointIntersected(point[0], point[1]); }
+		inline bool IsPointIntersected(const float* point) const { return IsPointIntersected(point[0], point[1]); }
+		inline bool IsPointIntersected(const double* point) const { return IsPointIntersected(point[0], point[1]); }
+		inline bool IsPointIntersected(double x, double y) const {
+			return (x >= left && y >= top) && (x <= right && y <= bottom);
 		}
 	public:
 		T left, top, right, bottom;
@@ -238,6 +247,9 @@ namespace directx {
 			return DxRect<float>(GetX(), GetY(), GetX(), GetY());
 		}
 	};
+	template<typename T> bool DxRect<T>::IsPointIntersected(const DxPoint* point) const {
+		return IsPointIntersected(point->GetX(), point->GetY());
+	}
 
 	class DxCircle : public DxPoint {
 	private:
@@ -399,4 +411,5 @@ namespace directx {
 
 		virtual DxRect<float> GetBounds() const { return DxRect<float>(); }
 	};
+#endif
 }

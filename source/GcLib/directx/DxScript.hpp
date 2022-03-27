@@ -87,6 +87,7 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_MatrixLookatLH);
 		DNH_FUNCAPI_DECL_(Func_MatrixLookatRH);
 		DNH_FUNCAPI_DECL_(Func_MatrixTransformVector);
+		DNH_FUNCAPI_DECL_(Func_MatrixRotate);
 
 		//Dx関数：システム系
 		static gstd::value Func_InstallFont(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -119,7 +120,11 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_GetWindowedHeight);
 		DNH_FUNCAPI_DECL_(Func_IsFullscreenMode);
 		DNH_FUNCAPI_DECL_(Func_GetCoordinateScalingFactor);
-		DNH_FUNCAPI_DECL_(Func_SetCoordinateScalingFactor);
+
+		DNH_FUNCAPI_DECL_(Func_SetWindowedDisplayMatrix);
+		DNH_FUNCAPI_DECL_(Func_SetFullscreenDisplayMatrix);
+		DNH_FUNCAPI_DECL_(Func_SetWindowedDisplayShader);
+		DNH_FUNCAPI_DECL_(Func_SetFullscreenDisplayShader);
 
 		static gstd::value Func_LoadTexture(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_LoadTextureInLoadThread(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -133,8 +138,6 @@ namespace directx {
 		static gstd::value Func_SetFogParam(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_CreateRenderTarget(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		DNH_FUNCAPI_DECL_(Func_CreateRenderTargetEx);
-		static gstd::value Func_SetRenderTarget(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		DNH_FUNCAPI_DECL_(Func_ResetRenderTarget);
 		DNH_FUNCAPI_DECL_(Func_ClearRenderTargetA1);
 		DNH_FUNCAPI_DECL_(Func_ClearRenderTargetA2);
 		DNH_FUNCAPI_DECL_(Func_ClearRenderTargetA3);
@@ -322,6 +325,8 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_ObjRender_SetLightingSpecularColor);
 		DNH_FUNCAPI_DECL_(Func_ObjRender_SetLightingAmbientColor);
 		DNH_FUNCAPI_DECL_(Func_ObjRender_SetLightingDirection);
+		DNH_FUNCAPI_DECL_(Func_ObjRender_SetRenderTarget);
+		DNH_FUNCAPI_DECL_(Func_ObjRender_Render);
 
 		//Dx関数：オブジェクト操作(ShaderObject)
 		static gstd::value Func_ObjShader_Create(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -336,6 +341,13 @@ namespace directx {
 		static gstd::value Func_ObjShader_SetFloat(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjShader_SetFloatArray(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjShader_SetTexture(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_ValidateTechnique);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_GetMatrix);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_GetMatrixArray);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_GetVector);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_GetFloat);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_GetFloatArray);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_GetTexture);
 
 		//Dx関数：オブジェクト操作(PrimitiveObject)
 		static gstd::value Func_ObjPrimitive_Create(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -457,6 +469,7 @@ namespace directx {
 		static gstd::value Func_ObjSound_GetVolumeRate(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		DNH_FUNCAPI_DECL_(Func_ObjSound_SetFrequency);
 		DNH_FUNCAPI_DECL_(Func_ObjSound_GetInfo);
+		DNH_FUNCAPI_DECL_(Func_ObjSound_GetSamplesFFT);
 
 		//Dx関数：ファイル操作(DxFileObject)
 		static gstd::value Func_ObjFile_Create(gstd::script_machine* machine, int argc, const gstd::value* argv);

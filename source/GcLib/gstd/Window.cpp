@@ -111,8 +111,7 @@ void WindowBase::MoveWindowCenter() {
 	MoveWindowCenter(rcWindow);
 }
 void WindowBase::MoveWindowCenter(const RECT& rcWindow) {
-	RECT rcMonitor;
-	::GetWindowRect(::GetDesktopWindow(), &rcMonitor);
+	RECT rcMonitor = GetActiveMonitorRect(hWnd_);
 
 	LONG tWidth = rcWindow.right - rcWindow.left;
 	LONG tHeight = rcWindow.bottom - rcWindow.top;
@@ -129,6 +128,22 @@ HWND WindowBase::GetTopParentWindow(HWND hWnd) {
 		res = hParent;
 	}
 	return res;
+}
+
+RECT WindowBase::GetMonitorRect(HMONITOR hMonitor) {
+	MONITORINFO monitorInfo;
+	monitorInfo.cbSize = sizeof(MONITORINFO);
+	::GetMonitorInfoW(hMonitor, &monitorInfo);
+
+	return monitorInfo.rcMonitor;
+}
+RECT WindowBase::GetActiveMonitorRect(HWND hWnd) {
+	HMONITOR hMonitor = ::MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY);
+	return GetMonitorRect(hMonitor);
+}
+RECT WindowBase::GetPrimaryMonitorRect() {
+	HMONITOR hMonitor = ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
+	return GetMonitorRect(hMonitor);
 }
 
 //****************************************************************************
@@ -211,7 +226,7 @@ void WLabel::Create(HWND hWndParent) {
 LRESULT WLabel::_WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 	case WM_CTLCOLORSTATIC:
-	case WM_CTLCOLOR:
+	//case WM_CTLCOLOR:
 	{
 		::SetTextColor((HDC)wParam, colorText_);
 		::SetBkColor((HDC)wParam, colorBack_);

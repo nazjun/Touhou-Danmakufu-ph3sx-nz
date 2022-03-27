@@ -66,12 +66,11 @@ void StgMoveObject::_AttachReservedPattern(ref_unsync_ptr<StgMovePattern> patter
 	pattern->Activate(pattern_.get());
 	pattern_ = pattern;
 }
-
-void StgMoveObject::AddPattern(int frameDelay, ref_unsync_ptr<StgMovePattern> pattern, bool bForceMap) {
+void StgMoveObject::AddPattern(uint32_t frameDelay, ref_unsync_ptr<StgMovePattern> pattern, bool bForceMap) {
 	if (frameDelay == 0 && !bForceMap)
 		_AttachReservedPattern(pattern);
 	else {
-		int frame = frameDelay + framePattern_;
+		uint32_t frame = frameDelay + framePattern_;
 		mapPattern_[frame].push_back(pattern);
 	}
 }
@@ -577,17 +576,21 @@ void StgMovePattern_Angle::Move() {
 
 	if (acceleration_ != 0) {
 		speed_ += acceleration_;
-		if (acceleration_ > 0)
-			speed_ = std::min(speed_, maxSpeed_);
-		if (acceleration_ < 0)
-			speed_ = std::max(speed_, maxSpeed_);
+		if (maxSpeed_ != UNCAPPED) {
+			if (acceleration_ > 0)
+				speed_ = std::min(speed_, maxSpeed_);
+			if (acceleration_ < 0)
+				speed_ = std::max(speed_, maxSpeed_);
+		}
 	}
 	if (angularAcceleration_ != 0) {
 		angularVelocity_ += angularAcceleration_;
-		if (angularAcceleration_ > 0)
-			angularVelocity_ = std::min(angularVelocity_, angularMaxVelocity_);
-		if (angularAcceleration_ < 0)
-			angularVelocity_ = std::max(angularVelocity_, angularMaxVelocity_);
+		if (angularMaxVelocity_ != UNCAPPED) {
+			if (angularAcceleration_ > 0)
+				angularVelocity_ = std::min(angularVelocity_, angularMaxVelocity_);
+			if (angularAcceleration_ < 0)
+				angularVelocity_ = std::max(angularVelocity_, angularMaxVelocity_);
+		}
 	}
 	if (angularVelocity_ != 0) {
 		SetDirectionAngle(angle + angularVelocity_);
@@ -615,17 +618,25 @@ void StgMovePattern_Angle::Activate(StgMovePattern* _src) {
 		}
 		else if (_src->GetType() == TYPE_XY) {
 			StgMovePattern_XY* src = (StgMovePattern_XY*)_src;
-			speed_ = src->GetSpeed();
 			angDirection_ = src->GetDirectionAngle();
-			acceleration_ = hypot(src->GetAccelerationX(), src->GetAccelerationY());
-			maxSpeed_ = hypot(src->GetMaxSpeedX(), src->GetMaxSpeedY());
+
+			speed_ = src->GetSpeed();
+
+			double _ax = src->GetAccelerationX(), _ay = src->GetAccelerationY();
+			double _mx = src->GetMaxSpeedX(), _my = src->GetMaxSpeedY();
+			acceleration_ = hypot(_ax, _ay) * StgMovePattern_XY::GetDirectionSignRelative(angDirection_, _ax, _ay);
+			maxSpeed_ = hypot(_mx, _my) * StgMovePattern_XY::GetDirectionSignRelative(angDirection_, _mx, _my);
 		}
 		else if (_src->GetType() == TYPE_XY_ANG) {
 			StgMovePattern_XY_Angle* src = (StgMovePattern_XY_Angle*)_src;
-			speed_ = src->GetSpeed();
 			angDirection_ = src->GetDirectionAngle();
-			acceleration_ = hypot(src->GetAccelerationX(), src->GetAccelerationY());
-			maxSpeed_ = hypot(src->GetMaxSpeedX(), src->GetMaxSpeedY());
+
+			speed_ = src->GetSpeed();
+
+			double _ax = src->GetAccelerationX(), _ay = src->GetAccelerationY();
+			double _mx = src->GetMaxSpeedX(), _my = src->GetMaxSpeedY();
+			acceleration_ = hypot(_ax, _ay) * StgMovePattern_XY::GetDirectionSignRelative(angDirection_, _ax, _ay);
+			maxSpeed_ = hypot(_mx, _my) * StgMovePattern_XY::GetDirectionSignRelative(angDirection_, _mx, _my);
 		}
 		else if (_src->GetType() == TYPE_LINE) {
 			StgMovePattern_Line* src = dynamic_cast<StgMovePattern_Line*>(_src);
@@ -729,17 +740,21 @@ StgMovePattern_XY::StgMovePattern_XY(StgMoveObject* target) : StgMovePattern(tar
 void StgMovePattern_XY::Move() {
 	if (accelerationX_ != 0) {
 		c_ += accelerationX_;
-		if (accelerationX_ > 0)
-			c_ = std::min(c_, maxSpeedX_);
-		if (accelerationX_ < 0)
-			c_ = std::max(c_, maxSpeedX_);
+		if (maxSpeedX_ != UNCAPPED) {
+			if (accelerationX_ > 0)
+				c_ = std::min(c_, maxSpeedX_);
+			if (accelerationX_ < 0)
+				c_ = std::max(c_, maxSpeedX_);
+		}
 	}
 	if (accelerationY_ != 0) {
 		s_ += accelerationY_;
-		if (accelerationY_ > 0)
-			s_ = std::min(s_, maxSpeedY_);
-		if (accelerationY_ < 0)
-			s_ = std::max(s_, maxSpeedY_);
+		if (maxSpeedY_ != UNCAPPED) {
+			if (accelerationY_ > 0)
+				s_ = std::min(s_, maxSpeedY_);
+			if (accelerationY_ < 0)
+				s_ = std::max(s_, maxSpeedY_);
+		}
 	}
 
 	target_->SetPositionX(target_->GetPositionX() + c_);
@@ -827,6 +842,12 @@ void StgMovePattern_XY::Activate(StgMovePattern* _src) {
 	_RegisterShotDataID();
 }
 
+double StgMovePattern_XY::GetDirectionSignRelative(double baseAngle, double sx, double sy) {
+	double ang2 = (sx != 0 && sy != 0) ? atan2(sy, sx) : 0;;
+	double angDist = Math::AngleDifferenceRad(baseAngle, ang2);
+	return cos(angDist) > 0 ? 1 : -1;
+}
+
 //****************************************************************************
 //StgMovePattern_XY_Angle
 //****************************************************************************
@@ -846,24 +867,30 @@ StgMovePattern_XY_Angle::StgMovePattern_XY_Angle(StgMoveObject* target) : StgMov
 void StgMovePattern_XY_Angle::Move() {
 	if (accelerationX_ != 0) {
 		c_ += accelerationX_;
-		if (accelerationX_ > 0)
-			c_ = std::min(c_, maxSpeedX_);
-		if (accelerationX_ < 0)
-			c_ = std::max(c_, maxSpeedX_);
+		if (maxSpeedX_ != UNCAPPED) {
+			if (accelerationX_ > 0)
+				c_ = std::min(c_, maxSpeedX_);
+			if (accelerationX_ < 0)
+				c_ = std::max(c_, maxSpeedX_);
+		}
 	}
 	if (accelerationY_ != 0) {
 		s_ += accelerationY_;
-		if (accelerationY_ > 0)
-			s_ = std::min(s_, maxSpeedY_);
-		if (accelerationY_ < 0)
-			s_ = std::max(s_, maxSpeedY_);
+		if (maxSpeedY_ != UNCAPPED) {
+			if (accelerationY_ > 0)
+				s_ = std::min(s_, maxSpeedY_);
+			if (accelerationY_ < 0)
+				s_ = std::max(s_, maxSpeedY_);
+		}
 	}
 	if (angOffAcceleration_ != 0) {
 		angOffVelocity_ += angOffAcceleration_;
-		if (angOffAcceleration_ > 0)
-			angOffVelocity_ = std::min(angOffVelocity_, angOffMaxVelocity_);
-		if (angOffAcceleration_ < 0)
-			angOffVelocity_ = std::max(angOffVelocity_, angOffMaxVelocity_);
+		if (angOffMaxVelocity_ != UNCAPPED) {
+			if (angOffAcceleration_ > 0)
+				angOffVelocity_ = std::min(angOffVelocity_, angOffMaxVelocity_);
+			if (angOffAcceleration_ < 0)
+				angOffVelocity_ = std::max(angOffVelocity_, angOffMaxVelocity_);
+		}
 	}
 	if (angOffVelocity_ != 0) {
 		angOff_ += angOffVelocity_;
@@ -1022,12 +1049,12 @@ void StgMovePattern_Line::Activate(StgMovePattern* src) {
 		patternS->SetAtSpeed(tx, ty, speed);
 	}
 	else if (auto patternF = dynamic_cast<StgMovePattern_Line_Frame*>(this)) {
-		int frame = 0;
+		uint32_t frame = 0;
 		Math::Lerp::Type lerpMode = Math::Lerp::LINEAR;
 		for (auto& [cmd, arg] : listCommand_) {
 			switch (cmd) {
 			case SET_FR:
-				frame = (int)arg;
+				frame = (uint32_t)arg;
 				break;
 			case SET_LP:
 				lerpMode = (Math::Lerp::Type)arg;
@@ -1083,7 +1110,7 @@ StgMovePattern_Line_Frame::StgMovePattern_Line_Frame(StgMoveObject* target) : St
 	moveLerpFunc = Math::Lerp::Linear<double, double>;
 	diffLerpFunc = Math::Lerp::DifferentialLinear<double>;
 }
-void StgMovePattern_Line_Frame::SetAtFrame(double tx, double ty, int frame, lerp_func lerpFunc, lerp_diff_func diffFunc) {
+void StgMovePattern_Line_Frame::SetAtFrame(double tx, double ty, uint32_t frame, lerp_func lerpFunc, lerp_diff_func diffFunc) {
 	iniPos_[0] = target_->GetPositionX();
 	iniPos_[1] = target_->GetPositionY();
 	targetPos_[0] = tx;
@@ -1092,7 +1119,7 @@ void StgMovePattern_Line_Frame::SetAtFrame(double tx, double ty, int frame, lerp
 	moveLerpFunc = lerpFunc;
 	diffLerpFunc = diffFunc;
 
-	maxFrame_ = std::max(frame, 1);
+	maxFrame_ = std::max(frame, 1U);
 
 	double dx = targetPos_[0] - iniPos_[0];
 	double dy = targetPos_[1] - iniPos_[1];

@@ -172,7 +172,7 @@ void StgEnemyObject::Work() {
 	_DeleteInAutoDeleteFrame();
 }
 void StgEnemyObject::_DeleteInAutoClip() {
-	if (!bAutoDelete_) return;
+	if (!bAutoDelete_ || IsDeleted()) return;
 	DirectGraphics* graphics = DirectGraphics::GetBase();
 
 	DxRect<LONG>* const rcStgFrame = stageController_->GetStageInformation()->GetStgFrameRect();
@@ -208,16 +208,16 @@ void StgEnemyObject::Intersect(StgIntersectionTarget* ownTarget, StgIntersection
 	if (auto ptrObj = otherTarget->GetObject()) {
 		if (otherTarget->GetTargetType() == StgIntersectionTarget::TYPE_PLAYER_SHOT) {
 			if (StgShotObject* shot = dynamic_cast<StgShotObject*>(ptrObj.get())) {
-				ref_unsync_weak_ptr<StgEnemyObject> self = ownTarget->GetObject();
+				if (ref_unsync_weak_ptr<StgEnemyObject> self = ownTarget->GetObject()) {
+					//Register intersection only if the enemy is off hit cooldown
+					if (!shot->CheckEnemyHitCooldownExists(self)) {
+						damage = shot->GetDamage() * (shot->IsSpellFactor() ? rateDamageSpell_ : rateDamageShot_) / 100.0;
+						++intersectedPlayerShotCount_;
 
-				//Register intersection only if the enemy is off hit cooldown
-				if (!shot->CheckEnemyHitCooldownExists(self)) {
-					damage = shot->GetDamage() * (shot->IsSpellFactor() ? rateDamageSpell_ : rateDamageShot_) / 100.0;
-					++intersectedPlayerShotCount_;
-
-					uint32_t frame = shot->GetEnemyIntersectionInvalidFrame();
-					if (frame > 0)
-						shot->AddEnemyHitCooldown(self, frame);
+						uint32_t frame = shot->GetEnemyIntersectionInvalidFrame();
+						if (frame > 0)
+							shot->AddEnemyHitCooldown(self, frame);
+					}
 				}
 			}
 		}
@@ -575,12 +575,12 @@ void StgEnemyBossSceneData::LoadSceneEvents(StgStageController* stageController)
 		if (vLife.has_data()) {
 			if (script->IsArrayValue(vLife)) {
 				for (size_t iLife = 0; iLife < vLife.length_as_array(); ++iLife) {
-					double life = vLife[iLife].as_real();
+					double life = vLife[iLife].as_float();
 					listLife.push_back(life);
 				}
 			}
 			else {
-				double life = vLife.as_real();
+				double life = vLife.as_float();
 				listLife.push_back(life);
 			}
 		}
@@ -592,7 +592,7 @@ void StgEnemyBossSceneData::LoadSceneEvents(StgStageController* stageController)
 
 		gstd::value vTimer = script->RequestEvent(StgStageScript::EV_REQUEST_TIMER);
 		if (vTimer.has_data())
-			SetOriginalSpellTimer(vTimer.as_real() * STANDARD_FPS);
+			SetOriginalSpellTimer(vTimer.as_float() * DnhConfiguration::GetInstance()->fpsStandard_);
 
 		gstd::value vSpell = script->RequestEvent(StgStageScript::EV_REQUEST_IS_SPELL);
 		if (vSpell.has_data())
@@ -600,7 +600,7 @@ void StgEnemyBossSceneData::LoadSceneEvents(StgStageController* stageController)
 
 		{
 			gstd::value vScore = script->RequestEvent(StgStageScript::EV_REQUEST_SPELL_SCORE);
-			if (vScore.has_data()) SetSpellScore(vScore.as_real());
+			if (vScore.has_data()) SetSpellScore(vScore.as_float());
 
 			gstd::value vLast = script->RequestEvent(StgStageScript::EV_REQUEST_IS_LAST_SPELL);
 			if (vLast.has_data()) SetLastSpell(vLast.as_boolean());
