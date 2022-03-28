@@ -2437,7 +2437,7 @@ gstd::value DxScript::Func_ColorHSVtoHexRGB(gstd::script_machine* machine, int a
 	byte cs = argv[1].as_int();
 	byte cv = argv[2].as_int();
 
-	D3DCOLOR rgb = 0xffffffff;
+	D3DCOLOR rgb = 0xffffff;
 	ColorAccess::HSVtoRGB(rgb, ch, cs, cv);
 
 	return DxScript::CreateIntValue(rgb);
