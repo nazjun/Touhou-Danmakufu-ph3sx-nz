@@ -253,6 +253,7 @@ namespace directx {
 		static gstd::value Func_Obj_Delete(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_QueueDelete(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_IsDeleted(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		static gstd::value Func_Obj_IsQueuedForDeletion(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_IsExists(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_SetVisible(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_IsVisible(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -275,7 +276,7 @@ namespace directx {
 		static gstd::value Func_Obj_GetType(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_GetParentScriptID(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_SetNewParentScript(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_Obj_SetAutoDelete(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		static gstd::value Func_Obj_SetAutoDeleteOverride(gstd::script_machine* machine, int argc, const gstd::value* argv);
 
 		//Dx関数：オブジェクト操作(RenderObject)
 		static gstd::value Func_ObjRender_SetX(gstd::script_machine* machine, int argc, const gstd::value* argv);
