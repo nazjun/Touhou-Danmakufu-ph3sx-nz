@@ -31,7 +31,7 @@ namespace directx {
 		bool bDeleted_;
 		bool bQueuedToDelete_;
 		bool bActive_;
-		bool bAutoDeleteEnable_;
+		bool bAutoDeleteOverride_;
 		int frameExist_;
 
 		std::unordered_map<std::wstring, gstd::value> mapObjectValue_;
@@ -64,8 +64,8 @@ namespace directx {
 		int GetRenderPriorityI() { return priRender_; }
 		void SetRenderPriority(double pri);
 		void SetRenderPriorityI(int pri) { priRender_ = pri; }
-		void SetAutoDeleteEnable(bool del) { bAutoDeleteEnable_ = del; }
-		bool IsAutoDeleteEnable() { return bAutoDeleteEnable_; }
+		void SetAutoDeleteOverride(bool del) { bAutoDeleteOverride_ = del; }
+		bool IsAutoDeleteOverride() { return bAutoDeleteOverride_; }
 
 		int GetExistFrame() { return frameExist_; }
 

@@ -19,7 +19,7 @@ DxScriptObjectBase::DxScriptObjectBase() {
 	bDeleted_ = false;
 	bQueuedToDelete_ = false;
 	bActive_ = false;
-	bAutoDeleteEnable_ = true;
+	bAutoDeleteOverride_ = false;
 	frameExist_ = 0;
 	manager_ = nullptr;
 	idObject_ = DxScript::ID_INVALID;
@@ -1424,7 +1424,7 @@ void DxScriptObjectManager::DeleteObjectByScriptID(int64_t idScript) {
 
 	for (size_t iObj = 0; iObj < obj_.size(); ++iObj) {
 		if (obj_[iObj] == nullptr) continue;
-		if (obj_[iObj]->GetScriptID() != idScript || !obj_[iObj]->IsAutoDeleteEnable()) continue;
+		if (obj_[iObj]->GetScriptID() != idScript || obj_[iObj]->IsAutoDeleteOverride()) continue;
 		DeleteObject(obj_[iObj]);
 	}
 }

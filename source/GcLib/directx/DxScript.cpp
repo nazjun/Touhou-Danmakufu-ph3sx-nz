@@ -241,6 +241,7 @@ static const std::vector<function> dxFunction = {
 	{ "Obj_Delete", DxScript::Func_Obj_Delete, 1 },
 	{ "Obj_QueueDelete", DxScript::Func_Obj_QueueDelete, 1 },
 	{ "Obj_IsDeleted", DxScript::Func_Obj_IsDeleted, 1 },
+	{ "Obj_IsQueuedForDeletion", DxScript::Func_Obj_IsQueuedForDeletion, 1 },
 	{ "Obj_IsExists", DxScript::Func_Obj_IsExists, 1 },
 	{ "Obj_SetVisible", DxScript::Func_Obj_SetVisible, 2 },
 	{ "Obj_IsVisible", DxScript::Func_Obj_IsVisible, 1 },
@@ -269,7 +270,7 @@ static const std::vector<function> dxFunction = {
 	{ "Obj_GetParentScriptID", DxScript::Func_Obj_GetParentScriptID, 1 },
 	{ "Obj_SetNewParentScript", DxScript::Func_Obj_SetNewParentScript, 1 },
 	{ "Obj_SetNewParentScript", DxScript::Func_Obj_SetNewParentScript, 2 }, //Overloaded
-	{ "Obj_SetAutoDelete", DxScript::Func_Obj_SetAutoDelete, 2 },
+	{ "Obj_SetAutoDeleteOverride", DxScript::Func_Obj_SetAutoDeleteOverride, 2 },
 
 	//Render object functions
 	{ "ObjRender_SetX", DxScript::Func_ObjRender_SetX, 2 },
@@ -2487,6 +2488,12 @@ value DxScript::Func_Obj_IsDeleted(script_machine* machine, int argc, const valu
 	DxScriptObjectBase* obj = script->GetObjectPointer(id);
 	return script->CreateBooleanValue(obj == nullptr);
 }
+value DxScript::Func_Obj_IsQueuedForDeletion(script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxScriptObjectBase* obj = script->GetObjectPointer(id);
+	return script->CreateBooleanValue(obj->bQueuedToDelete_);
+}
 value DxScript::Func_Obj_IsExists(script_machine* machine, int argc, const value* argv) {
 	DxScript* script = (DxScript*)machine->data;
 	int id = argv[0].as_int();
@@ -2782,13 +2789,13 @@ value DxScript::Func_Obj_SetNewParentScript(script_machine* machine, int argc, c
 
 	return value();
 }
-value DxScript::Func_Obj_SetAutoDelete(script_machine* machine, int argc, const value* argv) {
+value DxScript::Func_Obj_SetAutoDeleteOverride(script_machine* machine, int argc, const value* argv) {
 	DxScript* script = (DxScript*)machine->data;
 	int id = argv[0].as_int();
 	bool del = argv[1].as_boolean();
 
 	DxScriptObjectBase* obj = script->GetObjectPointerAs<DxScriptObjectBase>(id);
-	if (obj) obj->SetAutoDeleteEnable(del);
+	if (obj) obj->SetAutoDeleteOverride(del);
 
 	return value();
 }
