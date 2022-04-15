@@ -1883,13 +1883,13 @@ value ScriptClientBase::Func_GetPoints_Circle(gstd::script_machine* machine, int
 
 	double sc[2];
 
-	std::vector<value> arr;
+	std::vector<value> arr(cnt);
 
 	for (size_t i = 0; i < cnt; ++i) {
 		Math::DoSinCos(dir + i * gap, sc);
 		double xy[2] = { x + sc[1] * rad, y + sc[0] * rad };
 		value v = script->CreateFloatArrayValue(xy, 2);
-		arr.push_back(v);
+		arr[i] = v;
 	}
 
 	return script->CreateValueArrayValue(arr);
@@ -1913,7 +1913,7 @@ value ScriptClientBase::Func_GetPoints_Ellipse(gstd::script_machine* machine, in
 
 	Math::DoSinCos(a2, sc2);
 
-	std::vector<value> arr;
+	std::vector<value> arr(cnt);
 
 	for (size_t i = 0; i < cnt; ++i) {
 		Math::DoSinCos(a1 + i * gap, sc1);
@@ -1925,7 +1925,7 @@ value ScriptClientBase::Func_GetPoints_Ellipse(gstd::script_machine* machine, in
 		};
 
 		value v = script->CreateFloatArrayValue(xy, 2);
-		arr.push_back(v);
+		arr[i] = v;
 	}
 
 	return script->CreateValueArrayValue(arr);
@@ -1977,7 +1977,7 @@ value ScriptClientBase::Func_GetPoints_EquidistantEllipse(gstd::script_machine* 
 
 	Math::DoSinCos(a2, sc2);
 
-	std::vector<value> arr;
+	std::vector<value> arr(cnt);
 
 	for (size_t i = 0; i < cnt; ++i) {
 		std::vector<double>& point = points[i];
@@ -1988,7 +1988,7 @@ value ScriptClientBase::Func_GetPoints_EquidistantEllipse(gstd::script_machine* 
 		};
 
 		value v = script->CreateFloatArrayValue(xy, 2);
-		arr.push_back(v);
+		arr[i] = v;
 	}
 
 	return script->CreateValueArrayValue(arr);
