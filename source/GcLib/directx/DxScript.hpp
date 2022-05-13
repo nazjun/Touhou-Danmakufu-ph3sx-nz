@@ -249,11 +249,9 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_SetInvalidPositionReturn);
 
 		//Dx関数：オブジェクト操作(共通)
-		static gstd::value Func_Obj_Create(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		DNH_FUNCAPI_DECL_(Func_Obj_Create);
 		static gstd::value Func_Obj_Delete(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_Obj_QueueDelete(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_IsDeleted(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_Obj_IsQueuedForDeletion(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_IsExists(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_SetVisible(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_IsVisible(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -272,11 +270,10 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_Obj_CopyValueTable);
 		DNH_FUNCAPI_DECL_(Func_Obj_GetValueCount);
 		DNH_FUNCAPI_DECL_(Func_Obj_GetValueCountI);
-		static gstd::value Func_Obj_GetExistFrame(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_Obj_GetType(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_Obj_GetParentScriptID(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_Obj_SetNewParentScript(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_Obj_SetAutoDeleteOverride(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		DNH_FUNCAPI_DECL_(Func_Obj_GetExistFrame);
+		DNH_FUNCAPI_DECL_(Func_Obj_GetParentScriptID);
+		DNH_FUNCAPI_DECL_(Func_Obj_SetParentScriptID);
 
 		//Dx関数：オブジェクト操作(RenderObject)
 		static gstd::value Func_ObjRender_SetX(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -336,18 +333,22 @@ namespace directx {
 		static gstd::value Func_ObjShader_SetShaderT(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjShader_ResetShader(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjShader_SetTechnique(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_ObjShader_SetMatrix(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_ObjShader_SetMatrixArray(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_ObjShader_SetVector(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_ValidateTechnique);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_SetInt);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_SetIntArray);
 		static gstd::value Func_ObjShader_SetFloat(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjShader_SetFloatArray(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		static gstd::value Func_ObjShader_SetVector(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		static gstd::value Func_ObjShader_SetMatrix(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		static gstd::value Func_ObjShader_SetMatrixArray(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjShader_SetTexture(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		DNH_FUNCAPI_DECL_(Func_ObjShader_ValidateTechnique);
-		DNH_FUNCAPI_DECL_(Func_ObjShader_GetMatrix);
-		DNH_FUNCAPI_DECL_(Func_ObjShader_GetMatrixArray);
-		DNH_FUNCAPI_DECL_(Func_ObjShader_GetVector);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_GetInt);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_GetIntArray);
 		DNH_FUNCAPI_DECL_(Func_ObjShader_GetFloat);
 		DNH_FUNCAPI_DECL_(Func_ObjShader_GetFloatArray);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_GetVector);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_GetMatrix);
+		DNH_FUNCAPI_DECL_(Func_ObjShader_GetMatrixArray);
 		DNH_FUNCAPI_DECL_(Func_ObjShader_GetTexture);
 
 		//Dx関数：オブジェクト操作(PrimitiveObject)
@@ -426,7 +427,6 @@ namespace directx {
 		static gstd::value Func_ObjText_SetFontSize(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_SetFontBold(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		DNH_FUNCAPI_DECL_(Func_ObjText_SetFontWeight);
-		static gstd::value Func_ObjText_SetFontColor(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_SetFontColorTop(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_SetFontColorBottom(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjText_SetFontBorderWidth(gstd::script_machine* machine, int argc, const gstd::value* argv);

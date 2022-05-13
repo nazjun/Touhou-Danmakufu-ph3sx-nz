@@ -251,38 +251,33 @@ void MainWindow::_AddFile(std::wstring dirBase, std::wstring path) {
 
 	File filePath(path);
 	if (filePath.IsDirectory()) {
-		path += L"/";
-		WIN32_FIND_DATA data;
-		HANDLE hFind;
-		std::wstring findDir = path + L"*.*";
-		hFind = FindFirstFile(findDir.c_str(), &data);
-		do {
-			if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (
-				wcscmp(data.cFileName, L"..") != 0 && wcscmp(data.cFileName, L".") != 0)) {
-				std::wstring tDir = path + data.cFileName;
-				_AddFile(dirBase, tDir);
-				continue;
+		path += L'/';
+		if (stdfs::exists(path) && stdfs::is_directory(path)) {
+			for (auto itr : stdfs::directory_iterator(path)) {
+				if (itr.is_directory()) {
+					std::wstring tDir = PathProperty::ReplaceYenToSlash(itr.path());
+					if (tDir.back() != L'/')
+						tDir += L"/";
+
+					_AddFile(dirBase, tDir);
+				}
+				else {
+					std::wstring tPath = PathProperty::ReplaceYenToSlash(itr.path());
+					if (!_IsValidFilePath(dirBase, tPath)) return;
+
+					std::wstring filename = PathProperty::GetFileName(tPath);
+					std::wstring dir = _CreateRelativeDirectory(dirBase, path);
+
+					int row = wndListFile_.GetRowCount();
+					wndListFile_.SetText(row, COL_FILENAME, filename);
+					wndListFile_.SetText(row, COL_DIRECTORY, dir);
+					wndListFile_.SetText(row, COL_FULLPATH, tPath);
+
+					std::wstring key = dir + filename;
+					listFile_.insert(key);
+				}
 			}
-			if (wcscmp(data.cFileName, L"..") == 0 || wcscmp(data.cFileName, L".") == 0) {
-				continue;
-			}
-
-			std::wstring tName = path + data.cFileName;
-			if (!_IsValidFilePath(dirBase, tName)) return;
-
-			std::wstring filename = PathProperty::GetFileName(tName);
-			std::wstring dir = _CreateRelativeDirectory(dirBase, path);
-
-			int row = wndListFile_.GetRowCount();
-			wndListFile_.SetText(row, COL_FILENAME, filename);
-			wndListFile_.SetText(row, COL_DIRECTORY, dir);
-			wndListFile_.SetText(row, COL_FULLPATH, tName);
-
-			std::wstring key = dir + filename;
-			listFile_.insert(key);
-
-		} while (FindNextFile(hFind, &data) == TRUE);
-		FindClose(hFind);
+		}
 	}
 	else {
 		if (!_IsValidFilePath(dirBase, path)) return;
