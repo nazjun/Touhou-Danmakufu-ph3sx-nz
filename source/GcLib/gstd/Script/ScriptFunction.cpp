@@ -3,6 +3,8 @@
 #include "ScriptFunction.hpp"
 #include "Script.hpp"
 
+#include "Parser.hpp"
+
 #ifdef _MSC_VER
 //#define for if(0);else for
 namespace std {
@@ -372,6 +374,28 @@ namespace gstd {
 
 	//-------------------------------------------------------------------------------------------
 
+	//Only checks the funcptr, real calling code is in pc_call
+	value BaseFunction::invoke(script_machine* machine, int argc, const value* argv) {
+		_null_check(nullptr, argv, 1);
+
+		int64_t _val = argv[0].as_int();
+		uint64_t val = (uint64_t&)_val;
+
+		uint32_t verif = val >> 48;
+		uint32_t arguments = (val >> 32) & 0xffff;
+		script_block* sub = (script_block*)(val & 0xffffffff);
+
+		if (verif != 0x6a53 || sub == nullptr) {
+			machine->raise_error("Invalid function pointer.\r\n");
+		}
+		else if (argc - 1 != arguments) {
+			machine->raise_error(
+				StringUtility::Format("Invoke: function expected %d arguments, got %d\r\n", arguments, argc - 1));
+		}
+
+		return value();
+	}
+
 	value BaseFunction::cast_x(script_machine* machine, int argc, const value* argv) {
 		const value& src = argv[0];
 		int type = argv[1].as_int();
@@ -518,6 +542,7 @@ namespace gstd {
 		if (argv[0].get_type()->get_kind() == type_data::tk_array)
 			return __script_perform_op_array(&argv[0], &argv[1], _script_divide);
 		else {
+			/*
 			if (_type_check_two_any(argv[0].get_type(), argv[1].get_type(), type_data::tk_float))
 				return value(script_type_manager::get_float_type(), argv[0].as_float() / argv[1].as_float());
 			else {
@@ -526,6 +551,8 @@ namespace gstd {
 					throw std::string("Invalid operation: integer division by zero.\r\n");
 				return value(script_type_manager::get_int_type(), (int64_t)(argv[0].as_int() / deno));
 			}
+			*/
+			return value(script_type_manager::get_float_type(), argv[0].as_float() / argv[1].as_float());
 		}
 	}
 	SCRIPT_DECLARE_OP(divide);

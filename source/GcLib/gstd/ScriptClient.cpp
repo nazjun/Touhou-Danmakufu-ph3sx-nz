@@ -11,7 +11,6 @@ using namespace gstd;
 //****************************************************************************
 ScriptEngineData::ScriptEngineData() {
 	encoding_ = Encoding::UNKNOWN;
-	mapLine_ = new ScriptFileLineMap();
 }
 ScriptEngineData::~ScriptEngineData() {}
 void ScriptEngineData::SetSource(std::vector<char>& source) {
@@ -28,7 +27,7 @@ ScriptEngineCache::ScriptEngineCache() {
 void ScriptEngineCache::Clear() {
 	cache_.clear();
 }
-void ScriptEngineCache::AddCache(const std::wstring& name, ref_count_ptr<ScriptEngineData>& data) {
+void ScriptEngineCache::AddCache(const std::wstring& name, shared_ptr<ScriptEngineData> data) {
 	cache_[name] = data;
 }
 void ScriptEngineCache::RemoveCache(const std::wstring& name) {
@@ -36,7 +35,7 @@ void ScriptEngineCache::RemoveCache(const std::wstring& name) {
 	if (cache_.find(name) != cache_.end())
 		cache_.erase(itrFind);
 }
-ref_count_ptr<ScriptEngineData> ScriptEngineCache::GetCache(const std::wstring& name) {
+shared_ptr<ScriptEngineData> ScriptEngineCache::GetCache(const std::wstring& name) {
 	auto itrFind = cache_.find(name);
 	if (cache_.find(name) == cache_.end()) return nullptr;
 	return itrFind->second;
@@ -370,7 +369,7 @@ uint64_t ScriptClientBase::prandCalls_ = 0;
 ScriptClientBase::ScriptClientBase() {
 	bError_ = false;
 
-	engine_ = new ScriptEngineData();
+	engine_.reset(new ScriptEngineData());
 	machine_ = nullptr;
 
 	mainThreadID_ = -1;
@@ -415,7 +414,7 @@ void ScriptClientBase::_RaiseError(int line, const std::wstring& message) {
 	bError_ = true;
 	std::wstring errorPos = _GetErrorLineSource(line);
 
-	gstd::ref_count_ptr<ScriptFileLineMap> mapLine = engine_->GetScriptFileLineMap();
+	ScriptFileLineMap* mapLine = engine_->GetScriptFileLineMap();
 	ScriptFileLineMap::Entry* entry = mapLine->GetEntry(line);
 
 	int lineOriginal = -1;
@@ -465,23 +464,25 @@ std::wstring ScriptClientBase::_GetErrorLineSource(int line) {
 	return Encoding::BytesToWString(pStr, size, encoding);
 }
 std::vector<char> ScriptClientBase::_ParseScriptSource(std::vector<char>& source) {
-	ScriptLoader scriptLoader(this, engine_->GetPath(), source);
+	ScriptFileLineMap* lineMap = engine_->GetScriptFileLineMap();
+
+	lineMap->Clear();
+	ScriptLoader scriptLoader(this, engine_->GetPath(), source, lineMap);
 
 	scriptLoader.Parse();
-	engine_->SetScriptFileLineMap(scriptLoader.GetLineMap());
 
 	return scriptLoader.GetResult();
 }
 bool ScriptClientBase::_CreateEngine() {
-	ref_count_ptr<script_engine> engine = new script_engine(engine_->GetSource(), &func_, &const_);
-	engine_->SetEngine(engine);
-	return !engine->get_error();
+	unique_ptr<script_engine> engine(new script_engine(engine_->GetSource(), &func_, &const_));
+	engine_->SetEngine(std::move(engine));
+	return !engine_->GetEngine()->get_error();
 }
 bool ScriptClientBase::SetSourceFromFile(std::wstring path) {
 	path = PathProperty::GetUnique(path);
 
 	if (cache_) {
-		auto pCachedEngine = cache_->GetCache(path);
+		shared_ptr<ScriptEngineData> pCachedEngine = cache_->GetCache(path);
 		if (pCachedEngine) {
 			engine_ = pCachedEngine;
 			return true;
@@ -509,7 +510,7 @@ void ScriptClientBase::SetSource(const std::string& source) {
 }
 void ScriptClientBase::SetSource(std::vector<char>& source) {
 	engine_->SetSource(source);
-	gstd::ref_count_ptr<ScriptFileLineMap> mapLine = engine_->GetScriptFileLineMap();
+	ScriptFileLineMap* mapLine = engine_->GetScriptFileLineMap();
 	mapLine->AddEntry(engine_->GetPath(), 1, StringUtility::CountCharacter(source, '\n') + 1);
 }
 void ScriptClientBase::Compile() {
@@ -1883,13 +1884,13 @@ value ScriptClientBase::Func_GetPoints_Circle(gstd::script_machine* machine, int
 
 	double sc[2];
 
-	std::vector<value> arr;
+	std::vector<value> arr(cnt);
 
 	for (size_t i = 0; i < cnt; ++i) {
 		Math::DoSinCos(dir + i * gap, sc);
 		double xy[2] = { x + sc[1] * rad, y + sc[0] * rad };
 		value v = script->CreateFloatArrayValue(xy, 2);
-		arr.push_back(v);
+		arr[i] = v;
 	}
 
 	return script->CreateValueArrayValue(arr);
@@ -1913,7 +1914,7 @@ value ScriptClientBase::Func_GetPoints_Ellipse(gstd::script_machine* machine, in
 
 	Math::DoSinCos(a2, sc2);
 
-	std::vector<value> arr;
+	std::vector<value> arr(cnt);
 
 	for (size_t i = 0; i < cnt; ++i) {
 		Math::DoSinCos(a1 + i * gap, sc1);
@@ -1925,7 +1926,7 @@ value ScriptClientBase::Func_GetPoints_Ellipse(gstd::script_machine* machine, in
 		};
 
 		value v = script->CreateFloatArrayValue(xy, 2);
-		arr.push_back(v);
+		arr[i] = v;
 	}
 
 	return script->CreateValueArrayValue(arr);
@@ -1977,7 +1978,7 @@ value ScriptClientBase::Func_GetPoints_EquidistantEllipse(gstd::script_machine* 
 
 	Math::DoSinCos(a2, sc2);
 
-	std::vector<value> arr;
+	std::vector<value> arr(cnt);
 
 	for (size_t i = 0; i < cnt; ++i) {
 		std::vector<double>& point = points[i];
@@ -1988,7 +1989,7 @@ value ScriptClientBase::Func_GetPoints_EquidistantEllipse(gstd::script_machine* 
 		};
 
 		value v = script->CreateFloatArrayValue(xy, 2);
-		arr.push_back(v);
+		arr[i] = v;
 	}
 
 	return script->CreateValueArrayValue(arr);
@@ -2486,7 +2487,7 @@ value ScriptClientBase::Func_IsValidCommonDataValuePointer(script_machine* machi
 //****************************************************************************
 //ScriptLoader
 //****************************************************************************
-ScriptLoader::ScriptLoader(ScriptClientBase* script, const std::wstring& path, std::vector<char>& source) {
+ScriptLoader::ScriptLoader(ScriptClientBase* script, const std::wstring& path, std::vector<char>& source, ScriptFileLineMap* mapLine) {
 	script_ = script;
 
 	pathSource_ = path;
@@ -2496,7 +2497,7 @@ ScriptLoader::ScriptLoader(ScriptClientBase* script, const std::wstring& path, s
 	encoding_ = scanner_->GetEncoding();
 	charSize_ = Encoding::GetCharSize(encoding_);
 
-	mapLine_ = new ScriptFileLineMap();
+	mapLine_ = mapLine;
 }
 ScriptLoader::~ScriptLoader() {
 }
@@ -2775,7 +2776,7 @@ void ScriptLoader::_ParseInclude() {
 						}
 
 						{
-							ScriptLoader includeLoader(script_, pathSource_, bufIncluding);
+							ScriptLoader includeLoader(script_, pathSource_, bufIncluding, mapLine_);
 							includeLoader._ParseIfElse();
 
 							std::vector<char>& bufIncludingNew = includeLoader.GetResult();

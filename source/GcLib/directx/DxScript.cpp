@@ -239,7 +239,6 @@ static const std::vector<function> dxFunction = {
 	//Base object functions
 	{ "Obj_Create", DxScript::Func_Obj_Create, 0 },
 	{ "Obj_Delete", DxScript::Func_Obj_Delete, 1 },
-	{ "Obj_QueueDelete", DxScript::Func_Obj_QueueDelete, 1 },
 	{ "Obj_IsDeleted", DxScript::Func_Obj_IsDeleted, 1 },
 	{ "Obj_IsExists", DxScript::Func_Obj_IsExists, 1 },
 	{ "Obj_SetVisible", DxScript::Func_Obj_SetVisible, 2 },
@@ -262,14 +261,13 @@ static const std::vector<function> dxFunction = {
 	{ "Obj_SetValueI", DxScript::Func_Obj_SetValueI, 3 },
 	{ "Obj_DeleteValueI", DxScript::Func_Obj_DeleteValueI, 2 },
 	{ "Obj_IsValueExistsI", DxScript::Func_Obj_IsValueExistsI, 2 },
-
 	{ "Obj_CopyValueTable", DxScript::Func_Obj_CopyValueTable, 3 },
 	{ "Obj_GetExistFrame", DxScript::Func_Obj_GetExistFrame, 1 },
+
 	{ "Obj_GetType", DxScript::Func_Obj_GetType, 1 },
 	{ "Obj_GetParentScriptID", DxScript::Func_Obj_GetParentScriptID, 1 },
-	{ "Obj_SetNewParentScript", DxScript::Func_Obj_SetNewParentScript, 1 },
-	{ "Obj_SetNewParentScript", DxScript::Func_Obj_SetNewParentScript, 2 }, //Overloaded
-	{ "Obj_SetAutoDelete", DxScript::Func_Obj_SetAutoDelete, 2 },
+	{ "Obj_SetParentScriptID", DxScript::Func_Obj_SetParentScriptID, 1 },
+	{ "Obj_SetParentScriptID", DxScript::Func_Obj_SetParentScriptID, 2 }, //Overloaded
 
 	//Render object functions
 	{ "ObjRender_SetX", DxScript::Func_ObjRender_SetX, 2 },
@@ -334,18 +332,22 @@ static const std::vector<function> dxFunction = {
 	{ "ObjShader_SetShaderT", DxScript::Func_ObjShader_SetShaderT, 3 },
 	{ "ObjShader_ResetShader", DxScript::Func_ObjShader_ResetShader, 1 },
 	{ "ObjShader_SetTechnique", DxScript::Func_ObjShader_SetTechnique, 2 },
-	{ "ObjShader_SetMatrix", DxScript::Func_ObjShader_SetMatrix, 3 },
-	{ "ObjShader_SetMatrixArray", DxScript::Func_ObjShader_SetMatrixArray, 3 },
-	{ "ObjShader_SetVector", DxScript::Func_ObjShader_SetVector, 6 },
+	{ "ObjShader_ValidateTechnique", DxScript::Func_ObjShader_ValidateTechnique, 2 },
+	{ "ObjShader_SetInt", DxScript::Func_ObjShader_SetInt, 3 },
+	{ "ObjShader_SetIntArray", DxScript::Func_ObjShader_SetIntArray, 3 },
 	{ "ObjShader_SetFloat", DxScript::Func_ObjShader_SetFloat, 3 },
 	{ "ObjShader_SetFloatArray", DxScript::Func_ObjShader_SetFloatArray, 3 },
+	{ "ObjShader_SetVector", DxScript::Func_ObjShader_SetVector, 6 },
+	{ "ObjShader_SetMatrix", DxScript::Func_ObjShader_SetMatrix, 3 },
+	{ "ObjShader_SetMatrixArray", DxScript::Func_ObjShader_SetMatrixArray, 3 },
 	{ "ObjShader_SetTexture", DxScript::Func_ObjShader_SetTexture, 3 },
-	{ "ObjShader_ValidateTechnique", DxScript::Func_ObjShader_ValidateTechnique, 2 },
-	{ "ObjShader_GetMatrix", DxScript::Func_ObjShader_GetMatrix, 2 },
-	{ "ObjShader_GetMatrixArray", DxScript::Func_ObjShader_GetMatrixArray, 2 },
-	{ "ObjShader_GetVector", DxScript::Func_ObjShader_GetVector, 2 },
+	{ "ObjShader_GetInt", DxScript::Func_ObjShader_GetInt, 2 },
+	{ "ObjShader_GetIntArray", DxScript::Func_ObjShader_GetIntArray, 2 },
 	{ "ObjShader_GetFloat", DxScript::Func_ObjShader_GetFloat, 2 },
 	{ "ObjShader_GetFloatArray", DxScript::Func_ObjShader_GetFloatArray, 2 },
+	{ "ObjShader_GetVector", DxScript::Func_ObjShader_GetVector, 2 },
+	{ "ObjShader_GetMatrix", DxScript::Func_ObjShader_GetMatrix, 2 },
+	{ "ObjShader_GetMatrixArray", DxScript::Func_ObjShader_GetMatrixArray, 2 },
 	{ "ObjShader_GetTexture", DxScript::Func_ObjShader_GetTexture, 2 },
 
 	//Primitive object functions
@@ -439,8 +441,6 @@ static const std::vector<function> dxFunction = {
 	{ "ObjText_SetFontSize", DxScript::Func_ObjText_SetFontSize, 2 },
 	{ "ObjText_SetFontBold", DxScript::Func_ObjText_SetFontBold, 2 },
 	{ "ObjText_SetFontWeight", DxScript::Func_ObjText_SetFontWeight, 2 },
-	{ "ObjText_SetFontColor", DxScript::Func_ObjText_SetFontColor, 4 },
-	{ "ObjText_SetFontColor", DxScript::Func_ObjText_SetFontColor, 2 }, //Overloaded
 	{ "ObjText_SetFontColorTop", DxScript::Func_ObjText_SetFontColorTop, 4 },
 	{ "ObjText_SetFontColorTop", DxScript::Func_ObjText_SetFontColorTop, 2 },			//Overloaded
 	{ "ObjText_SetFontColorBottom", DxScript::Func_ObjText_SetFontColorBottom, 4 },
@@ -2458,7 +2458,7 @@ gstd::value DxScript::Func_ColorHSVtoHexRGB(gstd::script_machine* machine, int a
 	byte cs = argv[1].as_int();
 	byte cv = argv[2].as_int();
 
-	D3DCOLOR rgb = 0xffffffff;
+	D3DCOLOR rgb = 0xffffff;
 	ColorAccess::HSVtoRGB(rgb, ch, cs, cv);
 
 	return DxScript::CreateIntValue(rgb);
@@ -2492,14 +2492,6 @@ value DxScript::Func_Obj_Delete(script_machine* machine, int argc, const value* 
 	script->CheckRunInMainThread();
 	int id = argv[0].as_int();
 	script->DeleteObject(id);
-	return value();
-}
-value DxScript::Func_Obj_QueueDelete(script_machine* machine, int argc, const value* argv) {
-	DxScript* script = (DxScript*)machine->data;
-	script->CheckRunInMainThread();
-	int id = argv[0].as_int();
-	DxScriptObjectBase* obj = script->GetObjectPointer(id);
-	if (obj) obj->QueueDelete();
 	return value();
 }
 value DxScript::Func_Obj_IsDeleted(script_machine* machine, int argc, const value* argv) {
@@ -2791,28 +2783,18 @@ value DxScript::Func_Obj_GetParentScriptID(script_machine* machine, int argc, co
 
 	return script->CreateIntValue(res);
 }
-value DxScript::Func_Obj_SetNewParentScript(script_machine* machine, int argc, const value* argv) {
+value DxScript::Func_Obj_SetParentScriptID(script_machine* machine, int argc, const value* argv) {
 	DxScript* script = (DxScript*)machine->data;
-	int id = argv[0].as_int();
-	int64_t idScript = script->GetScriptID();
 
-	if (argc == 2) idScript = argv[1].as_int();
+	int id = argv[0].as_int();
+	int64_t idScript = argc == 2 ? argv[1].as_int() : script->GetScriptID();
 
 	DxScriptObjectBase* obj = script->GetObjectPointerAs<DxScriptObjectBase>(id);
 	if (obj) obj->idScript_ = idScript;
 
 	return value();
 }
-value DxScript::Func_Obj_SetAutoDelete(script_machine* machine, int argc, const value* argv) {
-	DxScript* script = (DxScript*)machine->data;
-	int id = argv[0].as_int();
-	bool del = argv[1].as_boolean();
 
-	DxScriptObjectBase* obj = script->GetObjectPointerAs<DxScriptObjectBase>(id);
-	if (obj) obj->SetAutoDeleteEnable(del);
-
-	return value();
-}
 
 //Dx関数：オブジェクト操作(RenderObject)
 value DxScript::Func_ObjRender_SetX(script_machine* machine, int argc, const value* argv) {
@@ -3481,6 +3463,7 @@ gstd::value DxScript::Func_ObjShader_ResetShader(gstd::script_machine* machine, 
 		obj->SetShader(nullptr);
 	return value();
 }
+
 gstd::value DxScript::Func_ObjShader_SetTechnique(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	DxScript* script = (DxScript*)machine->data;
 	int id = argv[0].as_int();
@@ -3490,6 +3473,113 @@ gstd::value DxScript::Func_ObjShader_SetTechnique(gstd::script_machine* machine,
 		if (shader) {
 			std::string aPath = StringUtility::ConvertWideToMulti(argv[1].as_string());
 			shader->SetTechnique(aPath);
+		}
+	}
+	return value();
+}
+gstd::value DxScript::Func_ObjShader_ValidateTechnique(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+
+	bool res = false;
+
+	int id = argv[0].as_int();
+	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
+	if (obj) {
+		if (shared_ptr<Shader> shader = obj->GetShader()) {
+			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
+			res = shader->ValidateTechnique(name);
+		}
+	}
+
+	return script->CreateBooleanValue(res);
+}
+
+gstd::value DxScript::Func_ObjShader_SetInt(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
+	if (obj) {
+		shared_ptr<Shader> shader = obj->GetShader();
+		if (shader) {
+			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
+			shader->SetInt(name, argv[2].as_int());
+		}
+	}
+	return value();
+}
+gstd::value DxScript::Func_ObjShader_SetIntArray(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
+	if (obj) {
+		shared_ptr<Shader> shader = obj->GetShader();
+		if (shader) {
+			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
+			const gstd::value& array = argv[2];
+
+			{
+				std::vector<int32_t> listInt;
+				for (size_t iArray = 0; iArray < array.length_as_array(); ++iArray) {
+					const value& aValue = array[iArray];
+					listInt.push_back(aValue.as_int());
+				}
+				shader->SetIntArray(name, listInt);
+			}
+		}
+	}
+	return value();
+}
+gstd::value DxScript::Func_ObjShader_SetFloat(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
+	if (obj) {
+		shared_ptr<Shader> shader = obj->GetShader();
+		if (shader) {
+			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
+			shader->SetFloat(name, argv[2].as_float());
+		}
+	}
+	return value();
+}
+gstd::value DxScript::Func_ObjShader_SetFloatArray(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
+	if (obj) {
+		shared_ptr<Shader> shader = obj->GetShader();
+		if (shader) {
+			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
+			const gstd::value& array = argv[2];
+
+			{
+				std::vector<float> listFloat;
+				for (size_t iArray = 0; iArray < array.length_as_array(); ++iArray) {
+					const value& aValue = array[iArray];
+					listFloat.push_back(aValue.as_float());
+				}
+				shader->SetFloatArray(name, listFloat);
+			}
+		}
+	}
+	return value();
+}
+gstd::value DxScript::Func_ObjShader_SetVector(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
+	if (obj) {
+		shared_ptr<Shader> shader = obj->GetShader();
+		if (shader) {
+			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
+
+			D3DXVECTOR4 vect4;
+			vect4.x = argv[2].as_float();
+			vect4.y = argv[3].as_float();
+			vect4.z = argv[4].as_float();
+			vect4.w = argv[5].as_float();
+
+			shader->SetVector(name, vect4);
 		}
 	}
 	return value();
@@ -3504,17 +3594,16 @@ gstd::value DxScript::Func_ObjShader_SetMatrix(gstd::script_machine* machine, in
 			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
 			const gstd::value& sMatrix = argv[2];
 
-			type_data* type_matrix = script_type_manager::get_float_array_type();
-			if (sMatrix.get_type() == type_matrix) {
+			{
+				D3DXMATRIX matrix;
 				if (sMatrix.length_as_array() == 16) {
-					D3DXMATRIX matrix;
-					FLOAT* ptrMat = &matrix._11;
+					float* ptrMat = &matrix._11;
 					for (size_t i = 0; i < 16; ++i) {
 						const value& arrayValue = sMatrix[i];
-						ptrMat[i] = (FLOAT)arrayValue.as_float();
+						ptrMat[i] = (float)arrayValue.as_float();
 					}
-					shader->SetMatrix(name, matrix);
 				}
+				shader->SetMatrix(name, matrix);
 			}
 		}
 	}
@@ -3530,78 +3619,21 @@ gstd::value DxScript::Func_ObjShader_SetMatrixArray(gstd::script_machine* machin
 			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
 			const gstd::value& array = argv[2];
 			
-			type_data* type_matrix = script_type_manager::get_float_array_type();
-			type_data* type_matrix_array = script_type_manager::get_instance()->get_array_type(type_matrix);
-			if (array.get_type() == type_matrix_array) {
+			{
 				std::vector<D3DXMATRIX> listMatrix;
 				for (size_t iArray = 0; iArray < array.length_as_array(); ++iArray) {
 					const value& sMatrix = array[iArray];
+					D3DXMATRIX matrix;
 					if (sMatrix.length_as_array() == 16) {
-						D3DXMATRIX matrix;
-						FLOAT* ptrMat = &matrix._11;
+						float* ptrMat = &matrix._11;
 						for (size_t i = 0; i < 16; ++i) {
 							const value& arrayValue = sMatrix[i];
-							ptrMat[i] = (FLOAT)arrayValue.as_float();
+							ptrMat[i] = arrayValue.as_float();
 						}
-						listMatrix.push_back(matrix);
 					}
+					listMatrix.push_back(matrix);
 				}
 				shader->SetMatrixArray(name, listMatrix);
-			}
-		}
-	}
-	return value();
-}
-gstd::value DxScript::Func_ObjShader_SetVector(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	DxScript* script = (DxScript*)machine->data;
-	int id = argv[0].as_int();
-	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
-	if (obj) {
-		shared_ptr<Shader> shader = obj->GetShader();
-		if (shader) {
-			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
-			D3DXVECTOR4 vect4;
-			vect4.x = (FLOAT)argv[2].as_float();
-			vect4.y = (FLOAT)argv[3].as_float();
-			vect4.z = (FLOAT)argv[4].as_float();
-			vect4.w = (FLOAT)argv[5].as_float();
-
-			shader->SetVector(name, vect4);
-		}
-	}
-	return value();
-}
-gstd::value DxScript::Func_ObjShader_SetFloat(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	DxScript* script = (DxScript*)machine->data;
-	int id = argv[0].as_int();
-	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
-	if (obj) {
-		shared_ptr<Shader> shader = obj->GetShader();
-		if (shader) {
-			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
-			shader->SetFloat(name, (FLOAT)argv[2].as_float());
-		}
-	}
-	return value();
-}
-gstd::value DxScript::Func_ObjShader_SetFloatArray(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	DxScript* script = (DxScript*)machine->data;
-	int id = argv[0].as_int();
-	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
-	if (obj) {
-		shared_ptr<Shader> shader = obj->GetShader();
-		if (shader) {
-			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
-			const gstd::value& array = argv[2];
-
-			type_data* type_array = script_type_manager::get_float_array_type();
-			if (array.get_type() == type_array) {
-				std::vector<FLOAT> listFloat;
-				for (size_t iArray = 0; iArray < array.length_as_array(); ++iArray) {
-					const value& aValue = array[iArray];
-					listFloat.push_back((FLOAT)aValue.as_float());
-				}
-				shader->SetFloatArray(name, listFloat);
 			}
 		}
 	}
@@ -3634,21 +3666,85 @@ gstd::value DxScript::Func_ObjShader_SetTexture(gstd::script_machine* machine, i
 	return value();
 }
 
-gstd::value DxScript::Func_ObjShader_ValidateTechnique(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+gstd::value DxScript::Func_ObjShader_GetInt(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	DxScript* script = (DxScript*)machine->data;
 
-	bool res = false;
+	int32_t res = 0;
 
 	int id = argv[0].as_int();
 	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
 	if (obj) {
 		if (shared_ptr<Shader> shader = obj->GetShader()) {
 			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
-			res = shader->ValidateTechnique(name);
+			shader->GetInt(name, &res);
 		}
 	}
 
-	return script->CreateBooleanValue(res);
+	return script->CreateIntValue(res);
+}
+gstd::value DxScript::Func_ObjShader_GetIntArray(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+
+	std::vector<int32_t> res;
+
+	int id = argv[0].as_int();
+	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
+	if (obj) {
+		if (shared_ptr<Shader> shader = obj->GetShader()) {
+			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
+			shader->GetIntArray(name, &res);
+		}
+	}
+
+	return script->CreateIntArrayValue(res);
+}
+gstd::value DxScript::Func_ObjShader_GetFloat(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+
+	FLOAT res = 0;
+
+	int id = argv[0].as_int();
+	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
+	if (obj) {
+		if (shared_ptr<Shader> shader = obj->GetShader()) {
+			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
+			shader->GetFloat(name, &res);
+		}
+	}
+
+	return script->CreateFloatValue(res);
+}
+gstd::value DxScript::Func_ObjShader_GetFloatArray(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+
+	std::vector<FLOAT> res;
+
+	int id = argv[0].as_int();
+	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
+	if (obj) {
+		if (shared_ptr<Shader> shader = obj->GetShader()) {
+			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
+			shader->GetFloatArray(name, &res);
+		}
+	}
+
+	return script->CreateFloatArrayValue(res);
+}
+gstd::value DxScript::Func_ObjShader_GetVector(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+
+	D3DXVECTOR4 res(0, 0, 0, 0);
+
+	int id = argv[0].as_int();
+	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
+	if (obj) {
+		if (shared_ptr<Shader> shader = obj->GetShader()) {
+			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
+			shader->GetVector(name, &res);
+		}
+	}
+
+	return script->CreateFloatArrayValue((FLOAT*)&res, 4);
 }
 gstd::value DxScript::Func_ObjShader_GetMatrix(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	DxScript* script = (DxScript*)machine->data;
@@ -3697,54 +3793,6 @@ gstd::value DxScript::Func_ObjShader_GetMatrixArray(gstd::script_machine* machin
 	}
 
 	return script->CreateValueArrayValue(res);
-}
-gstd::value DxScript::Func_ObjShader_GetVector(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	DxScript* script = (DxScript*)machine->data;
-
-	D3DXVECTOR4 res(0, 0, 0, 0);
-
-	int id = argv[0].as_int();
-	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
-	if (obj) {
-		if (shared_ptr<Shader> shader = obj->GetShader()) {
-			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
-			shader->GetVector(name, &res);
-		}
-	}
-
-	return script->CreateFloatArrayValue((FLOAT*)&res, 4);
-}
-gstd::value DxScript::Func_ObjShader_GetFloat(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	DxScript* script = (DxScript*)machine->data;
-
-	FLOAT res = 0;
-
-	int id = argv[0].as_int();
-	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
-	if (obj) {
-		if (shared_ptr<Shader> shader = obj->GetShader()) {
-			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
-			shader->GetFloat(name, &res);
-		}
-	}
-
-	return script->CreateFloatValue(res);
-}
-gstd::value DxScript::Func_ObjShader_GetFloatArray(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	DxScript* script = (DxScript*)machine->data;
-
-	std::vector<FLOAT> res;
-
-	int id = argv[0].as_int();
-	DxScriptRenderObject* obj = script->GetObjectPointerAs<DxScriptRenderObject>(id);
-	if (obj) {
-		if (shared_ptr<Shader> shader = obj->GetShader()) {
-			std::string name = StringUtility::ConvertWideToMulti(argv[1].as_string());
-			shader->GetFloatArray(name, &res);
-		}
-	}
-
-	return script->CreateFloatArrayValue(res);
 }
 gstd::value DxScript::Func_ObjShader_GetTexture(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	DxScript* script = (DxScript*)machine->data;
@@ -4599,28 +4647,6 @@ value DxScript::Func_ObjText_SetFontWeight(script_machine* machine, int argc, co
 		if (weight < 0) weight = 0;
 		else if (weight > 1000) weight = 1000;
 		obj->SetFontWeight(weight);
-	}
-	return value();
-}
-value DxScript::Func_ObjText_SetFontColor(script_machine* machine, int argc, const value* argv) {
-	DxScript* script = (DxScript*)machine->data;
-	int id = argv[0].as_int();
-	DxScriptTextObject* obj = script->GetObjectPointerAs<DxScriptTextObject>(id);
-	if (obj) {
-		byte r, g, b;
-		if (argc == 4) {
-			r = ColorAccess::ClampColorRet(argv[1].as_int());
-			g = ColorAccess::ClampColorRet(argv[2].as_int());
-			b = ColorAccess::ClampColorRet(argv[3].as_int());
-		}
-		else {
-			D3DCOLOR color = argv[1].as_int();
-			r = ColorAccess::GetColorR(color);
-			g = ColorAccess::GetColorG(color);
-			b = ColorAccess::GetColorB(color);
-		}
-		obj->SetFontColorTop(r, g, b);
-		obj->SetFontColorBottom(r, g, b);
 	}
 	return value();
 }
