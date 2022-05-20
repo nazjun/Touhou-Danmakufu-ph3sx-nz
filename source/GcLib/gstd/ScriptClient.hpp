@@ -356,9 +356,9 @@ namespace gstd {
 		static value Func_AtoI(script_machine* machine, int argc, const value* argv);
 		static value Func_AtoR(script_machine* machine, int argc, const value* argv);
 		template<wint_t (*func)(wint_t)>
-		static value Func_RecaseString(script_machine* machine, int argc, const value* argv);
+		DNH_FUNCAPI_DECL_(Func_RecaseString);
 		template<int (*func)(wint_t)>
-		static value Func_ClassifyString(script_machine* machine, int argc, const value* argv);
+		DNH_FUNCAPI_DECL_(Func_ClassifyString);
 		static value Func_TrimString(script_machine* machine, int argc, const value* argv);
 		static value Func_SplitString(script_machine* machine, int argc, const value* argv);
 		DNH_FUNCAPI_DECL_(Func_SplitString2);

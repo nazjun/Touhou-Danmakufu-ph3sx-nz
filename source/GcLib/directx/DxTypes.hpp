@@ -89,6 +89,8 @@ namespace directx {
 	//DxObject
 	//*******************************************************************
 	enum class TypeObject : uint8_t {
+		Spline,
+
 		Primitive2D,
 		Sprite2D,
 		SpriteList2D,
