@@ -63,7 +63,7 @@
     </LinkIncremental>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(DXSDK_DIR)Include;.\source\ext</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86;$(DXSDK_DIR)Lib\x86;.\library</LibraryPath>
-    <TargetName>th_dnh_ph3sx-zlabel</TargetName>
+    <TargetName>tr_3m</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release (Legacy)|Win32'">
     <OutDir>.\bin_th_dnh\</OutDir>
@@ -126,7 +126,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <SubSystem>Windows</SubSystem>
       <IgnoreSpecificDefaultLibraries>libc.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <OutputFile>bin_th_dnh/th_dnh_ph3sx-zlabel.exe</OutputFile>
+      <OutputFile>bin_th_dnh/tr_3m.exe</OutputFile>
       <AdditionalDependencies>legacy_stdio_definitions.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <AdditionalOptions>/NODEFAULTLIB:"libcmt.lib" /ignore:4099 %(AdditionalOptions)</AdditionalOptions>
