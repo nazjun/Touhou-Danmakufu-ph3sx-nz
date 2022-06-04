@@ -40,6 +40,186 @@ double DxScriptObjectBase::GetRenderPriority() {
 }
 
 //****************************************************************************
+//DxSplineObject
+//****************************************************************************
+DxSplineObject::DxSplineObject() {
+	typeObject_ = TypeObject::Spline;
+
+	bUpdate_ = true;
+}
+
+void DxSplineObject::clear() {
+	nodes_.clear();
+	arcTable_.clear();
+
+	bUpdate_ = true;
+}
+
+void DxSplineObject::AddNode(DxSplineObjectNode node) {
+	nodes_.push_back(node);
+
+	bUpdate_ = true;
+}
+
+void DxSplineObject::SetNode(DxSplineObjectNode node, size_t index) {
+	if (index < nodes_.size())
+		nodes_[index] = node;
+	else
+		nodes_.push_back(node);
+
+	bUpdate_ = true;
+}
+
+void DxSplineObject::CatmullRomOrder1(DxSplineObjectNode nodeA, DxSplineObjectNode nodeB, size_t index) {
+	nodes_[index][3] = nodeB[0] - nodeA[0];
+	nodes_[index][4] = nodeB[1] - nodeA[1];
+	nodes_[index][5] = nodeB[2] - nodeA[2];
+}
+
+void DxSplineObject::CatmullRomOrder2(DxSplineObjectNode nodeA, DxSplineObjectNode nodeB, DxSplineObjectNode nodeC, size_t index, bool flip) {
+	nodes_[index][3] = ((nodeB[0] - nodeA[0]) * 2.0 - (nodeC[0] - nodeA[0]) / 2.0) * (1.0 - 2.0 * flip);
+	nodes_[index][4] = ((nodeB[1] - nodeA[1]) * 2.0 - (nodeC[1] - nodeA[1]) / 2.0) * (1.0 - 2.0 * flip);
+	nodes_[index][5] = ((nodeB[2] - nodeA[2]) * 2.0 - (nodeC[2] - nodeA[2]) / 2.0) * (1.0 - 2.0 * flip);
+}
+
+void DxSplineObject::CatmullRom() {
+	if (nodes_.size() < 2)
+		return;
+
+	if (nodes_.size() == 2) {
+		DxSplineObject::CatmullRomOrder1(nodes_[0], nodes_[1], 0);
+		DxSplineObject::CatmullRomOrder1(nodes_[0], nodes_[1], 1);
+	}
+
+	else {
+		size_t s = nodes_.size();
+		
+		DxSplineObject::CatmullRomOrder2(nodes_[0], nodes_[1], nodes_[2], 0, false);
+		DxSplineObject::CatmullRomOrder2(nodes_[s - 1], nodes_[s - 2], nodes_[s - 3], s - 1, true);
+
+		for (size_t i = 1; i < nodes_.size() - 1; ++i) {
+			DxSplineObjectNode n0 = nodes_[i - 1];
+			DxSplineObjectNode n2 = nodes_[i + 1];
+
+			nodes_[i][3] = (n2[0] - n0[0]) / 2.0;
+			nodes_[i][4] = (n2[1] - n0[1]) / 2.0;
+			nodes_[i][5] = (n2[2] - n0[2]) / 2.0;
+		}
+	}
+	
+	bUpdate_ = true;
+}
+
+void DxSplineObject::ComputeArcTable() {
+	arcTable_.clear();
+
+	double arc = 0;
+
+	arcTable_.push_back(arc);
+
+	size_t curveCount = nodes_.size() - 1;
+
+	if (curveCount == 0)
+		return;
+
+	size_t iter = curveCount * ARC_PRECISION;
+	double incr = 1.0 / (double)iter;
+
+	for (size_t i = 0; i < iter; ++i) {
+		DxSplineObjectNode n0 = DxSplineObject::Lerp(i * incr);
+		DxSplineObjectNode n1 = DxSplineObject::Lerp(((double)i + 1) * incr);
+
+		double dx = n1[0] - n0[0];
+		double dy = n1[1] - n0[1];
+		double dz = n1[2] - n0[2];
+
+		arc += sqrt(dx * dx + dy * dy + dz * dz);
+
+		arcTable_.push_back(arc);
+	}
+
+	bUpdate_ = false;
+}
+
+double DxSplineObject::GetArcLength(double t) {
+	if (bUpdate_)
+		DxSplineObject::ComputeArcTable();
+
+	if (arcTable_.size() <= 1)
+		return 0;
+
+	t = std::clamp(t, 0.0, 1.0);
+	t *= arcTable_.size() - 1;
+
+	if (t - (size_t)t == 0)
+		return arcTable_[(size_t)t];
+
+	double t0 = floor(t);
+	double t1 = ceil(t);
+
+	double d0 = arcTable_[(size_t)t0];
+	double d1 = arcTable_[(size_t)t1];
+
+	return d0 + (d1 - d0) * (t - t0) / (t1 - t0);
+}
+
+DxSplineObjectNode DxSplineObject::Lerp(double t) {
+	DxSplineObjectNode res(NODE);
+
+	t = std::clamp(t, 0.0, 1.0);
+
+	double tSpan = t * (nodes_.size() - 1);
+
+	DxSplineObjectNode n0 = nodes_[(size_t)floor(tSpan)];
+	DxSplineObjectNode n1 = nodes_[(size_t)ceil(tSpan)];
+
+	t = fmod(tSpan, 1.0);
+
+	// Position interpolation
+
+	res[0] = DxSplineObject::f1(t) * n0[0] + DxSplineObject::f2(t) * n1[0] + DxSplineObject::f3(t) * n0[3] + DxSplineObject::f4(t) * n1[3];
+	res[1] = DxSplineObject::f1(t) * n0[1] + DxSplineObject::f2(t) * n1[1] + DxSplineObject::f3(t) * n0[4] + DxSplineObject::f4(t) * n1[4];
+	res[2] = DxSplineObject::f1(t) * n0[2] + DxSplineObject::f2(t) * n1[2] + DxSplineObject::f3(t) * n0[5] + DxSplineObject::f4(t) * n1[5];
+
+	// Tangent interpolation
+
+	res[3] = DxSplineObject::g1(t) * n0[0] + DxSplineObject::g2(t) * n1[0] + DxSplineObject::g3(t) * n0[3] + DxSplineObject::g4(t) * n1[3];
+	res[4] = DxSplineObject::g1(t) * n0[1] + DxSplineObject::g2(t) * n1[1] + DxSplineObject::g3(t) * n0[4] + DxSplineObject::g4(t) * n1[4];
+	res[5] = DxSplineObject::g1(t) * n0[2] + DxSplineObject::g2(t) * n1[2] + DxSplineObject::g3(t) * n0[5] + DxSplineObject::g4(t) * n1[5];
+
+	return res;
+}
+
+DxSplineObjectNode DxSplineObject::LerpArc(double t) {
+	if (bUpdate_)
+		DxSplineObject::ComputeArcTable();
+
+	if (arcTable_.size() == 1)
+		return DxSplineObject::Lerp(0);
+
+	t = std::clamp(t, 0.0, 1.0);
+
+	double dMax = arcTable_.back();
+	double dist = t * dMax;
+
+	size_t n = arcTable_.size();
+
+	for (size_t iLow = 0; iLow < n - 1; ++iLow) {
+		size_t iHigh = iLow + 1;
+
+		double dLow = arcTable_[iLow];
+		double dHigh = arcTable_[iHigh];
+
+		if (dLow <= dist && dist <= dHigh) {
+			double iBest = iLow + (iHigh - iLow) * ((dist - dLow) / (dHigh - dLow));
+			return DxSplineObject::Lerp(iBest / double(n - 1));
+		}
+	}
+
+	return DxSplineObject::Lerp(dist / dMax);
+}
+
+//****************************************************************************
 //DxScriptRenderObject
 //****************************************************************************
 DxScriptRenderObject::DxScriptRenderObject() {

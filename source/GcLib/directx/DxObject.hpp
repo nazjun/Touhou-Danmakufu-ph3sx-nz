@@ -72,6 +72,57 @@ namespace directx {
 	};
 
 	//****************************************************************************
+	//DxSplineObject
+	//****************************************************************************
+	typedef std::vector<double> DxSplineObjectNode;
+
+	class DxSplineObject : public DxScriptObjectBase {
+		friend DxScript;
+	protected:
+		const size_t NODE = 6U;
+		const size_t ARC_PRECISION = 20U;
+		
+		bool bUpdate_;
+
+		std::vector<DxSplineObjectNode> nodes_;
+		std::vector<double> arcTable_;
+	public:
+		DxSplineObject();
+
+		void clear();
+
+		size_t GetNodeCount() { return nodes_.size(); }
+
+		DxSplineObjectNode GetNode(size_t index) { return nodes_[std::clamp(index, 0U, nodes_.size() - 1)]; }
+
+		void AddNode(DxSplineObjectNode node);
+		void SetNode(DxSplineObjectNode node, size_t index);
+
+		void CatmullRomOrder1(DxSplineObjectNode nodeA, DxSplineObjectNode nodeB, size_t index);
+		void CatmullRomOrder2(DxSplineObjectNode nodeA, DxSplineObjectNode nodeB, DxSplineObjectNode nodeC, size_t index, bool flip);
+		void CatmullRom();
+
+		void ComputeArcTable();
+
+		double GetArcLength(double t);
+
+		DxSplineObjectNode Lerp(double t);
+		DxSplineObjectNode LerpArc(double t);
+
+		// Hermite position
+		double f1(double t) { return 2 * t * t * t - 3 * t * t + 1; }
+		double f2(double t) { return -2 * t * t * t + 3 * t * t; }
+		double f3(double t) { return t * t * t - 2 * t * t + t; }
+		double f4(double t) { return t * t * t - t * t; }
+
+		// Hermite tangent (first derivative equivalent of position)
+		double g1(double t) { return 6 * t * t - 6 * t; }
+		double g2(double t) { return -6 * t * t + 6 * t; }
+		double g3(double t) { return 3 * t * t - 4 * t + 1; }
+		double g4(double t) { return 3 * t * t - 2 * t; }
+	};
+
+	//****************************************************************************
 	//DxScriptRenderObject
 	//****************************************************************************
 	class DxScriptRenderObject : public DxScriptObjectBase {

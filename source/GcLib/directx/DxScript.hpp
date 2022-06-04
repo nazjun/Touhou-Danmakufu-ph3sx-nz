@@ -275,6 +275,51 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_Obj_GetParentScriptID);
 		DNH_FUNCAPI_DECL_(Func_Obj_SetParentScriptID);
 
+		//DxScriptSplineObject
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_Create);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_AddNode);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_SetNode);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_SetNodePosition);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_SetNodeX);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_SetNodeY);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_SetNodeZ);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_SetNodeTangent);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_SetNodeTX);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_SetNodeTY);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_SetNodeTZ);
+		//DNH_FUNCAPI_DECL_(Func_ObjSpline_SetNodeList);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_GetNode);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_GetNodePosition);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_GetNodeX);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_GetNodeY);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_GetNodeZ);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_GetNodeTangent);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_GetNodeTX);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_GetNodeTY);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_GetNodeTZ);
+		//DNH_FUNCAPI_DECL_(Func_ObjSpline_GetNodeList);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_GetNodeCount);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_GetArcLength);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_Align);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_Lerp);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpPosition);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpX);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpY);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpZ);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpTangent);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpTX);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpTY);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpTZ);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpArc);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpArcPosition);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpArcX);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpArcY);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpArcZ);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpArcTangent);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpArcTX);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpArcTY);
+		DNH_FUNCAPI_DECL_(Func_ObjSpline_LerpArcTZ);
+
 		//Dx関数：オブジェクト操作(RenderObject)
 		static gstd::value Func_ObjRender_SetX(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjRender_SetY(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -298,7 +343,7 @@ namespace directx {
 		static gstd::value Func_ObjRender_GetX(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjRender_GetY(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjRender_GetZ(gstd::script_machine* machine, int argc, const gstd::value* argv);
-		static gstd::value Func_ObjRender_GetPosition(gstd::script_machine* machine, int argc, const gstd::value* argv);
+		DNH_FUNCAPI_DECL_(Func_ObjRender_GetPosition);
 		static gstd::value Func_ObjRender_GetAngleX(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjRender_GetAngleY(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjRender_GetAngleZ(gstd::script_machine* machine, int argc, const gstd::value* argv);

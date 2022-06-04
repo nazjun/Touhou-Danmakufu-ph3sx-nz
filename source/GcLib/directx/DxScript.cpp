@@ -269,6 +269,54 @@ static const std::vector<function> dxFunction = {
 	{ "Obj_SetParentScriptID", DxScript::Func_Obj_SetParentScriptID, 1 },
 	{ "Obj_SetParentScriptID", DxScript::Func_Obj_SetParentScriptID, 2 }, //Overloaded
 
+	//DxScriptSplineObject
+	{ "ObjSpline_Create", DxScript::Func_ObjSpline_Create, 0 },
+	{ "ObjSpline_AddNode", DxScript::Func_ObjSpline_AddNode, 3 },
+	{ "ObjSpline_AddNode", DxScript::Func_ObjSpline_AddNode, 4 }, //Overloaded
+	{ "ObjSpline_AddNode", DxScript::Func_ObjSpline_AddNode, 5 }, //Overloaded
+	{ "ObjSpline_AddNode", DxScript::Func_ObjSpline_AddNode, 7 }, //Overloaded
+	{ "ObjSpline_SetNode", DxScript::Func_ObjSpline_SetNode, 8 },
+	{ "ObjSpline_SetNodePosition", DxScript::Func_ObjSpline_SetNodePosition, 5 },
+	{ "ObjSpline_SetNodeX", DxScript::Func_ObjSpline_SetNodeX, 2 },
+	{ "ObjSpline_SetNodeY", DxScript::Func_ObjSpline_SetNodeY, 2 },
+	{ "ObjSpline_SetNodeZ", DxScript::Func_ObjSpline_SetNodeZ, 2 },
+	{ "ObjSpline_SetNodeTangent", DxScript::Func_ObjSpline_SetNodeTangent, 5 },
+	{ "ObjSpline_SetNodeTX", DxScript::Func_ObjSpline_SetNodeTX, 2 },
+	{ "ObjSpline_SetNodeTY", DxScript::Func_ObjSpline_SetNodeTY, 2 },
+	{ "ObjSpline_SetNodeTZ", DxScript::Func_ObjSpline_SetNodeTZ, 2 },
+	//{ "ObjSpline_SetNodeList", DxScript::Func_ObjSpline_SetNodeList, 2 },
+	{ "ObjSpline_GetNode", DxScript::Func_ObjSpline_GetNode, 2 },
+	{ "ObjSpline_GetNodePosition", DxScript::Func_ObjSpline_GetNodePosition, 2 },
+	{ "ObjSpline_GetNodeX", DxScript::Func_ObjSpline_GetNodeX, 2 },
+	{ "ObjSpline_GetNodeY", DxScript::Func_ObjSpline_GetNodeY, 2 },
+	{ "ObjSpline_GetNodeZ", DxScript::Func_ObjSpline_GetNodeY, 2 },
+	{ "ObjSpline_GetNodeTangent", DxScript::Func_ObjSpline_GetNodeTangent, 2 },
+	{ "ObjSpline_GetNodeTX", DxScript::Func_ObjSpline_GetNodeTX, 2 },
+	{ "ObjSpline_GetNodeTY", DxScript::Func_ObjSpline_GetNodeTY, 2 },
+	{ "ObjSpline_GetNodeTZ", DxScript::Func_ObjSpline_GetNodeTY, 2 },
+	//{ "ObjSpline_GetNodeList", DxScript::Func_ObjSpline_GetNodeList, 1 },
+	{ "ObjSpline_GetNodeCount", DxScript::Func_ObjSpline_GetNodeCount, 1 },
+	{ "ObjSpline_GetArcLength", DxScript::Func_ObjSpline_GetArcLength, 2 },
+	{ "ObjSpline_Align", DxScript::Func_ObjSpline_Align, 1 },
+	{ "ObjSpline_Lerp", DxScript::Func_ObjSpline_Lerp, 2 },
+	{ "ObjSpline_LerpPosition", DxScript::Func_ObjSpline_LerpPosition, 2 },
+	{ "ObjSpline_LerpX", DxScript::Func_ObjSpline_LerpX, 2 },
+	{ "ObjSpline_LerpY", DxScript::Func_ObjSpline_LerpY, 2 },
+	{ "ObjSpline_LerpZ", DxScript::Func_ObjSpline_LerpZ, 2 },
+	{ "ObjSpline_LerpTangent", DxScript::Func_ObjSpline_LerpTangent, 2 },
+	{ "ObjSpline_LerpTX", DxScript::Func_ObjSpline_LerpTX, 2 },
+	{ "ObjSpline_LerpTY", DxScript::Func_ObjSpline_LerpTY, 2 },
+	{ "ObjSpline_LerpTZ", DxScript::Func_ObjSpline_LerpTZ, 2 },
+	{ "ObjSpline_LerpArc", DxScript::Func_ObjSpline_LerpArc, 2 },
+	{ "ObjSpline_LerpArcPosition", DxScript::Func_ObjSpline_LerpArcPosition, 2 },
+	{ "ObjSpline_LerpArcX", DxScript::Func_ObjSpline_LerpArcX, 2 },
+	{ "ObjSpline_LerpArcY", DxScript::Func_ObjSpline_LerpArcY, 2 },
+	{ "ObjSpline_LerpArcZ", DxScript::Func_ObjSpline_LerpArcZ, 2 },
+	{ "ObjSpline_LerpArcTangent", DxScript::Func_ObjSpline_LerpArcTangent, 2 },
+	{ "ObjSpline_LerpArcTX", DxScript::Func_ObjSpline_LerpArcTX, 2 },
+	{ "ObjSpline_LerpArcTY", DxScript::Func_ObjSpline_LerpArcTY, 2 },
+	{ "ObjSpline_LerpArcTZ", DxScript::Func_ObjSpline_LerpArcTZ, 2 },
+
 	//Render object functions
 	{ "ObjRender_SetX", DxScript::Func_ObjRender_SetX, 2 },
 	{ "ObjRender_SetY", DxScript::Func_ObjRender_SetY, 2 },
@@ -366,12 +414,11 @@ static const std::vector<function> dxFunction = {
 	{ "ObjPrim_SetVertexColorHSV", DxScript::Func_ObjPrimitive_SetVertexColorHSV, 5 },
 	{ "ObjPrim_SetVertexAlpha", DxScript::Func_ObjPrimitive_SetVertexAlpha, 3 },
 	{ "ObjPrim_GetVertexColor", DxScript::Func_ObjPrimitive_GetVertexColor, 2 },
-	{ "ObjPrim_GetVertexColorHex", DxScript::Func_ObjPrimitive_GetVertexColorHex, 2 },	// Overloaded
+	{ "ObjPrim_GetVertexColorHex", DxScript::Func_ObjPrimitive_GetVertexColorHex, 2 },
 	{ "ObjPrim_GetVertexAlpha", DxScript::Func_ObjPrimitive_GetVertexAlpha, 2 },
 	{ "ObjPrim_GetVertexPosition", DxScript::Func_ObjPrimitive_GetVertexPosition, 2 },
 	{ "ObjPrim_SetVertexIndex", DxScript::Func_ObjPrimitive_SetVertexIndex, 2 },
 	
-
 	//2D sprite object functions
 	{ "ObjSprite2D_SetSourceRect", DxScript::Func_ObjSprite2D_SetSourceRect, 5 },
 	{ "ObjSprite2D_SetSourceRect", DxScript::Func_ObjSprite2D_SetSourceRect, 2 },	//Overloaded
@@ -532,6 +579,7 @@ static const std::vector<constant> dxConstant = {
 	//Object types
 	constant("ID_INVALID", DxScript::ID_INVALID),
 	constant("OBJ_BASE", (int)TypeObject::Base),
+	constant("OBJ_SPLINE", (int)TypeObject::Spline),
 	constant("OBJ_PRIMITIVE_2D", (int)TypeObject::Primitive2D),
 	constant("OBJ_SPRITE_2D", (int)TypeObject::Sprite2D),
 	constant("OBJ_SPRITE_LIST_2D", (int)TypeObject::SpriteList2D),
@@ -2772,6 +2820,479 @@ value DxScript::Func_Obj_SetParentScriptID(script_machine* machine, int argc, co
 	if (obj) obj->idScript_ = idScript;
 
 	return value();
+}
+
+
+//DxScriptSplineObject
+value DxScript::Func_ObjSpline_Create(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	script->CheckRunInMainThread();
+
+	ref_unsync_ptr<DxSplineObject> obj = new DxSplineObject();
+
+	int id = ID_INVALID;
+	if (obj) {
+		obj->Initialize();
+		obj->manager_ = script->objManager_.get();
+		id = script->AddObject(obj);
+	}
+	return script->CreateIntValue(id);
+}
+value DxScript::Func_ObjSpline_AddNode(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	if (obj) {
+		DxSplineObjectNode node(obj->NODE);
+		switch (argc) {
+		case 7:
+			node = { argv[1].as_float(), argv[2].as_float(), argv[3].as_float(), argv[4].as_float(), argv[5].as_float(), argv[6].as_float() };
+			break;
+		case 5:
+			node = { argv[1].as_float(), argv[2].as_float(), 0, argv[3].as_float(), argv[4].as_float(), 0 };
+			break;
+		case 4:
+			node = { argv[1].as_float(), argv[2].as_float(), argv[3].as_float(), 0, 0, 0 };
+			break;
+		case 3:
+			node = { argv[1].as_float(), argv[2].as_float(), 0, 0, 0, 0 };
+			break;
+		}
+		obj->AddNode(node);
+	}
+	return value();
+}
+value DxScript::Func_ObjSpline_SetNode(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	if (obj) {
+		DxSplineObjectNode node = {
+			argv[2].as_float(), argv[3].as_float(), argv[4].as_float(),
+			argv[5].as_float(), argv[6].as_float(), argv[7].as_float()
+		};
+		obj->SetNode(node, argv[1].as_int());
+	}
+	return value();
+}
+value DxScript::Func_ObjSpline_SetNodePosition(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	if (obj) {
+		size_t index = argv[1].as_int();
+		DxSplineObjectNode node = obj->GetNode(index);
+		node[0] = argv[2].as_float();
+		node[1] = argv[3].as_float();
+		node[2] = argv[4].as_float();
+		obj->SetNode(node, index);
+	}
+	return value();
+}
+value DxScript::Func_ObjSpline_SetNodeX(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	if (obj) {
+		size_t index = argv[1].as_int();
+		DxSplineObjectNode node = obj->GetNode(index);
+		node[0] = argv[2].as_float();
+		obj->SetNode(node, index);
+	}
+	return value();
+}
+value DxScript::Func_ObjSpline_SetNodeY(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	if (obj) {
+		size_t index = argv[1].as_int();
+		DxSplineObjectNode node = obj->GetNode(index);
+		node[1] = argv[2].as_float();
+		obj->SetNode(node, index);
+	}
+	return value();
+}
+value DxScript::Func_ObjSpline_SetNodeZ(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	if (obj) {
+		size_t index = argv[1].as_int();
+		DxSplineObjectNode node = obj->GetNode(index);
+		node[2] = argv[2].as_float();
+		obj->SetNode(node, index);
+	}
+	return value();
+}
+value DxScript::Func_ObjSpline_SetNodeTangent(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	if (obj) {
+		size_t index = argv[1].as_int();
+		DxSplineObjectNode node = obj->GetNode(index);
+		node[3] = argv[2].as_float();
+		node[4] = argv[3].as_float();
+		node[5] = argv[4].as_float();
+		obj->SetNode(node, index);
+	}
+	return value();
+}
+value DxScript::Func_ObjSpline_SetNodeTX(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	if (obj) {
+		size_t index = argv[1].as_int();
+		DxSplineObjectNode node = obj->GetNode(index);
+		node[3] = argv[2].as_float();
+		obj->SetNode(node, index);
+	}
+	return value();
+}
+value DxScript::Func_ObjSpline_SetNodeTY(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	if (obj) {
+		size_t index = argv[1].as_int();
+		DxSplineObjectNode node = obj->GetNode(index);
+		node[4] = argv[2].as_float();
+		obj->SetNode(node, index);
+	}
+	return value();
+}
+value DxScript::Func_ObjSpline_SetNodeTZ(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	if (obj) {
+		size_t index = argv[1].as_int();
+		DxSplineObjectNode node = obj->GetNode(index);
+		node[5] = argv[2].as_float();
+		obj->SetNode(node, index);
+	}
+	return value();
+}
+/*
+value DxScript::Func_ObjSpline_SetNodeList(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	if (obj) {
+		const value* val = &argv[2];
+		type_data* valType = val->get_type();
+
+		if (valType->get_kind() != type_data::tk_array) {
+			BaseFunction::_raise_error_unsupported(machine, argv->get_type(), "ObjSpline_SetNodeList");
+			return value();
+		}
+
+		size_t size = val->length_as_array();
+
+		obj->clear();
+
+		for (size_t i = 0; i < size; i += 4) {
+			DxSplineObjectNode node = {
+				val->index_as_array(i).as_float(), // px
+				val->index_as_array(i + 1).as_float(), // py
+				val->index_as_array(i + 2).as_float(), // tx
+				val->index_as_array(i + 3).as_float() // ty
+			};
+			obj->AddNode(node);
+		}
+	}
+	return value();
+}
+*/
+value DxScript::Func_ObjSpline_GetNode(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->GetNode(argv[1].as_int());
+	double vals[6];
+	std::copy(node.begin(), node.end(), vals);
+	return script->CreateFloatArrayValue(vals, 6U);
+}
+value DxScript::Func_ObjSpline_GetNodePosition(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->GetNode(argv[1].as_int());
+	double vals[3] = { node[0], node[1], node[2] };
+	return script->CreateFloatArrayValue(vals, 3U);
+}
+value DxScript::Func_ObjSpline_GetNodeX(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->GetNode(argv[1].as_int());
+	return script->CreateFloatValue(node[0]);
+}
+value DxScript::Func_ObjSpline_GetNodeY(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->GetNode(argv[1].as_int());
+	return script->CreateFloatValue(node[1]);
+}
+value DxScript::Func_ObjSpline_GetNodeZ(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->GetNode(argv[1].as_int());
+	return script->CreateFloatValue(node[2]);
+}
+value DxScript::Func_ObjSpline_GetNodeTangent(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->GetNode(argv[1].as_int());
+	double vals[3] = { node[3], node[4], node[5] };
+	return script->CreateFloatArrayValue(vals, 3U);
+}
+value DxScript::Func_ObjSpline_GetNodeTX(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->GetNode(argv[1].as_int());
+	return script->CreateFloatValue(node[3]);
+}
+value DxScript::Func_ObjSpline_GetNodeTY(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->GetNode(argv[1].as_int());
+	return script->CreateFloatValue(node[4]);
+}
+value DxScript::Func_ObjSpline_GetNodeTZ(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->GetNode(argv[1].as_int());
+	return script->CreateFloatValue(node[5]);
+}
+/*
+value DxScript::Func_ObjSpline_GetNodeList(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	return value();
+}
+*/
+value DxScript::Func_ObjSpline_GetNodeCount(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	size_t nodeCount = 0;
+	if (obj)
+		nodeCount = obj->nodes_.size();
+	return script->CreateIntValue(nodeCount);
+}
+value DxScript::Func_ObjSpline_GetArcLength(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	double arcLength = 0;
+	if (obj)
+		arcLength = obj->GetArcLength(argv[1].as_float());
+	return script->CreateFloatValue(arcLength);
+}
+value DxScript::Func_ObjSpline_Align(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	if (obj)
+		obj->CatmullRom();
+	return value();
+}
+value DxScript::Func_ObjSpline_Lerp(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->Lerp(argv[1].as_float());
+	double vals[6];
+	std::copy(node.begin(), node.end(), vals);
+	return script->CreateFloatArrayValue(vals, 6U);
+}
+value DxScript::Func_ObjSpline_LerpPosition(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->Lerp(argv[1].as_float());
+	double vals[3] = { node[0], node[1], node[2] };
+	return script->CreateFloatArrayValue(vals, 3U);
+}
+value DxScript::Func_ObjSpline_LerpX(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->Lerp(argv[1].as_float());
+	return script->CreateFloatValue(node[0]);
+}
+value DxScript::Func_ObjSpline_LerpY(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->Lerp(argv[1].as_float());
+	return script->CreateFloatValue(node[1]);
+}
+value DxScript::Func_ObjSpline_LerpZ(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->Lerp(argv[1].as_float());
+	return script->CreateFloatValue(node[2]);
+}
+value DxScript::Func_ObjSpline_LerpTangent(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->Lerp(argv[1].as_float());
+	double vals[3] = { node[3], node[4], node[5] };
+	return script->CreateFloatArrayValue(vals, 3U);
+}
+value DxScript::Func_ObjSpline_LerpTX(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->Lerp(argv[1].as_float());
+	return script->CreateFloatValue(node[3]);
+}
+value DxScript::Func_ObjSpline_LerpTY(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->Lerp(argv[1].as_float());
+	return script->CreateFloatValue(node[4]);
+}
+value DxScript::Func_ObjSpline_LerpTZ(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->Lerp(argv[1].as_float());
+	return script->CreateFloatValue(node[5]);
+}
+value DxScript::Func_ObjSpline_LerpArc(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->LerpArc(argv[1].as_float());
+	double vals[6];
+	std::copy(node.begin(), node.end(), vals);
+	return script->CreateFloatArrayValue(vals, 6U);
+}
+value DxScript::Func_ObjSpline_LerpArcPosition(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->LerpArc(argv[1].as_float());
+	double vals[3] = { node[0], node[1], node[2] };
+	return script->CreateFloatArrayValue(vals, 3U);
+}
+value DxScript::Func_ObjSpline_LerpArcX(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->LerpArc(argv[1].as_float());
+	return script->CreateFloatValue(node[0]);
+}
+value DxScript::Func_ObjSpline_LerpArcY(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->LerpArc(argv[1].as_float());
+	return script->CreateFloatValue(node[1]);
+}
+value DxScript::Func_ObjSpline_LerpArcZ(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->LerpArc(argv[1].as_float());
+	return script->CreateFloatValue(node[2]);
+}
+value DxScript::Func_ObjSpline_LerpArcTangent(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->LerpArc(argv[1].as_float());
+	double vals[3] = { node[3], node[4], node[5] };
+	return script->CreateFloatArrayValue(vals, 3U);
+}
+value DxScript::Func_ObjSpline_LerpArcTX(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->LerpArc(argv[1].as_float());
+	return script->CreateFloatValue(node[3]);
+}
+value DxScript::Func_ObjSpline_LerpArcTY(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->LerpArc(argv[1].as_float());
+	return script->CreateFloatValue(node[4]);
+}
+value DxScript::Func_ObjSpline_LerpArcTZ(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	DxSplineObject* obj = script->GetObjectPointerAs<DxSplineObject>(id);
+	DxSplineObjectNode node(obj->NODE);
+	if (obj)
+		node = obj->LerpArc(argv[1].as_float());
+	return script->CreateFloatValue(node[5]);
 }
 
 
