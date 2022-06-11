@@ -242,7 +242,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_SetPlayerShootdownEventEnable);
 	*/
 	DNH_FUNCAPI_DECL_(Func_SetPlayerRebirthPosition);
-    DNH_FUNCAPI_DECL_(Func_KillPlayer);
+	DNH_FUNCAPI_DECL_(Func_KillPlayer);
 
 	//STG共通関数：敵
 	static gstd::value Func_GetEnemyBossSceneObjectID(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -621,8 +621,6 @@ public:
 	static gstd::value Func_LoadPlayerShotData(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ReloadPlayerShotData(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_GetSpellManageObject(gstd::script_machine* machine, int argc, const gstd::value* argv);
-
-	
 
 	//自機専用関数：スペルオブジェクト操作
 	static gstd::value Func_ObjSpell_Create(gstd::script_machine* machine, int argc, const gstd::value* argv);
