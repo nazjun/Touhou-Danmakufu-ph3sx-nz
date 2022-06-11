@@ -209,6 +209,7 @@ protected:
 
 	double c_;
 	double s_;
+	double angDirection_;
 
 	std::list<std::pair<int8_t, double>> listCommand_;
 
@@ -226,7 +227,7 @@ public:
 	int GetType() { return typeMove_; }
 
 	virtual inline double GetSpeed() = 0;
-	virtual inline double GetDirectionAngle() = 0;
+	virtual inline double GetDirectionAngle() { return angDirection_; }
 	int GetShotDataID() { return idShotData_; }
 	void SetShotDataID(int id) { idShotData_ = id; }
 
@@ -260,7 +261,6 @@ public:
 	};
 protected:
 	double speed_;
-	double angDirection_;
 	double acceleration_;
 	double maxSpeed_;
 	double angularVelocity_;
@@ -275,7 +275,7 @@ public:
 	virtual void Move();
 
 	virtual inline double GetSpeed() { return speed_; }
-	virtual inline double GetDirectionAngle() { return angDirection_; }
+	// virtual inline double GetDirectionAngle() { return angDirection_; }
 
 	void SetSpeed(double speed) { speed_ = speed; }
 	void SetDirectionAngle(double angle);
@@ -321,7 +321,7 @@ public:
 	virtual void Move();
 
 	virtual inline double GetSpeed() { return hypot(c_, s_); }
-	virtual inline double GetDirectionAngle() { return (c_ != 0 || s_ != 0) ? atan2(s_, c_) : 0; }
+	// virtual inline double GetDirectionAngle() { return (c_ != 0 || s_ != 0) ? atan2(s_, c_) : 0; }
 
 	virtual double GetSpeedX() { return c_; }
 	virtual double GetSpeedY() { return s_; }
@@ -373,9 +373,11 @@ public:
 	virtual void Move();
 
 	virtual inline double GetSpeed() { return hypot(c_, s_); }
+	/*
 	virtual inline double GetDirectionAngle() {
 		return ((c_ != 0 || s_ != 0) ? atan2(s_, c_) : 0) + angOff_;
 	}
+	*/
 
 	virtual double GetSpeedX() { return c_ * cos(angOff_) - s_ * sin(angOff_); }
 	virtual double GetSpeedY() { return c_ * sin(angOff_) + s_ * cos(angOff_); }
@@ -426,7 +428,6 @@ protected:
 	int typeLine_;
 	uint32_t maxFrame_;
 	double speed_;
-	double angDirection_;
 	
 	double iniPos_[2];
 	double targetPos_[2];
@@ -437,7 +438,7 @@ public:
 	virtual void Move();
 
 	virtual inline double GetSpeed() { return speed_; }
-	virtual inline double GetDirectionAngle() { return angDirection_; }
+	// virtual inline double GetDirectionAngle() { return angDirection_; }
 
 	virtual double GetSpeedX() { return (speed_ * c_); }
 	virtual double GetSpeedY() { return (speed_ * s_); }

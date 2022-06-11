@@ -294,7 +294,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "SetPlayerStateEndEnable", StgStageScript::Func_SetPlayerInfoAsBool<&StgPlayerObject::SetEnableStateEnd>, 1 },
 	{ "SetPlayerShootdownEventEnable", StgStageScript::Func_SetPlayerInfoAsBool<&StgPlayerObject::SetEnableShootdownEvent>, 1 },
 	{ "SetPlayerRebirthPosition", StgStageScript::Func_SetPlayerRebirthPosition, 2 },
-    { "KillPlayer", StgStageScript::Func_KillPlayer, 0 },
+	{ "KillPlayer", StgStageScript::Func_KillPlayer, 0 },
 
 	//STG共通関数：敵
 	{ "GetEnemyBossSceneObjectID", StgStageScript::Func_GetEnemyBossSceneObjectID, 0 },
@@ -511,6 +511,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjShot_SetIntersectionScaleX", StgStageScript::Func_ObjShot_SetIntersectionScaleX, 2 },
 	{ "ObjShot_SetIntersectionScaleY", StgStageScript::Func_ObjShot_SetIntersectionScaleY, 2 },
 	{ "ObjShot_SetIntersectionScaleXY", StgStageScript::Func_ObjShot_SetIntersectionScaleXY, 3 },
+	{ "ObjShot_SetIntersectionScaleXY", StgStageScript::Func_ObjShot_SetIntersectionScaleXY, 2 }, //Overloaded
 	{ "ObjShot_SetPositionRounding", StgStageScript::Func_ObjShot_SetPositionRounding, 2 },
 	{ "ObjShot_SetAngleRounding", StgStageScript::Func_ObjShot_SetAngleRounding, 2 },
 	{ "ObjShot_SetDelayMotionEnable", StgStageScript::Func_ObjShot_SetDelayMotionEnable, 2 },
@@ -1146,14 +1147,6 @@ gstd::value StgStageScript::Func_SetPlayerRebirthLossFrame(gstd::script_machine*
 	}
 	return value();
 }
-gstd::value StgStageScript::Func_KillPlayer(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	StgStagePlayerScript* script = (StgStagePlayerScript*)machine->data;
-	ref_unsync_ptr<StgPlayerObject> objPlayer = script->stageController_->GetPlayerObject();
-	if (objPlayer) {
-		objPlayer->KillSelf(ID_INVALID);
-	}
-	return value();
-}
 gstd::value StgStageScript::Func_SetPlayerAutoItemCollectLine(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	StgPlayerObject* objPlayer = script->stageController_->GetPlayerObject().get();
@@ -1207,6 +1200,14 @@ gstd::value StgStageScript::Func_SetPlayerRebirthPosition(gstd::script_machine* 
 		double x = argv[0].as_float();
 		double y = argv[1].as_float();
 		objPlayer->SetRebirthPosition(x, y);
+	}
+	return value();
+}
+gstd::value StgStageScript::Func_KillPlayer(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	ref_unsync_ptr<StgPlayerObject> objPlayer = script->stageController_->GetPlayerObject();
+	if (objPlayer) {
+		objPlayer->KillSelf(ID_INVALID);
 	}
 	return value();
 }
@@ -5024,7 +5025,7 @@ gstd::value StgStageScript::Func_ObjShot_SetIntersectionScaleXY(gstd::script_mac
 	StgShotObject* obj = script->GetObjectPointerAs<StgShotObject>(id);
 	if (obj) {
 		float scaleX = argv[1].as_float();
-		float scaleY = argv[2].as_float();
+		float scaleY = (argc == 3) ? argv[2].as_float() : scaleX;
 		obj->SetHitboxScaleX(scaleX);
 		obj->SetHitboxScaleY(scaleY);
 	}
@@ -6336,8 +6337,6 @@ static const std::vector<function> stgPlayerFunction = {
 	{ "ReloadPlayerShotData", StgStagePlayerScript::Func_ReloadPlayerShotData, 1 },
 	{ "GetSpellManageObject", StgStagePlayerScript::Func_GetSpellManageObject, 0 },
 
-	
-
 	//自機専用関数：スペルオブジェクト操作
 	{ "ObjSpell_Create", StgStagePlayerScript::Func_ObjSpell_Create, 0 },
 	{ "ObjSpell_Regist", StgStagePlayerScript::Func_ObjSpell_Regist, 1 },
@@ -6442,8 +6441,6 @@ gstd::value StgStagePlayerScript::Func_GetSpellManageObject(gstd::script_machine
 	}
 	return script->CreateIntValue(id);
 }
-
-
 
 //自機専用関数：スペルオブジェクト操作
 gstd::value StgStagePlayerScript::Func_ObjSpell_Create(gstd::script_machine* machine, int argc, const gstd::value* argv) {
