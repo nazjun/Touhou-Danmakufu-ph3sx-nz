@@ -90,6 +90,7 @@ namespace directx {
 	//*******************************************************************
 	enum class TypeObject : uint8_t {
 		Spline,
+		SpringMassSystem,
 
 		Primitive2D,
 		Sprite2D,

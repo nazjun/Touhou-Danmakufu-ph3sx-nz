@@ -220,6 +220,202 @@ DxSplineObjectNode DxSplineObject::LerpArc(double t) {
 }
 
 //****************************************************************************
+//DxSpringMassSystemObject
+//****************************************************************************
+DxSpringMassSystemObject::DxSpringMassSystemObject() {
+	typeObject_ = TypeObject::SpringMassSystem;
+}
+
+void DxSpringMassSystemObject::SetParticle(DxSpringMassSystemObjectParticle particle, size_t index) {
+	if (index < particles_.size())
+		particles_[index] = particle;
+	else
+		particles_.push_back(particle);
+}
+
+void DxSpringMassSystemObject::RemoveParticle(size_t index) {
+	particles_.erase(particles_.begin() + index);
+
+	// Any springs that shared this particle must now be deleted
+	for (size_t i = 0; i < springs_.size(); ) {
+		DxSpringMassSystemObjectSpring* s = &(springs_[i]);
+		if (s->a == index || s->b == index)
+			springs_.erase(springs_.begin() + i);
+		else
+			++i;
+	}
+
+	// Any springs who contained index references greater than the removal index must now shift down by one to accomodate the loss
+	for (size_t i = 0; i < springs_.size(); ++i) {
+		DxSpringMassSystemObjectSpring* s = &(springs_[i]);
+		if (s->a > index)
+			--s->a;
+		if (s->b > index)
+			--s->b;
+	}
+}
+
+void DxSpringMassSystemObject::AddSpring(DxSpringMassSystemObjectSpring spring) {
+	if (spring.rest < 0) {
+		DxSpringMassSystemObjectParticle* pA = &(particles_[spring.a]);
+		DxSpringMassSystemObjectParticle* pB = &(particles_[spring.b]);
+
+		DxVector3::DxVec3 vecAB;
+		DxVector3::DxVec3Sub(vecAB, pB->pos, pA->pos);
+
+		double norm = DxVector3::DxVec3Norm(vecAB);
+		spring.rest = norm;
+	}
+
+	springs_.push_back(spring);
+}
+
+void DxSpringMassSystemObject::SetSpring(DxSpringMassSystemObjectSpring spring, size_t index) {
+	if (spring.rest < 0) {
+		DxSpringMassSystemObjectParticle* pA = &(particles_[spring.a]);
+		DxSpringMassSystemObjectParticle* pB = &(particles_[spring.b]);
+
+		DxVector3::DxVec3 vecAB;
+		DxVector3::DxVec3Sub(vecAB, pB->pos, pA->pos);
+
+		double norm = DxVector3::DxVec3Norm(vecAB);
+		spring.rest = norm;
+	}
+
+	if (index < springs_.size())
+		springs_[index] = spring;
+	else
+		springs_.push_back(spring);
+}
+
+void DxSpringMassSystemObject::SetPlane(DxSpringMassSystemObjectPlane plane, size_t index) {
+	if (index < planes_.size())
+		planes_[index] = plane;
+	else
+		planes_.push_back(plane);
+}
+
+void DxSpringMassSystemObject::SpringForce(
+	DxVector3::DxVec3 out, DxSpringMassSystemObjectParticle* pA, DxSpringMassSystemObjectParticle* pB,
+	double ks, double kd, double rest
+) {
+	DxVector3::DxVec3 dba;
+	DxVector3::DxVec3Sub(dba, pA->pos, pB->pos);
+
+	double mba = DxVector3::DxVec3Norm(dba);
+
+	DxVector3::DxVec3 fs;
+	DxVector3::DxVec3Scale(fs, dba, ks * (rest - mba) / std::max(mba, 0.001));
+
+	DxVector3::DxVec3 vba;
+	DxVector3::DxVec3Sub(vba, pA->vel, pB->vel);
+	DxVector3::DxVec3Scale(dba, dba, 1.0 / std::max(mba, 0.001));
+	DxVector3::DxVec3Dot(vba, vba, dba);
+
+	double inner = DxVector3::DxVec3Sum(vba);
+
+	DxVector3::DxVec3 fd;
+	DxVector3::DxVec3Scale(fd, dba, -(kd) * inner);
+
+	DxVector3::DxVec3Add(out, fs, fd);
+}
+
+void DxSpringMassSystemObject::Integrate() {
+	// Compute per-particle force components
+	for (size_t i = 0; i < particles_.size(); ++i) {
+		DxSpringMassSystemObjectParticle* p = &(particles_[i]);
+
+		DxVector3::DxVec3Set(p->force, 0, 0, 0);
+
+		if (p->bMove) {
+			// Add drag
+			DxVector3::DxVec3 drag;
+			DxVector3::DxVec3Scale(drag, p->vel, -globalDrag_);
+			DxVector3::DxVec3Add(p->force, p->force, drag);
+
+			// Add gravity
+			DxVector3::DxVec3 gravity;
+			DxVector3::DxVec3Scale(gravity, gravity_, p->mass);
+			DxVector3::DxVec3Add(p->force, p->force, gravity);
+
+			// Add penalty forces against planes
+			for (size_t j = 0; j < planes_.size(); ++j) {
+				DxSpringMassSystemObjectPlane* q = &(planes_[j]);
+
+				DxVector3::DxVec3 v;
+				DxVector3::DxVec3Sub(v, p->pos, q->pos);
+
+				DxVector3::DxVec3 dot;
+				DxVector3::DxVec3Dot(dot, v, q->normal);
+
+				double signedDist = DxVector3::DxVec3Sum(dot);
+
+				if (signedDist < q->epsilon) {
+					DxVector3::DxVec3 projPos;
+					DxVector3::DxVec3Copy(projPos, p->pos);
+
+					DxVector3::DxVec3 projTravel;
+					DxVector3::DxVec3Scale(projTravel, q->normal, -(signedDist - q->epsilon));
+					DxVector3::DxVec3Add(projPos, projPos, projTravel);
+
+					DxSpringMassSystemObjectParticle pPlane = DxSpringMassSystemObjectParticle(projPos, DxVector3::DxVec3{ 0.0, 0.0, 0.0 }, 1.0, false);
+
+					// Add penalty spring force against the plane
+					DxVector3::DxVec3 springForce;
+					SpringForce(springForce, p, &pPlane, q->ks, q->kd, 0.0);
+					DxVector3::DxVec3Scale(springForce, springForce, FRAME_STEP);
+					DxVector3::DxVec3Add(p->force, p->force, springForce);
+				}
+			}
+		}
+	}
+
+	// Compute per-spring force components
+	for (size_t i = 0; i < springs_.size(); ++i) {
+		DxSpringMassSystemObjectSpring* s = &(springs_[i]);
+
+		// Add spring force
+		DxVector3::DxVec3 springForce;
+		SpringForce(springForce, &(particles_[s->a]), &(particles_[s->b]), s->ks, s->kd, s->rest);
+		DxVector3::DxVec3Scale(springForce, springForce, FRAME_STEP);
+
+		DxSpringMassSystemObjectParticle* pA = &(particles_[s->a]);
+		DxSpringMassSystemObjectParticle* pB = &(particles_[s->b]);
+
+		if (pA->bMove) {
+			DxVector3::DxVec3Add(pA->force, pA->force, springForce);
+		}
+
+		if (pB->bMove) {
+			DxVector3::DxVec3Scale(springForce, springForce, -1.0);
+			DxVector3::DxVec3Add(pB->force, pB->force, springForce);
+		}
+	}
+
+	// Symplectic Euler Integration step
+
+	// Update velocity
+	for (size_t i = 0; i < particles_.size(); ++i) {
+		DxSpringMassSystemObjectParticle* p = &(particles_[i]);
+
+		if (p->bMove) {
+			DxVector3::DxVec3 acceleration;
+			DxVector3::DxVec3Scale(acceleration, p->force, 1.0 / p->mass);
+			DxVector3::DxVec3Add(p->vel, p->vel, acceleration);
+		}
+	}
+
+	// Update position
+	for (size_t i = 0; i < particles_.size(); ++i) {
+		DxSpringMassSystemObjectParticle* p = &(particles_[i]);
+
+		if (p->bMove) {
+			DxVector3::DxVec3Add(p->pos, p->pos, p->vel);
+		}
+	}
+}
+
+//****************************************************************************
 //DxScriptRenderObject
 //****************************************************************************
 DxScriptRenderObject::DxScriptRenderObject() {

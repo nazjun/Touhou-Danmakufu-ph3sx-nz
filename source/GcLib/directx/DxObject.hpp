@@ -122,6 +122,104 @@ namespace directx {
 		double g4(double t) { return 3 * t * t - 2 * t; }
 	};
 
+
+	//****************************************************************************
+	//DxSpringMassSystemObject
+	//****************************************************************************
+	class DxSpringMassSystemObjectParticle {
+	public:
+		DxVector3::DxVec3 pos, vel, pos0, vel0, force;
+		double mass;
+		bool bMove;
+
+		DxSpringMassSystemObjectParticle(
+			DxVector3::DxVec3 pos = DxVector3::DxVec3{ 0.0, 0.0, 0.0 }, DxVector3::DxVec3 vel = DxVector3::DxVec3{ 0.0, 0.0, 0.0 },
+			double mass = 1.0, bool bMove = true
+		) {
+			DxVector3::DxVec3Copy(this->pos, pos);
+			DxVector3::DxVec3Copy(this->vel, vel);
+			DxVector3::DxVec3Copy(pos0, pos);
+			DxVector3::DxVec3Copy(vel0, pos);
+			DxVector3::DxVec3Set(force, 0, 0, 0);
+			this->mass = mass;
+			this->bMove = bMove;
+		}
+	};
+
+	class DxSpringMassSystemObjectSpring {
+	public:
+		size_t a, b;
+		double ks, kd, rest;
+
+		DxSpringMassSystemObjectSpring(
+			size_t a = 0U, size_t b = 0U,
+			double ks = 1.0, double kd = 1.0, double rest = 0.0
+		) {
+			this->a = a;
+			this->b = b;
+			this->ks = ks;
+			this->kd = kd;
+			this->rest = rest;
+		}
+	};
+
+	class DxSpringMassSystemObjectPlane {
+	public:
+		DxVector3::DxVec3 pos, normal;
+		double ks, kd, epsilon;
+
+		DxSpringMassSystemObjectPlane(
+			DxVector3::DxVec3 pos = DxVector3::DxVec3{ 0.0, 0.0, 0.0 }, DxVector3::DxVec3 normal = DxVector3::DxVec3{ 1.0, 0.0, 0.0 },
+			double ks = 1.0, double kd = 1.0, double epsilon = 0.0
+		) {
+			DxVector3::DxVec3Copy(this->pos, pos);
+			DxVector3::DxVec3Copy(this->normal, normal);
+			this->ks = ks;
+			this->kd = kd;
+			this->epsilon = epsilon;
+		}
+	};
+
+	class DxSpringMassSystemObject : public DxScriptObjectBase {
+		friend DxScript;
+	protected:
+		const double FRAME_STEP = 1.0 / 60.0;
+
+		DxVector3::DxVec3 gravity_;
+		double globalDrag_;
+
+		std::vector<DxSpringMassSystemObjectParticle> particles_;
+		std::vector<DxSpringMassSystemObjectSpring> springs_;
+		std::vector<DxSpringMassSystemObjectPlane> planes_;
+
+	public:
+		DxSpringMassSystemObject();
+
+		void SetGravity(DxVector3::DxVec3 gravity) { DxVector3::DxVec3Copy(gravity_, gravity); }
+		void SetGlobalDrag(double drag) { globalDrag_ = drag; }
+
+		void AddParticle(DxSpringMassSystemObjectParticle particle) { particles_.push_back(particle); }
+		void SetParticle(DxSpringMassSystemObjectParticle particle, size_t index);
+		DxSpringMassSystemObjectParticle GetParticle(size_t index) { return particles_[std::clamp(index, 0U, particles_.size() - 1)]; }
+		void RemoveParticle(size_t index);
+
+		void AddSpring(DxSpringMassSystemObjectSpring spring);
+		void SetSpring(DxSpringMassSystemObjectSpring spring, size_t index);
+		DxSpringMassSystemObjectSpring GetSpring(size_t index) { return springs_[std::clamp(index, 0U, springs_.size() - 1)]; }
+		void RemoveSpring(size_t index) { springs_.erase(springs_.begin() + index); }
+
+		void AddPlane(DxSpringMassSystemObjectPlane plane) { planes_.push_back(plane); }
+		void SetPlane(DxSpringMassSystemObjectPlane plane, size_t index);
+		DxSpringMassSystemObjectPlane GetPlane(size_t index) { return planes_[std::clamp(index, 0U, planes_.size() - 1)]; }
+		void RemovePlane(size_t index) { planes_.erase(planes_.begin() + index); }
+
+		void SpringForce(DxVector3::DxVec3 out, DxSpringMassSystemObjectParticle* pA, DxSpringMassSystemObjectParticle* pB,
+			double ks, double kd, double rest);
+
+		void Integrate();
+	};
+
+
 	//****************************************************************************
 	//DxScriptRenderObject
 	//****************************************************************************

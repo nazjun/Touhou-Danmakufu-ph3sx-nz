@@ -329,6 +329,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "SetShotIntersectionCircle", StgStageScript::Func_SetShotIntersectionCircle, 3 },
 	{ "SetShotIntersectionLine", StgStageScript::Func_SetShotIntersectionLine, 5 },
 	{ "GetAllShotID", StgStageScript::Func_GetAllShotID, 1 },
+	{ "GetAllLaserID", StgStageScript::Func_GetAllLaserID, 1 },
 	{ "GetShotIdInCircleA1", StgStageScript::Func_GetShotIdInCircleA1, 3 },
 	{ "GetShotIdInCircleA2", StgStageScript::Func_GetShotIdInCircleA2, 4 },
 	{ "GetShotIdInRegularPolygonA1", StgStageScript::Func_GetShotIdInRegularPolygonA1, 5 },
@@ -2154,6 +2155,23 @@ gstd::value StgStageScript::Func_GetAllShotID(gstd::script_machine* machine, int
 	}
 
 	std::vector<int> listID = shotManager->GetShotIdInCircle(typeOwner, 0, 0, nullptr);
+	return script->CreateIntArrayValue(listID);
+}
+gstd::value StgStageScript::Func_GetAllLaserID(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	StgStageController* stageController = script->stageController_;
+
+	StgShotManager* shotManager = stageController->GetShotManager();
+	int target = argv[0].as_int();
+
+	int typeOwner = StgShotObject::OWNER_NULL;
+	switch (target) {
+	case TARGET_ALL:typeOwner = StgShotObject::OWNER_NULL; break;
+	case TARGET_PLAYER:typeOwner = StgShotObject::OWNER_PLAYER; break;
+	case TARGET_ENEMY:typeOwner = StgShotObject::OWNER_ENEMY; break;
+	}
+
+	std::vector<int> listID = shotManager->GetLaserIdAll(typeOwner);
 	return script->CreateIntArrayValue(listID);
 }
 gstd::value StgStageScript::Func_GetShotIdInCircleA1(gstd::script_machine* machine, int argc, const gstd::value* argv) {
