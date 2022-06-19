@@ -317,6 +317,18 @@ std::vector<int> StgShotManager::GetShotIdInRegularPolygon(int typeOwner, int cx
 
 	return res;
 }
+std::vector<int> StgShotManager::GetLaserIdAll(int typeOwner) {
+	std::vector<int> res;
+	for (ref_unsync_ptr<StgShotObject>& obj : listObj_) {
+		if (obj->IsDeleted()) continue;
+		if ((typeOwner != StgShotObject::OWNER_NULL) && (obj->GetOwnerType() != typeOwner)) continue;
+		if (obj->GetObjectType() == TypeObject::Shot) continue;
+
+		res.push_back(obj->GetObjectID());
+	}
+
+	return res;
+}
 size_t StgShotManager::GetShotCount(int typeOwner) {
 	size_t res = 0;
 

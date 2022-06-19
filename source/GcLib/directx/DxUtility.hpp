@@ -135,6 +135,28 @@ namespace directx {
 			D3DXVECTOR2* position, D3DXVECTOR2* textureSize);
 	};
 
+	//*******************************************************************
+	//DxVec3
+	//*******************************************************************
+	class DxVector3 {
+	public:
+		typedef double DxVec3[3];
+
+		static inline void DxVec3Copy(DxVec3 a, const DxVec3 b) { a[0] = b[0]; a[1] = b[1]; a[2] = b[2]; }
+		static inline void DxVec3Set(DxVec3 a, double b, double c, double d) { a[0] = b; a[1] = c; a[2] = d; }
+		static inline void DxVec3Add(DxVec3 out, const DxVec3 a, const DxVec3 b) { out[0] = a[0] + b[0]; out[1] = a[1] + b[1]; out[2] = a[2] + b[2]; }
+		static inline void DxVec3Sub(DxVec3 out, const DxVec3 a, const DxVec3 b) { out[0] = a[0] - b[0]; out[1] = a[1] - b[1]; out[2] = a[2] - b[2]; }
+		static inline void DxVec3Scale(DxVec3 out, const DxVec3 a, double b) { out[0] = a[0] * b; out[1] = a[1] * b; out[2] = a[2] * b; }
+		static inline void DxVec3Dot(DxVec3 out, const DxVec3 a, const DxVec3 b) { out[0] = a[0] * b[0]; out[1] = a[1] * b[1]; out[2] = a[2] * b[2]; }
+		static inline void DxVec3Cross(DxVec3 out, const DxVec3 a, const DxVec3 b) {
+			out[0] = a[1] * b[2] - a[2] * b[1];
+			out[1] = -a[0] * b[2] + a[2] * b[0];
+			out[2] = a[0] * b[1] - a[1] * b[0];
+		}
+		static inline double DxVec3Sum(const DxVec3 a) { return a[0] + a[1] + a[2]; }
+		static inline double DxVec3Norm(const DxVec3 a) { return sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]); }
+	};
+
 	class DxIntersect {
 	public:
 		static inline DxWidthLine _LineW_From_Line(const DxLine* line) {
