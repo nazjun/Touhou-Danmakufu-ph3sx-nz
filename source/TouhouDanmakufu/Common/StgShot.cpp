@@ -10,6 +10,7 @@
 //StgShotManager
 //****************************************************************************
 StgShotManager::StgShotManager(StgStageController* stageController) {
+	stageController_ = stageController;
 
 	listPlayerShotData_ = std::make_unique<StgShotDataList>();
 	listEnemyShotData_ = std::make_unique<StgShotDataList>();
@@ -3036,7 +3037,6 @@ void StgCurveLaserObject::_SendDeleteEvent(TypeDelete type) {
 //StgShotPatternGeneratorObject (ECL-style bullets firing)
 //****************************************************************************
 StgShotPatternGeneratorObject::StgShotPatternGeneratorObject(StgStageController* stageController) : StgObjectBase(stageController) {
-	stageController_ = stageController;
 	typeObject_ = TypeObject::ShotPattern;
 	bAutoDelete_ = false;
 
