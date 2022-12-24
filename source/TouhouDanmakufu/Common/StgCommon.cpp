@@ -234,9 +234,8 @@ double StgMoveObject::GetAngleFromParent() {
 //****************************************************************************
 //StgMoveParent
 //****************************************************************************
-StgMoveParent::StgMoveParent(StgStageController* stageController) {
+StgMoveParent::StgMoveParent(StgStageController* stageController) : StgObjectBase(stageController) {
 	typeObject_ = TypeObject::MoveParent;
-	stageController_ = stageController;
 
 	target_ = nullptr;
 	typeAngle_ = ANGLE_FIXED;

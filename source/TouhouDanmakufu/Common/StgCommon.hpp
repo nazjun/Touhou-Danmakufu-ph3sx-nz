@@ -90,7 +90,7 @@ public:
 //*******************************************************************
 //StgMoveParent
 //*******************************************************************
-class StgMoveParent : public DxScriptObjectBase {
+class StgMoveParent : public DxScriptObjectBase, public StgObjectBase {
 	friend StgMoveObject;
 public:
 	enum {
@@ -105,8 +105,6 @@ public:
 		ORDER_ANGLE_SCALE,
 		ORDER_SCALE_ANGLE
 	};
-private:
-	StgStageController* stageController_;
 protected:
 	ref_unsync_weak_ptr<StgMoveObject> target_;
 	int typeAngle_;
