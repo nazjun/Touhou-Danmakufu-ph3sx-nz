@@ -731,7 +731,6 @@ public:
 		BASEPOINT_RESET = -256 * 256,
 	};
 private:
-	StgStageController* stageController_;
 	ref_unsync_weak_ptr<StgMoveObject> parent_;
 	ref_unsync_weak_ptr<StgMoveParent> shotParent_;
 	bool bAutoDelete_;
