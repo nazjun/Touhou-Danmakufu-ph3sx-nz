@@ -55,8 +55,6 @@ public:
 //*******************************************************************
 class StgEnemyObject : public DxScriptSpriteObject2D, public StgMoveObject, public StgIntersectionObject {
 protected:
-	StgStageController* stageController_;
-
 	double life_;
 	double lifePrev_;
 	double lifeDelta_;
@@ -76,6 +74,8 @@ protected:
 	std::vector<ref_unsync_weak_ptr<StgIntersectionTarget>> ptrIntersectionToShot_;
 	std::vector<ref_unsync_weak_ptr<StgIntersectionTarget>> ptrIntersectionToPlayer_;
 
+	std::unordered_map<int, double> mapShotDamageRate_;
+
 	void _DeleteInAutoClip();
 	void _DeleteInAutoDeleteFrame();
 	virtual void _Move();
@@ -83,6 +83,8 @@ protected:
 public:
 	StgEnemyObject(StgStageController* stageController);
 	virtual ~StgEnemyObject();
+
+	virtual void Clone(DxScriptObjectBase* src);
 
 	virtual void Work();
 	virtual void Activate();
@@ -107,6 +109,11 @@ public:
 	void SetDamageRate(double rateShot, double rateSpell) { rateDamageShot_ = rateShot; rateDamageSpell_ = rateSpell; }
 	double GetShotDamageRate() { return rateDamageShot_; }
 	double GetSpellDamageRate() { return rateDamageSpell_; }
+	void SetShotDamageRateByShotDataID(int id, double rate) { mapShotDamageRate_[id] = rate; }
+	double GetShotDamageRateByShotDataID(int id) {
+		return mapShotDamageRate_.size() > 0 ? 
+			(mapShotDamageRate_.count(id) > 0 ? mapShotDamageRate_[id] : 1) : 1;
+	}
 
 	void SetMaximumDamage(double dmg) { maximumDamage_ = dmg; }
 	double GetMaximumDamage() { return maximumDamage_; }
@@ -129,15 +136,15 @@ private:
 	int timeSpellCard_;
 public:
 	StgEnemyBossObject(StgStageController* stageController);
+
+	virtual void Clone(DxScriptObjectBase* src);
 };
 
 //*******************************************************************
 //StgEnemyBossSceneObject
 //*******************************************************************
-class StgEnemyBossSceneObject : public DxScriptObjectBase {
+class StgEnemyBossSceneObject : public DxScriptObjectBase, public StgObjectBase {
 private:
-	StgStageController* stageController_;
-
 	bool bScriptsLoaded_;
 	bool bEnableUnloadCache_;
 
@@ -151,6 +158,8 @@ private:
 public:
 	StgEnemyBossSceneObject(StgStageController* stageController);
 	~StgEnemyBossSceneObject();
+
+	virtual void Clone(DxScriptObjectBase* src);
 
 	virtual void Work();
 	virtual void Activate();

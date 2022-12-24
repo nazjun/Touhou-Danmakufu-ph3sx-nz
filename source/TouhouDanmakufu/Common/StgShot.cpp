@@ -10,7 +10,6 @@
 //StgShotManager
 //****************************************************************************
 StgShotManager::StgShotManager(StgStageController* stageController) {
-	stageController_ = stageController;
 
 	listPlayerShotData_ = std::make_unique<StgShotDataList>();
 	listEnemyShotData_ = std::make_unique<StgShotDataList>();
@@ -341,26 +340,32 @@ size_t StgShotManager::GetShotCount(int typeOwner) {
 	return res;
 }
 
-void StgShotManager::SetDeleteEventEnableByType(int type, bool bEnable) {
-	int bit = 0;
+int StgShotManager::_TypeDeleteToEventType(TypeDelete type) {
+	switch (type) {
+	case TypeDelete::Immediate:
+		return StgStageItemScript::EV_DELETE_SHOT_IMMEDIATE;
+	case TypeDelete::Fade:
+		return StgStageItemScript::EV_DELETE_SHOT_FADE;
+	case TypeDelete::Item:
+		return StgStageItemScript::EV_DELETE_SHOT_TO_ITEM;
+	}
+	return StgStageItemScript::EV_DELETE_SHOT_IMMEDIATE;
+}
+StgShotManager::TypeDelete StgShotManager::_EventTypeToTypeDelete(int type) {
 	switch (type) {
 	case StgStageItemScript::EV_DELETE_SHOT_IMMEDIATE:
-		bit = StgShotManager::BIT_EV_DELETE_IMMEDIATE;
-		break;
-	case StgStageItemScript::EV_DELETE_SHOT_TO_ITEM:
-		bit = StgShotManager::BIT_EV_DELETE_TO_ITEM;
-		break;
+		return TypeDelete::Immediate;
 	case StgStageItemScript::EV_DELETE_SHOT_FADE:
-		bit = StgShotManager::BIT_EV_DELETE_FADE;
-		break;
+		return TypeDelete::Fade;
+	case StgStageItemScript::EV_DELETE_SHOT_TO_ITEM:
+		return TypeDelete::Item;
 	}
+	return TypeDelete::Immediate;
+}
 
-	if (bEnable) {
-		listDeleteEventEnable_.set(bit);
-	}
-	else {
-		listDeleteEventEnable_.reset(bit);
-	}
+void StgShotManager::SetDeleteEventEnableByType(int type, bool bEnable) {
+	int bit = (int)_EventTypeToTypeDelete(type);
+	listDeleteEventEnable_.set(bit, bEnable);
 }
 bool StgShotManager::LoadPlayerShotData(const std::wstring& path, bool bReload) {
 	return listPlayerShotData_->AddShotDataList(path, bReload);
@@ -850,8 +855,6 @@ HRESULT StgShotVertexBufferContainer::LoadData(const std::vector<VERTEX_TLX>& da
 //StgShotObject
 //****************************************************************************
 StgShotObject::StgShotObject(StgStageController* stageController) : StgMoveObject(stageController) {
-	stageController_ = stageController;
-
 	frameWork_ = 0;
 	posX_ = 0;
 	posY_ = 0;
@@ -877,6 +880,7 @@ StgShotObject::StgShotObject(StgStageController* stageController) : StgMoveObjec
 
 	frameFadeDelete_ = -1;
 	frameAutoDelete_ = INT_MAX;
+	typeAutoDelete_ = StgShotManager::TO_TYPE_FADE;
 
 	typeOwner_ = OWNER_ENEMY;
 
@@ -898,6 +902,59 @@ StgShotObject::StgShotObject(StgStageController* stageController) : StgMoveObjec
 }
 StgShotObject::~StgShotObject() {
 }
+
+void StgShotObject::Clone(DxScriptObjectBase* _src) {
+	DxScriptShaderObject::Clone(_src);
+
+	auto src = (StgShotObject*)_src;
+	StgMoveObject::Copy((StgMoveObject*)src);
+	StgIntersectionObject::Copy((StgIntersectionObject*)src);
+
+	frameWork_ = src->frameWork_;
+	idShotData_ = src->idShotData_;
+	typeOwner_ = src->typeOwner_;
+
+	move_ = src->move_;
+	lastAngle_ = src->lastAngle_;
+
+	hitboxScale_ = src->hitboxScale_;
+	delay_ = src->delay_;
+
+	frameGrazeInvalid_ = src->frameGrazeInvalid_;
+	frameGrazeInvalidStart_ = src->frameGrazeInvalidStart_;
+	frameFadeDelete_ = src->frameFadeDelete_;
+	bPenetrateShot_ = src->bPenetrateShot_;
+
+	renderTarget_ = src->renderTarget_;
+
+	frameEnemyHitInvalid_ = src->frameEnemyHitInvalid_;
+	mapEnemyHitCooldown_ = src->mapEnemyHitCooldown_;
+
+	bRequestedPlayerDeleteEvent_ = src->bRequestedPlayerDeleteEvent_;
+	damage_ = src->damage_;
+	life_ = src->life_;
+
+	bAutoDelete_ = src->bAutoDelete_;
+	bEraseShot_ = src->bEraseShot_;
+	bSpellFactor_ = src->bSpellFactor_;
+	bSpellResist_ = src->bSpellResist_;
+	frameAutoDelete_ = src->frameAutoDelete_;
+	typeAutoDelete_ = src->typeAutoDelete_;
+
+	listIntersectionTarget_ = src->listIntersectionTarget_;
+	bUserIntersectionMode_ = src->bUserIntersectionMode_;
+	bIntersectionEnable_ = src->bIntersectionEnable_;
+	bChangeItemEnable_ = src->bChangeItemEnable_;
+
+	bEnableMotionDelay_ = src->bEnableMotionDelay_;
+	bRoundingPosition_ = src->bRoundingPosition_;
+	roundingAngle_ = src->roundingAngle_;
+
+	listTransformationShotAct_ = src->listTransformationShotAct_;
+	timerTransform_ = src->timerTransform_;
+	timerTransformNext_ = src->timerTransformNext_;
+}
+
 void StgShotObject::SetOwnObjectReference() {
 	auto ptr = ref_unsync_ptr<StgShotObject>::Cast(stageController_->GetMainRenderObject(idObject_));
 	pOwnReference_ = ptr;
@@ -913,7 +970,7 @@ void StgShotObject::_Move() {
 void StgShotObject::_DeleteInLife() {
 	if (IsDeleted() || life_ > 0) return;
 
-	_SendDeleteEvent(StgShotManager::BIT_EV_DELETE_IMMEDIATE);
+	_SendDeleteEvent(TypeDelete::Immediate);
 	_RequestPlayerDeleteEvent(DxScript::ID_INVALID);
 
 	auto objectManager = stageController_->GetMainObjectManager();
@@ -961,7 +1018,8 @@ void StgShotObject::_DeleteInAutoClip() {
 void StgShotObject::_DeleteInFadeDelete() {
 	if (IsDeleted()) return;
 	if (frameFadeDelete_ == 0) {
-		_SendDeleteEvent(StgShotManager::BIT_EV_DELETE_FADE);
+		_SendDeleteEvent(TypeDelete::Fade);
+
 		auto objectManager = stageController_->GetMainObjectManager();
 		objectManager->DeleteObject(this);
 	}
@@ -969,8 +1027,19 @@ void StgShotObject::_DeleteInFadeDelete() {
 void StgShotObject::_DeleteInAutoDeleteFrame() {
 	if (IsDeleted() || delay_.time > 0) return;
 
-	if (frameAutoDelete_ <= 0)
-		SetFadeDelete();
+	if (frameAutoDelete_ <= 0) {
+		switch (typeAutoDelete_) {
+		case StgShotManager::TO_TYPE_IMMEDIATE:
+			DeleteImmediate();
+			break;
+		case StgShotManager::TO_TYPE_FADE:
+			SetFadeDelete();
+			break;
+		case StgShotManager::TO_TYPE_ITEM:
+			ConvertToItem();
+			break;
+		}
+	}
 	else --frameAutoDelete_;
 }
 void StgShotObject::_CommonWorkTask() {
@@ -1094,8 +1163,7 @@ void StgShotObject::SetColor(int r, int g, int b) {
 void StgShotObject::ConvertToItem() {
 	if (IsDeleted()) return;
 
-	_SendDeleteEvent(bChangeItemEnable_ ? StgShotManager::BIT_EV_DELETE_TO_ITEM
-		: StgShotManager::BIT_EV_DELETE_IMMEDIATE);
+	_SendDeleteEvent(bChangeItemEnable_ ? TypeDelete::Item : TypeDelete::Immediate);
 
 	auto objectManager = stageController_->GetMainObjectManager();
 	objectManager->DeleteObject(this);
@@ -1103,7 +1171,7 @@ void StgShotObject::ConvertToItem() {
 void StgShotObject::DeleteImmediate() {
 	if (IsDeleted()) return;
 
-	_SendDeleteEvent(StgShotManager::BIT_EV_DELETE_IMMEDIATE);
+	_SendDeleteEvent(TypeDelete::Immediate);
 
 	auto objectManager = stageController_->GetMainObjectManager();
 	objectManager->DeleteObject(this);
@@ -1114,13 +1182,13 @@ void StgShotObject::_ProcessTransformAct() {
 
 	if (timerTransform_ == 0) timerTransform_ = delay_.time;
 	while (timerTransform_ == frameWork_ && listTransformationShotAct_.size() > 0) {
-		StgPatternShotTransform& transform = listTransformationShotAct_.front();
+		StgShotPatternTransform& transform = listTransformationShotAct_.front();
 
 		switch (transform.act) {
-		case StgPatternShotTransform::TRANSFORM_WAIT:
+		case StgShotPatternTransform::TRANSFORM_WAIT:
 			timerTransform_ += std::max((int)transform.param[0], 0);
 			break;
-		case StgPatternShotTransform::TRANSFORM_ADD_SPEED_ANGLE:
+		case StgShotPatternTransform::TRANSFORM_ADD_SPEED_ANGLE:
 		{
 			int duration = transform.param[0];
 			int delay = transform.param[1];
@@ -1143,7 +1211,7 @@ void StgShotObject::_ProcessTransformAct() {
 			}
 			break;
 		}
-		case StgPatternShotTransform::TRANSFORM_ANGULAR_MOVE:
+		case StgShotPatternTransform::TRANSFORM_ANGULAR_MOVE:
 		{
 			int duration = transform.param[0];
 			double agvel = transform.param[1];
@@ -1166,7 +1234,7 @@ void StgShotObject::_ProcessTransformAct() {
 
 			break;
 		}
-		case StgPatternShotTransform::TRANSFORM_N_DECEL_CHANGE:
+		case StgShotPatternTransform::TRANSFORM_N_DECEL_CHANGE:
 		{
 			int timer = transform.param[0];
 			int countRep = transform.param[1];
@@ -1238,17 +1306,17 @@ void StgShotObject::_ProcessTransformAct() {
 
 			break;
 		}
-		case StgPatternShotTransform::TRANSFORM_GRAPHIC_CHANGE:
+		case StgShotPatternTransform::TRANSFORM_GRAPHIC_CHANGE:
 		{
 			idShotData_ = transform.param[0];
 			break;
 		}
-		case StgPatternShotTransform::TRANSFORM_BLEND_CHANGE:
+		case StgShotPatternTransform::TRANSFORM_BLEND_CHANGE:
 		{
 			SetBlendType((BlendMode)transform.param[0]);
 			break;
 		}
-		case StgPatternShotTransform::TRANSFORM_TO_SPEED_ANGLE:
+		case StgShotPatternTransform::TRANSFORM_TO_SPEED_ANGLE:
 		{
 			int duration = transform.param[0];
 			double targetSpeed = transform.param[1];
@@ -1293,7 +1361,7 @@ void StgShotObject::_ProcessTransformAct() {
 								pattern->AddCommand(std::make_pair(__cmd, __arg));
 #define ADD_CMD2(__cmd, __target, __arg) if (__target != StgMovePattern::NO_CHANGE) \
 								pattern->AddCommand(std::make_pair(__cmd, __arg));
-		case StgPatternShotTransform::TRANSFORM_ADDPATTERN_A1:
+		case StgShotPatternTransform::TRANSFORM_ADDPATTERN_A1:
 		{
 			int time = transform.param[0];
 
@@ -1309,7 +1377,7 @@ void StgShotObject::_ProcessTransformAct() {
 			AddPattern(time, pattern, true);
 			break;
 		}
-		case StgPatternShotTransform::TRANSFORM_ADDPATTERN_A2:
+		case StgShotPatternTransform::TRANSFORM_ADDPATTERN_A2:
 		{
 			int time = transform.param[0];
 
@@ -1337,7 +1405,7 @@ void StgShotObject::_ProcessTransformAct() {
 			AddPattern(time, pattern, true);
 			break;
 		}
-		case StgPatternShotTransform::TRANSFORM_ADDPATTERN_B1:
+		case StgShotPatternTransform::TRANSFORM_ADDPATTERN_B1:
 		{
 			int time = transform.param[0];
 
@@ -1353,7 +1421,7 @@ void StgShotObject::_ProcessTransformAct() {
 			AddPattern(time, pattern, true);
 			break;
 		}
-		case StgPatternShotTransform::TRANSFORM_ADDPATTERN_B2:
+		case StgShotPatternTransform::TRANSFORM_ADDPATTERN_B2:
 		{
 			int time = transform.param[0];
 
@@ -1380,7 +1448,7 @@ void StgShotObject::_ProcessTransformAct() {
 			AddPattern(time, pattern, true);
 			break;
 		}
-		case StgPatternShotTransform::TRANSFORM_ADDPATTERN_C1:
+		case StgShotPatternTransform::TRANSFORM_ADDPATTERN_C1:
 		{
 			int time = transform.param[0];
 
@@ -1398,7 +1466,7 @@ void StgShotObject::_ProcessTransformAct() {
 			AddPattern(time, pattern, true);
 			break;
 		}
-		case StgPatternShotTransform::TRANSFORM_ADDPATTERN_C2:
+		case StgShotPatternTransform::TRANSFORM_ADDPATTERN_C2:
 		{
 			int time = transform.param[0];
 
@@ -1463,6 +1531,16 @@ StgNormalShotObject::StgNormalShotObject(StgStageController* stageController) : 
 }
 StgNormalShotObject::~StgNormalShotObject() {
 }
+
+void StgNormalShotObject::Clone(DxScriptObjectBase* _src) {
+	StgShotObject::Clone(_src);
+
+	auto src = (StgNormalShotObject*)_src;
+
+	angularVelocity_ = src->angularVelocity_;
+	bFixedAngle_ = src->bFixedAngle_;
+}
+
 void StgNormalShotObject::Work() {
 	if (bEnableMovement_) {
 		_ProcessTransformAct();
@@ -1715,7 +1793,7 @@ void StgNormalShotObject::Render(BlendMode targetBlend) {
 	//if (bIntersected_) color = D3DCOLOR_ARGB(255, 255, 0, 0);
 }
 
-void StgNormalShotObject::_SendDeleteEvent(int type) {
+void StgNormalShotObject::_SendDeleteEvent(TypeDelete type) {
 	if (typeOwner_ != OWNER_ENEMY) return;
 
 	auto stageScriptManager = stageController_->GetScriptManager();
@@ -1726,37 +1804,31 @@ void StgNormalShotObject::_SendDeleteEvent(int type) {
 
 	if (!shotManager->IsDeleteEventEnable(type)) return;
 
-	LOCK_WEAK(itemScript, stageScriptManager->GetItemScript()) {
-		int typeEvent = 0;
-		switch (type) {
-		case StgShotManager::BIT_EV_DELETE_IMMEDIATE:
-			typeEvent = StgStageItemScript::EV_DELETE_SHOT_IMMEDIATE;
-			break;
-		case StgShotManager::BIT_EV_DELETE_TO_ITEM:
-			typeEvent = StgStageItemScript::EV_DELETE_SHOT_TO_ITEM;
-			break;
-		case StgShotManager::BIT_EV_DELETE_FADE:
-			typeEvent = StgStageItemScript::EV_DELETE_SHOT_FADE;
-			break;
-		}
+	{
+		int typeEvent = StgShotManager::_TypeDeleteToEventType(type);
 
-		Math::DVec2 pos{ GetPositionX(), GetPositionY() };
+		{
+			Math::DVec2 pos{ GetPositionX(), GetPositionY() };
 
-		gstd::value listScriptValue[3];
-		listScriptValue[0] = DxScript::CreateIntValue(idObject_);
-		listScriptValue[1] = DxScript::CreateFloatArrayValue(pos);
-		listScriptValue[2] = DxScript::CreateIntValue(GetShotDataID());
-		itemScript->RequestEvent(typeEvent, listScriptValue, 3);
+			LOCK_WEAK(itemScript, stageScriptManager->GetItemScript()) {
+				gstd::value listScriptValue[3];
+				listScriptValue[0] = DxScript::CreateIntValue(idObject_);
+				listScriptValue[1] = DxScript::CreateFloatArrayValue(pos);
+				listScriptValue[2] = DxScript::CreateIntValue(GetShotDataID());
+				itemScript->RequestEvent(typeEvent, listScriptValue, 3);
+			}
 
-		if (typeEvent == StgStageItemScript::EV_DELETE_SHOT_TO_ITEM && itemManager->IsDefaultBonusItemEnable()) {
-			if (itemManager->GetItemCount() < StgItemManager::ITEM_MAX) {
-				ref_unsync_ptr<StgItemObject> obj = new StgItemObject_Bonus(stageController_);
+			//Create default delete item
+			if (type == TypeDelete::Item && itemManager->IsDefaultBonusItemEnable()) {
+				if (itemManager->GetItemCount() < StgItemManager::ITEM_MAX) {
+					ref_unsync_ptr<StgItemObject> obj = new StgItemObject_Bonus(stageController_);
 
-				int id = objectManager->AddObject(obj);
-				if (id != DxScript::ID_INVALID) {
-					itemManager->AddItem(obj);
-					obj->SetPositionX(pos[0]);
-					obj->SetPositionY(pos[1]);
+					int id = objectManager->AddObject(obj);
+					if (id != DxScript::ID_INVALID) {
+						itemManager->AddItem(obj);
+						obj->SetPositionX(pos[0]);
+						obj->SetPositionY(pos[1]);
+					}
 				}
 			}
 		}
@@ -1813,6 +1885,21 @@ StgLaserObject::StgLaserObject(StgStageController* stageController) : StgShotObj
 	move_ = D3DXVECTOR2(1, 0);
 	lastAngle_ = 0;
 }
+
+void StgLaserObject::Clone(DxScriptObjectBase* _src) {
+	StgShotObject::Clone(_src);
+
+	auto src = (StgLaserObject*)_src;
+
+	length_ = src->length_;
+	widthRender_ = src->widthRender_;
+	widthIntersection_ = src->widthIntersection_;
+
+	invalidLengthStart_ = src->invalidLengthStart_;
+	invalidLengthEnd_ = src->invalidLengthEnd_;
+	itemDistance_ = src->itemDistance_;
+}
+
 void StgLaserObject::_AddIntersectionRelativeTarget() {
 	StgIntersectionManager* intersectionManager = stageController_->GetIntersectionManager();
 
@@ -1877,6 +1964,18 @@ StgLooseLaserObject::StgLooseLaserObject(StgStageController* stageController) : 
 
 	listIntersectionTarget_.push_back(CreateEmptyIntersection());
 }
+
+void StgLooseLaserObject::Clone(DxScriptObjectBase* _src) {
+	StgLaserObject::Clone(_src);
+
+	auto src = (StgLooseLaserObject*)_src;
+
+	posTail_ = src->posTail_;
+	posOrigin_ = src->posOrigin_;
+
+	currentLength_ = src->currentLength_;
+}
+
 void StgLooseLaserObject::Work() {
 	if (frameWork_ == 0) {
 		posTail_[0] = posOrigin_.x = posX_;
@@ -2063,7 +2162,7 @@ void StgLooseLaserObject::Render(BlendMode targetBlend) {
 	}
 }
 
-void StgLooseLaserObject::_SendDeleteEvent(int type) {
+void StgLooseLaserObject::_SendDeleteEvent(TypeDelete type) {
 	if (typeOwner_ != OWNER_ENEMY) return;
 
 	auto stageScriptManager = stageController_->GetScriptManager();
@@ -2074,19 +2173,10 @@ void StgLooseLaserObject::_SendDeleteEvent(int type) {
 
 	if (!shotManager->IsDeleteEventEnable(type)) return;
 
-	LOCK_WEAK(itemScript, stageScriptManager->GetItemScript()) {
-		int typeEvent = 0;
-		switch (type) {
-		case StgShotManager::BIT_EV_DELETE_IMMEDIATE:
-			typeEvent = StgStageItemScript::EV_DELETE_SHOT_IMMEDIATE;
-			break;
-		case StgShotManager::BIT_EV_DELETE_TO_ITEM:
-			typeEvent = StgStageItemScript::EV_DELETE_SHOT_TO_ITEM;
-			break;
-		case StgShotManager::BIT_EV_DELETE_FADE:
-			typeEvent = StgStageItemScript::EV_DELETE_SHOT_FADE;
-			break;
-		}
+	auto itemScript = stageScriptManager->GetItemScript().lock();
+
+	{
+		int typeEvent = StgShotManager::_TypeDeleteToEventType(type);
 
 		double ex = GetPositionX();
 		double ey = GetPositionY();
@@ -2097,14 +2187,17 @@ void StgLooseLaserObject::_SendDeleteEvent(int type) {
 		for (double itemPos = 0; itemPos < currentLength_; itemPos += itemDistance_) {
 			pos = { ex - itemPos * move_.x, ey - itemPos * move_.y };
 
-			gstd::value listScriptValue[3];
-			listScriptValue[0] = DxScript::CreateIntValue(idObject_);
-			listScriptValue[1] = DxScript::CreateFloatArrayValue(pos);
-			listScriptValue[2] = DxScript::CreateIntValue(GetShotDataID());
-			itemScript->RequestEvent(typeEvent, listScriptValue, 3);
+			if (itemScript) {
+				gstd::value listScriptValue[3];
+				listScriptValue[0] = DxScript::CreateIntValue(idObject_);
+				listScriptValue[1] = DxScript::CreateFloatArrayValue(pos);
+				listScriptValue[2] = DxScript::CreateIntValue(GetShotDataID());
+				itemScript->RequestEvent(typeEvent, listScriptValue, 3);
+			}
 
-			if (delay_.time == 0 || bEnableMotionDelay_) {
-				if (typeEvent == StgStageItemScript::EV_DELETE_SHOT_TO_ITEM && itemManager->IsDefaultBonusItemEnable()) {
+			//Create default delete item
+			if (type == TypeDelete::Item && itemManager->IsDefaultBonusItemEnable()) {
+				if (delay_.time == 0 || bEnableMotionDelay_) {
 					if (itemManager->GetItemCount() < StgItemManager::ITEM_MAX) {
 						ref_unsync_ptr<StgItemObject> obj = new StgItemObject_Bonus(stageController_);
 
@@ -2145,7 +2238,27 @@ StgStraightLaserObject::StgStraightLaserObject(StgStageController* stageControll
 
 	listIntersectionTarget_.push_back(CreateEmptyIntersection());
 }
+
+void StgStraightLaserObject::Clone(DxScriptObjectBase* _src) {
+	StgLaserObject::Clone(_src);
+
+	auto src = (StgStraightLaserObject*)_src;
+
+	angLaser_ = src->angLaser_;
+
+	bUseSouce_ = src->bUseSouce_;
+	bUseEnd_ = src->bUseEnd_;
+	idImageEnd_ = src->idImageEnd_;
+
+	delaySize_ = src->delaySize_;
+	scaleX_ = src->scaleX_;
+	bLaserExpand_ = src->bLaserExpand_;
+}
+
 void StgStraightLaserObject::Work() {
+	if (frameWork_ == 0 && delay_.time == 0) 
+		scaleX_ = 1.0f;
+
 	if (bEnableMovement_) {
 		_ProcessTransformAct();
 		_Move();
@@ -2153,8 +2266,10 @@ void StgStraightLaserObject::Work() {
 		
 		if (angVelLaser_ != 0) angLaser_ += angVelLaser_;
 		
-		if (delay_.time > 0)
-			--(delay_.time);
+		if (!bLaserExpand_ || delay_.time > 0) {
+			if (delay_.time > 0) --(delay_.time);
+			scaleX_ = std::max(0.05f, scaleX_ - 0.1f);
+		}
 		else if (bLaserExpand_)
 			scaleX_ = std::min(1.0f, scaleX_ + 0.1f);
 
@@ -2326,7 +2441,7 @@ void StgStraightLaserObject::Render(BlendMode targetBlend) {
 	}
 }
 
-void StgStraightLaserObject::_SendDeleteEvent(int type) {
+void StgStraightLaserObject::_SendDeleteEvent(TypeDelete type) {
 	if (typeOwner_ != OWNER_ENEMY) return;
 
 	auto stageScriptManager = stageController_->GetScriptManager();
@@ -2337,19 +2452,10 @@ void StgStraightLaserObject::_SendDeleteEvent(int type) {
 
 	if (!shotManager->IsDeleteEventEnable(type)) return;
 
-	LOCK_WEAK(itemScript, stageScriptManager->GetItemScript()) {
-		int typeEvent = 0;
-		switch (type) {
-		case StgShotManager::BIT_EV_DELETE_IMMEDIATE:
-			typeEvent = StgStageItemScript::EV_DELETE_SHOT_IMMEDIATE;
-			break;
-		case StgShotManager::BIT_EV_DELETE_TO_ITEM:
-			typeEvent = StgStageItemScript::EV_DELETE_SHOT_TO_ITEM;
-			break;
-		case StgShotManager::BIT_EV_DELETE_FADE:
-			typeEvent = StgStageItemScript::EV_DELETE_SHOT_FADE;
-			break;
-		}
+	auto itemScript = stageScriptManager->GetItemScript().lock();
+
+	{
+		int typeEvent = StgShotManager::_TypeDeleteToEventType(type);
 
 		Math::DVec2 pos;
 		gstd::value listScriptValue[3];
@@ -2357,14 +2463,17 @@ void StgStraightLaserObject::_SendDeleteEvent(int type) {
 		for (double itemPos = 0; itemPos < length_; itemPos += itemDistance_) {
 			pos = { posX_ + itemPos * move_.x, posY_ + itemPos * move_.y };
 
-			gstd::value listScriptValue[3];
-			listScriptValue[0] = DxScript::CreateIntValue(idObject_);
-			listScriptValue[1] = DxScript::CreateFloatArrayValue(pos);
-			listScriptValue[2] = DxScript::CreateIntValue(GetShotDataID());
-			itemScript->RequestEvent(typeEvent, listScriptValue, 3);
+			if (itemScript) {
+				gstd::value listScriptValue[3];
+				listScriptValue[0] = DxScript::CreateIntValue(idObject_);
+				listScriptValue[1] = DxScript::CreateFloatArrayValue(pos);
+				listScriptValue[2] = DxScript::CreateIntValue(GetShotDataID());
+				itemScript->RequestEvent(typeEvent, listScriptValue, 3);
+			}
 
-			if (delay_.time == 0) {
-				if (typeEvent == StgStageItemScript::EV_DELETE_SHOT_TO_ITEM && itemManager->IsDefaultBonusItemEnable()) {
+			//Create default delete item
+			if (type == TypeDelete::Item && itemManager->IsDefaultBonusItemEnable()) {
+				if (delay_.time == 0) {
 					if (itemManager->GetItemCount() < StgItemManager::ITEM_MAX) {
 						ref_unsync_ptr<StgItemObject> obj = new StgItemObject_Bonus(stageController_);
 
@@ -2400,6 +2509,23 @@ StgCurveLaserObject::StgCurveLaserObject(StgStageController* stageController) : 
 
 	posOrigin_ = D3DXVECTOR2(0, 0);
 }
+
+void StgCurveLaserObject::Clone(DxScriptObjectBase* _src) {
+	StgLaserObject::Clone(_src);
+
+	auto src = (StgCurveLaserObject*)_src;
+
+	listPosition_ = src->listPosition_;
+	vertexData_ = src->vertexData_;
+	listRectIncrement_ = src->listRectIncrement_;
+
+	posXO_ = src->posXO_;
+	posYO_ = src->posYO_;
+	tipDecrement_ = src->tipDecrement_;
+	bCap_ = src->bCap_;
+	posOrigin_ = src->posOrigin_;
+}
+
 void StgCurveLaserObject::Work() {
 	if (frameWork_ == 0) {
 		posOrigin_.x = posX_;
@@ -2787,7 +2913,7 @@ void StgCurveLaserObject::Render(BlendMode targetBlend) {
 				}
 
 				size_t countVert = vertexData_.size();
-				size_t countPrim = RenderObject::_GetPrimitiveCount(D3DPT_TRIANGLESTRIP, countVert);
+				size_t countPrim = RenderObjectPrimitive::GetPrimitiveCount(D3DPT_TRIANGLESTRIP, countVert);
 
 				{
 					BufferLockParameter lockParam = BufferLockParameter(D3DLOCK_DISCARD);
@@ -2838,7 +2964,7 @@ void StgCurveLaserObject::Render(BlendMode targetBlend) {
 	}
 }
 
-void StgCurveLaserObject::_SendDeleteEvent(int type) {
+void StgCurveLaserObject::_SendDeleteEvent(TypeDelete type) {
 	if (typeOwner_ != OWNER_ENEMY) return;
 
 	auto stageScriptManager = stageController_->GetScriptManager();
@@ -2849,19 +2975,10 @@ void StgCurveLaserObject::_SendDeleteEvent(int type) {
 
 	if (!shotManager->IsDeleteEventEnable(type)) return;
 
-	LOCK_WEAK(itemScript, stageScriptManager->GetItemScript()) {
-		int typeEvent = 0;
-		switch (type) {
-		case StgShotManager::BIT_EV_DELETE_IMMEDIATE:
-			typeEvent = StgStageItemScript::EV_DELETE_SHOT_IMMEDIATE;
-			break;
-		case StgShotManager::BIT_EV_DELETE_TO_ITEM:
-			typeEvent = StgStageItemScript::EV_DELETE_SHOT_TO_ITEM;
-			break;
-		case StgShotManager::BIT_EV_DELETE_FADE:
-			typeEvent = StgStageItemScript::EV_DELETE_SHOT_FADE;
-			break;
-		}
+	auto itemScript = stageScriptManager->GetItemScript().lock();
+
+	{
+		int typeEvent = StgShotManager::_TypeDeleteToEventType(type);
 
 		gstd::value listScriptValue[3];
 		listScriptValue[0] = DxScript::CreateIntValue(idObject_);
@@ -2869,11 +2986,14 @@ void StgCurveLaserObject::_SendDeleteEvent(int type) {
 
 		size_t countToItem = 0U;
 		auto _RequestItem = [&](double ix, double iy) {
-			listScriptValue[1] = itemScript->CreateFloatArrayValue(Math::DVec2{ ix, iy });
-			itemScript->RequestEvent(typeEvent, listScriptValue, 3);
+			if (itemScript) {
+				listScriptValue[1] = itemScript->CreateFloatArrayValue(Math::DVec2{ ix, iy });
+				itemScript->RequestEvent(typeEvent, listScriptValue, 3);
+			}
 
-			if (delay_.time == 0 || bEnableMotionDelay_) {
-				if (typeEvent == StgStageItemScript::EV_DELETE_SHOT_TO_ITEM && itemManager->IsDefaultBonusItemEnable()) {
+			//Create default delete item
+			if (type == TypeDelete::Item && itemManager->IsDefaultBonusItemEnable()) {
+				if (delay_.time == 0 || bEnableMotionDelay_) {
 					if (itemManager->GetItemCount() < StgItemManager::ITEM_MAX) {
 						ref_unsync_ptr<StgItemObject> obj = new StgItemObject_Bonus(stageController_);
 
@@ -2913,9 +3033,9 @@ void StgCurveLaserObject::_SendDeleteEvent(int type) {
 }
 
 //****************************************************************************
-//StgPatternShotObjectGenerator (ECL-style bullets firing)
+//StgShotPatternGeneratorObject (ECL-style bullets firing)
 //****************************************************************************
-StgPatternShotObjectGenerator::StgPatternShotObjectGenerator(StgStageController* stageController) {
+StgShotPatternGeneratorObject::StgShotPatternGeneratorObject(StgStageController* stageController) : StgObjectBase(stageController) {
 	stageController_ = stageController;
 	typeObject_ = TypeObject::ShotPattern;
 	bAutoDelete_ = false;
@@ -2948,54 +3068,56 @@ StgPatternShotObjectGenerator::StgPatternShotObjectGenerator(StgStageController*
 	laserWidth_ = 16;
 	laserLength_ = 64;
 }
-StgPatternShotObjectGenerator::~StgPatternShotObjectGenerator() {
-}
-
-void StgPatternShotObjectGenerator::CleanUp() {
+void StgShotPatternGeneratorObject::CleanUp() {
 	if (parent_ == nullptr && bAutoDelete_) {
 		auto objectManager = stageController_->GetMainObjectManager();
 		objectManager->DeleteObject(this);
 	}
 }
 
-void StgPatternShotObjectGenerator::CopyFrom(StgPatternShotObjectGenerator* other) {
-	parent_ = other->parent_;
-	shotParent_ = other->shotParent_;
-	listTransformation_ = other->listTransformation_;
-	bAutoDelete_ = other->bAutoDelete_;
 
-	idShotData_ = other->idShotData_;
-	//typeOwner_ = other->typeOwner_;
-	typeShot_ = other->typeShot_;
-	typePattern_ = other->typePattern_;
-	iniBlendType_ = other->iniBlendType_;
+void StgShotPatternGeneratorObject::Clone(DxScriptObjectBase* _src) {
+	DxScriptObjectBase::Clone(_src);
 
-	shotWay_ = other->shotWay_;
-	shotStack_ = other->shotStack_;
+	auto src = (StgShotPatternGeneratorObject*)_src;
 
-	basePointX_ = other->basePointX_;
-	basePointY_ = other->basePointY_;
-	basePointOffsetX_ = other->basePointOffsetX_;
-	basePointOffsetY_ = other->basePointOffsetY_;
-	fireRadiusOffset_ = other->fireRadiusOffset_;
+	parent_ = src->parent_;
 
-	speedBase_ = other->speedBase_;
-	speedArgument_ = other->speedArgument_;
-	angleBase_ = other->angleBase_;
-	angleArgument_ = other->angleArgument_;
+	idShotData_ = src->idShotData_;
+	typeOwner_ = src->typeOwner_;
+	typeShot_ = src->typeShot_;
+	typePattern_ = src->typePattern_;
+	iniBlendType_ = src->iniBlendType_;
 
-	delay_ = other->delay_;
-	//delayMove_ = other->delayMove_;
+	shotWay_ = src->shotWay_;
+	shotStack_ = src->shotStack_;
 
-	laserWidth_ = other->laserWidth_;
-	laserLength_ = other->laserLength_;
+	basePointX_ = src->basePointX_;
+	basePointY_ = src->basePointY_;
+	basePointOffsetX_ = src->basePointOffsetX_;
+	basePointOffsetY_ = src->basePointOffsetY_;
+	fireRadiusOffset_ = src->fireRadiusOffset_;
+
+	speedBase_ = src->speedBase_;
+	speedArgument_ = src->speedArgument_;
+	angleBase_ = src->angleBase_;
+	angleArgument_ = src->angleArgument_;
+
+	delay_ = src->delay_;
+	//delayMove_ = src->delayMove_;
+
+	laserWidth_ = src->laserWidth_;
+	laserLength_ = src->laserLength_;
+
+	listTransformation_ = src->listTransformation_;
 }
-void StgPatternShotObjectGenerator::SetTransformation(size_t off, StgPatternShotTransform& entry) {
+
+void StgShotPatternGeneratorObject::SetTransformation(size_t off, StgShotPatternTransform& entry) {
 	if (off >= listTransformation_.size()) listTransformation_.resize(off + 1);
 	listTransformation_[off] = entry;
 }
 
-void StgPatternShotObjectGenerator::FireSet(void* scriptData, StgStageController* controller, std::vector<int>* idVector) {
+void StgShotPatternGeneratorObject::FireSet(void* scriptData, StgStageController* controller, std::vector<int>* idVector) {
 	if (idVector) idVector->clear();
 
 	StgStageScript* script = (StgStageScript*)scriptData;
@@ -3018,8 +3140,8 @@ void StgPatternShotObjectGenerator::FireSet(void* scriptData, StgStageController
 	basePosX += basePointOffsetX_;
 	basePosY += basePointOffsetY_;
 
-	std::list<StgPatternShotTransform> transformAsList;
-	for (StgPatternShotTransform& iTransform : listTransformation_)
+	std::list<StgShotPatternTransform> transformAsList;
+	for (StgShotPatternTransform& iTransform : listTransformation_)
 		transformAsList.push_back(iTransform);
 
 	auto __CreateShot = [&](float _x, float _y, double _ss, double _sa) -> bool {

@@ -258,6 +258,7 @@ static const std::vector<function> commonFunction = {
 	//Path utilities
 	{ "GetParentScriptDirectory", ScriptClientBase::Func_GetParentScriptDirectory, 0 },
 	{ "GetCurrentScriptDirectory", ScriptClientBase::Func_GetCurrentScriptDirectory, 0 },
+	{ "GetCurrentScriptPath", ScriptClientBase::Func_GetCurrentScriptPath, 0 },
 	{ "GetFilePathList", ScriptClientBase::Func_GetFilePathList, 1 },
 	{ "GetDirectoryList", ScriptClientBase::Func_GetDirectoryList, 1 },
 
@@ -2075,6 +2076,12 @@ value ScriptClientBase::Func_GetCurrentScriptDirectory(script_machine* machine, 
 	std::wstring res = PathProperty::GetFileDirectory(path);
 	return script->CreateStringValue(res);
 }
+value ScriptClientBase::Func_GetCurrentScriptPath(script_machine* machine, int argc, const value* argv) {
+	ScriptClientBase* script = reinterpret_cast<ScriptClientBase*>(machine->data);
+	int line = machine->get_current_line();
+	std::wstring& res = script->GetEngine()->GetScriptFileLineMap()->GetPath(line);
+	return script->CreateStringValue(res);
+}
 value ScriptClientBase::Func_GetFilePathList(script_machine* machine, int argc, const value* argv) {
 	ScriptClientBase* script = reinterpret_cast<ScriptClientBase*>(machine->data);
 	std::wstring dir = PathProperty::GetFileDirectory(argv->as_string());
@@ -2499,8 +2506,6 @@ ScriptLoader::ScriptLoader(ScriptClientBase* script, const std::wstring& path, s
 
 	mapLine_ = mapLine;
 }
-ScriptLoader::~ScriptLoader() {
-}
 
 void ScriptLoader::_RaiseError(int line, const std::wstring& err) {
 	script_->engine_->SetSource(src_);
@@ -2625,9 +2630,9 @@ void ScriptLoader::Parse() {
 			file.Close();
 		}
 	}
-	catch (wexception& e) {
+	catch (const wexception& e) {
 		int line = scanner_->GetCurrentLine();
-		_RaiseError(line, e.GetMessageW());
+		_RaiseError(line, e.GetErrorMessage());
 	}
 
 	for (size_t i = 0; i < charSize_; ++i)

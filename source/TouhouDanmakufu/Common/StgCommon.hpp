@@ -2,6 +2,8 @@
 
 #include "../../GcLib/pch.h"
 
+#include "StgObjectBase.hpp"
+
 #include "DnhCommon.hpp"
 #include "DnhGcLibImpl.hpp"
 #include "DnhReplay.hpp"
@@ -19,11 +21,9 @@ class StgMoveParent;
 //*******************************************************************
 //StgMoveObject
 //*******************************************************************
-class StgMoveObject {
+class StgMoveObject : public StgObjectBase {
 	friend StgMovePattern;
 	friend StgMoveParent;
-private:
-	StgStageController* stageController_;
 protected:
 	double posX_;
 	double posY_;
@@ -46,6 +46,8 @@ protected:
 public:
 	StgMoveObject(StgStageController* stageController);
 	virtual ~StgMoveObject();
+
+	virtual void Copy(StgMoveObject* src);
 
 	void Move();
 
@@ -92,13 +94,12 @@ class StgMoveParent : public DxScriptObjectBase {
 	friend StgMoveObject;
 public:
 	enum {
-		ANGLE_FIXED,		// Angle is untouched, only changed via move pattern if applicable
-		ANGLE_ROTATE,		// Increment angle only when transform angle is changed
-		ANGLE_FOLLOW,		// Match angle to that of the target move object (same as ANGLE_FIXED if no target is set)
-		ANGLE_ABSOLUTE,		// Get absolute angle from last position
-		ANGLE_RELATIVE,		// Get angle from last position relative to base point
-		ANGLE_OUTWARD,		// Face outwards from base point
-		ANGLE_INWARD,		// Face inwards from base point
+		ANGLE_FIXED,		// Angle is untouched, only changed via move pattern if applicable (arg: specified angle; NO_CHANGE to keep current angle)
+		ANGLE_ROTATE,		// Increment angle only when transform angle is changed (arg: rotated per parent rotation degree; 1 is default)
+		ANGLE_CENTER,		// Face a specific angle from the base point (arg: degree offset)
+		ANGLE_FOLLOW,		// Match angle to that of the target move object (arg: degree offset)
+		ANGLE_ABSOLUTE,		// Get absolute angle from last position (arg: degree offset)
+		ANGLE_RELATIVE,		// Get angle from last position relative to base point (arg: degree offset)
 	};
 	enum {
 		ORDER_ANGLE_SCALE,
@@ -109,13 +110,12 @@ private:
 protected:
 	ref_unsync_weak_ptr<StgMoveObject> target_;
 	int typeAngle_;
+	double argAngle_;
 	int transOrder_;
 	bool bAutoDelete_;
 	bool bAutoDeleteChildren_;
 	bool bMoveChild_;
-	bool bTransNewChild_;
 	bool bRotateLaser_;
-	// bool bTransformMove_;
 
 	double posX_;
 	double posY_;
@@ -135,12 +135,12 @@ public:
 	StgMoveParent(StgStageController* stageController);
 	~StgMoveParent();
 
+	virtual void Clone(DxScriptObjectBase* src);
+
 	virtual void Work();
 	virtual void Render() {}
 	virtual void SetRenderState() {}
 	virtual void CleanUp();
-
-	void CopyFrom(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveParent> other);
 
 	void SetParentObject(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveObject> parent);
 	ref_unsync_weak_ptr<StgMoveParent> GetParentObject() { return target_;  }
@@ -163,12 +163,10 @@ public:
 	double GetTransformScaleX() { return scaX_; }
 	double GetTransformScaleY() { return scaY_; }
 	double GetTransformAngle() { return rotZ_; }
-	void SetChildAngleMode(int type) { typeAngle_ = type; }
+	void SetChildAngleMode(int type, double arg) { typeAngle_ = type; argAngle_ = arg;  }
 	int GetChildAngleMode() { return typeAngle_;  }
 	void SetChildMotionEnable(bool enable) { bMoveChild_ = enable; }
 	void SetLaserRotationEnable(bool enable) { bRotateLaser_ = enable; }
-	void SetChildAdditionTransformEnable(bool enable) { bTransNewChild_ = enable; }
-	// void SetChildMotionTransformEnable(bool enable) { bTransformMove_ = enable;  }
 	void SetTransformOrder(int order) { transOrder_ = order; }
 	void ApplyTransformation();
 	void ResetTransformation() { scaX_ = 1; scaY_ = 1; rotZ_ = 0; }
@@ -193,7 +191,6 @@ public:
 		TYPE_XY,
 		TYPE_XY_ANG,
 		TYPE_LINE,
-		
 
 		NO_CHANGE = -0x1000000,
 		TOPLAYER_CHANGE = 0x1000000,
@@ -213,12 +210,15 @@ protected:
 
 	std::list<std::pair<int8_t, double>> listCommand_;
 
-	StgStageController* _GetStageController() { return target_->stageController_; }
+	StgStageController* _GetStageController() { return target_->GetStageController(); }
 	ref_unsync_ptr<StgMoveObject> _GetMoveObject(int id);
 	void _RegisterShotDataID();
 public:
 	StgMovePattern(StgMoveObject* target);
 	virtual ~StgMovePattern() {}
+
+	virtual void CopyFrom(StgMovePattern* src);
+	virtual StgMovePattern* CreateCopy(StgMoveObject* target) = 0;
 
 	virtual void Activate(StgMovePattern* src) {}
 	virtual void Move() = 0;
@@ -271,6 +271,11 @@ protected:
 public:
 	StgMovePattern_Angle(StgMoveObject* target);
 
+	virtual void CopyFrom(StgMovePattern* src);
+	virtual StgMovePattern* CreateCopy(StgMoveObject* target) {
+		return new StgMovePattern_Angle(target);
+	}
+
 	virtual void Activate(StgMovePattern* src);
 	virtual void Move();
 
@@ -316,6 +321,11 @@ protected:
 	double maxSpeedY_;
 public:
 	StgMovePattern_XY(StgMoveObject* target);
+
+	virtual void CopyFrom(StgMovePattern* src);
+	virtual StgMovePattern* CreateCopy(StgMoveObject* target) {
+		return new StgMovePattern_XY(target);
+	}
 
 	virtual void Activate(StgMovePattern* src);
 	virtual void Move();
@@ -372,6 +382,11 @@ protected:
 public:
 	StgMovePattern_XY_Angle(StgMoveObject* target);
 
+	virtual void CopyFrom(StgMovePattern* src);
+	virtual StgMovePattern* CreateCopy(StgMoveObject* target) {
+		return new StgMovePattern_XY_Angle(target);
+	}
+
 	virtual void Activate(StgMovePattern* src);
 	virtual void Move();
 
@@ -409,7 +424,6 @@ public:
 
 class StgMovePattern_Line : public StgMovePattern {
 	friend class StgMoveObject;
-
 public:
 	enum : int8_t {
 		SET_DX,
@@ -432,10 +446,15 @@ protected:
 	uint32_t maxFrame_;
 	double speed_;
 	
-	double iniPos_[2];
-	double targetPos_[2];
+	Math::DVec2 iniPos_;
+	Math::DVec2 targetPos_;
 public:
 	StgMovePattern_Line(StgMoveObject* target);
+
+	virtual void CopyFrom(StgMovePattern* src);
+	virtual StgMovePattern* CreateCopy(StgMoveObject* target) {
+		return new StgMovePattern_Line(target);
+	}
 
 	virtual void Activate(StgMovePattern* src);
 	virtual void Move();
@@ -451,6 +470,10 @@ class StgMovePattern_Line_Speed : public StgMovePattern_Line {
 public:
 	StgMovePattern_Line_Speed(StgMoveObject* target);
 
+	virtual StgMovePattern* CreateCopy(StgMoveObject* target) {
+		return new StgMovePattern_Line_Speed(target);
+	}
+
 	void SetAtSpeed(double tx, double ty, double speed);
 };
 class StgMovePattern_Line_Frame : public StgMovePattern_Line {
@@ -465,6 +488,11 @@ protected:
 public:
 	StgMovePattern_Line_Frame(StgMoveObject* target);
 
+	virtual void CopyFrom(StgMovePattern* src);
+	virtual StgMovePattern* CreateCopy(StgMoveObject* target) {
+		return new StgMovePattern_Line_Frame(target);
+	}
+
 	virtual void Move();
 
 	void SetAtFrame(double tx, double ty, uint32_t frame, lerp_func lerpFunc, lerp_diff_func diffFunc);
@@ -477,6 +505,11 @@ protected:
 	double maxSpeed_;
 public:
 	StgMovePattern_Line_Weight(StgMoveObject* target);
+
+	virtual void CopyFrom(StgMovePattern* src);
+	virtual StgMovePattern* CreateCopy(StgMoveObject* target) {
+		return new StgMovePattern_Line_Weight(target);
+	}
 
 	virtual void Move();
 

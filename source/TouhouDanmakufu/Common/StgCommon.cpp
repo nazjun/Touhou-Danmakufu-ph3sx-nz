@@ -6,12 +6,11 @@
 //****************************************************************************
 //StgMoveObject
 //****************************************************************************
-StgMoveObject::StgMoveObject(StgStageController* stageController) {
+StgMoveObject::StgMoveObject(StgStageController* stageController) : StgObjectBase(stageController) {
 	posX_ = 0;
 	posY_ = 0;
 
 	framePattern_ = 0;
-	stageController_ = stageController;
 
 	pattern_ = nullptr;
 	bEnableMovement_ = true;
@@ -33,6 +32,36 @@ StgMoveObject::~StgMoveObject() {
 				iPar->UpdatePosition();
 			}
 		}
+	}
+}
+
+void StgMoveObject::Copy(StgMoveObject* src) {
+	posX_ = src->posX_;
+	posY_ = src->posY_;
+
+	auto _ClonePattern = [](StgMovePattern* srcPattern, StgMoveObject* newTarget) {
+		ref_unsync_ptr<StgMovePattern> pattern = nullptr;
+		if (srcPattern) {
+			pattern = srcPattern->CreateCopy(newTarget);		//Takes ownership of raw ptr
+			pattern->CopyFrom(srcPattern);
+		}
+		return pattern;
+	};
+
+	pattern_ = _ClonePattern(src->pattern_.get(), this);
+
+	bEnableMovement_ = src->bEnableMovement_;
+	frameMove_ = src->frameMove_;
+	framePattern_ = src->framePattern_;
+
+	mapPattern_.clear();
+	for (auto& iPair : src->mapPattern_) {
+		std::list<ref_unsync_ptr<StgMovePattern>> listPattern;
+		for (auto& iPattern : iPair.second) {
+			auto pattern = _ClonePattern(iPattern.get(), this);
+			listPattern.push_back(pattern);
+		}
+		mapPattern_[iPair.first] = listPattern;
 	}
 }
 void StgMoveObject::Move() {
@@ -211,11 +240,11 @@ StgMoveParent::StgMoveParent(StgStageController* stageController) {
 
 	target_ = nullptr;
 	typeAngle_ = ANGLE_FIXED;
+	argAngle_ = StgMovePattern::NO_CHANGE;
 	transOrder_ = ORDER_ANGLE_SCALE;
 	bAutoDelete_ = false;
 	bAutoDeleteChildren_ = false;
 	bMoveChild_ = true;
-	bTransNewChild_ = false;
 	bRotateLaser_ = false;
 
 	posX_ = 0;
@@ -241,6 +270,30 @@ StgMoveParent::~StgMoveParent() {
 		}
 	}
 	target_ = nullptr;
+}
+void StgMoveParent::Clone(DxScriptObjectBase* _src) {
+	DxScriptObjectBase::Clone(_src);
+
+	auto src = (StgMoveParent*)_src;
+
+	SetParentObject(ref_unsync_ptr<StgShotObject>::Cast(stageController_->GetMainRenderObject(idObject_)), src->target_); // ew
+	SetTransformAngle(src->rotZ_);
+
+	typeAngle_ = src->typeAngle_;
+	argAngle_ = src->argAngle_;
+	transOrder_ = src->transOrder_;
+	bAutoDelete_ = src->bAutoDelete_;
+	bAutoDeleteChildren_ = src->bAutoDeleteChildren_;
+	bMoveChild_ = src->bMoveChild_;
+	bRotateLaser_ = src->bRotateLaser_;
+
+	offX_ = src->offX_;
+	offY_ = src->offY_;
+	scaX_ = src->scaX_;
+	scaY_ = src->scaY_;
+	wvlZ_ = src->wvlZ_;
+	accZ_ = src->accZ_;
+	maxZ_ = src->maxZ_;
 }
 void StgMoveParent::Work() {
 	if (target_ != nullptr || bAutoDelete_) return;
@@ -276,26 +329,6 @@ void StgMoveParent::CleanUp() {
 		}
 	}
 }
-void StgMoveParent::CopyFrom(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveParent> other) {
-	SetParentObject(self, other->target_);
-	SetTransformAngle(other->rotZ_);
-
-	typeAngle_ = other->typeAngle_;
-	transOrder_ = other->transOrder_;
-	bAutoDelete_ = other->bAutoDelete_;
-	bAutoDeleteChildren_ = other->bAutoDeleteChildren_;
-	bMoveChild_ = other->bMoveChild_;
-	bTransNewChild_ = other->bTransNewChild_;
-	bRotateLaser_ = other->bRotateLaser_;
-
-	offX_ = other->offX_;
-	offY_ = other->offY_;
-	scaX_ = other->scaX_;
-	scaY_ = other->scaY_;
-	wvlZ_ = other->wvlZ_;
-	accZ_ = other->accZ_;
-	maxZ_ = other->maxZ_;
-}
 void StgMoveParent::SetParentObject(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync_weak_ptr<StgMoveObject> parent) {
 	if (target_ == parent) return; // Exit if target is the same
 
@@ -323,18 +356,7 @@ void StgMoveParent::AddChild(ref_unsync_weak_ptr<StgMoveParent> self, ref_unsync
 	}
 	child->SetParent(self);
 	listChild_.push_back(child);
-
-	if (bTransNewChild_) {
-		child->UpdateRelativePosition(false);
-		if (typeAngle_ == ANGLE_ROTATE) {
-			child->SetDirectionAngle(child->GetDirectionAngle() + rotZ_);
-			if (bRotateLaser_) {
-				StgStraightLaserObject* laser = dynamic_cast<StgStraightLaserObject*>(child.get());
-				if (laser) laser->SetLaserAngle(laser->GetLaserAngle() + rotZ_);
-			}
-		}
-	} else child->UpdateRelativePosition();
-
+	child->UpdateRelativePosition();
 }
 void StgMoveParent::RemoveChildren() {
 	if (listChild_.size() > 0) {
@@ -379,7 +401,7 @@ void StgMoveParent::SwapChildren(ref_unsync_weak_ptr<StgMoveParent> self, ref_un
 }
 void StgMoveParent::SetTransformAngle(double z) {
 	if (typeAngle_ == ANGLE_ROTATE) {
-		double diff = z - rotZ_;
+		double diff = (z - rotZ_) * argAngle_;
 		for (auto& child : listChild_) {
 			if (child) {
 				child->SetDirectionAngle(child->GetDirectionAngle() + diff);
@@ -428,13 +450,15 @@ void StgMoveParent::MoveChild(StgMoveObject* child) {
 	child->SetPositionX(x1);
 	child->SetPositionY(y1);
 
-	double dir = StgMovePattern::NO_CHANGE;
-	if (typeAngle_ == ANGLE_OUTWARD)
-		dir = atan2(y1 - pY, x1 - pX);
-	else if (typeAngle_ == ANGLE_INWARD)
-		dir = atan2(pY - y1, pX - x1);
-	
-	if (dir != StgMovePattern::NO_CHANGE) {
+	if ((typeAngle_ == ANGLE_FIXED && argAngle_ != StgMovePattern::NO_CHANGE) || typeAngle_ == ANGLE_CENTER) {
+		double dir;
+		double arg = Math::DegreeToRadian(argAngle_);
+
+		if (typeAngle_ == ANGLE_FIXED)
+			dir = arg;
+		else if (typeAngle_ == ANGLE_CENTER)
+			dir = atan2(y1 - pY, x1 - pX) + arg;
+
 		child->SetDirectionAngle(dir);
 		if (bRotateLaser_) {
 			StgStraightLaserObject* laser = dynamic_cast<StgStraightLaserObject*>(child);
@@ -484,10 +508,11 @@ void StgMoveParent::UpdateChildren() {
 			}
 			else {
 				if (target_ && typeAngle_ == ANGLE_FOLLOW) {
-					child->SetDirectionAngle(target_->GetDirectionAngle());
+					double dir = target_->GetDirectionAngle() + Math::DegreeToRadian(argAngle_);
+					child->SetDirectionAngle(dir);
 					if (bRotateLaser_) {
 						StgStraightLaserObject* laser = dynamic_cast<StgStraightLaserObject*>(child);
-						if (laser) laser->SetLaserAngle(target_->GetDirectionAngle());
+						if (laser) laser->SetLaserAngle(dir);
 					}
 				}
 				double x0 = child->posX_;
@@ -499,6 +524,7 @@ void StgMoveParent::UpdateChildren() {
 					if (child->GetSpeed() != 0) child->UpdateRelativePosition();
 				}
 
+				// Honestly, just don't use these
 				if (typeAngle_ == ANGLE_ABSOLUTE || typeAngle_ == ANGLE_RELATIVE) {
 					double x1 = child->posX_;
 					double y1 = child->posY_;
@@ -514,8 +540,8 @@ void StgMoveParent::UpdateChildren() {
 					double y = y1 - y0;
 
 					// This is to prevent, uh, angular seizures
-					if (hypot(x, y) > 0.0001) {
-						double dir = atan2(y, x);
+					if (x != 0 || y != 0) {
+						double dir = atan2(y, x) + Math::DegreeToRadian(argAngle_);
 						child->SetDirectionAngle(dir);
 						if (bRotateLaser_) {
 							StgStraightLaserObject* laser = dynamic_cast<StgStraightLaserObject*>(child);
@@ -541,6 +567,19 @@ StgMovePattern::StgMovePattern(StgMoveObject* target) {
 	c_ = 1;
 	s_ = 0;
 }
+
+void StgMovePattern::CopyFrom(StgMovePattern* src) {
+	typeMove_ = src->typeMove_;
+	frameWork_ = src->frameWork_;
+	idShotData_ = src->idShotData_;
+
+	c_ = src->c_;
+	s_ = src->s_;
+	angDirection_ = src->angDirection_;
+
+	listCommand_ = src->listCommand_;
+}
+
 ref_unsync_ptr<StgMoveObject> StgMovePattern::_GetMoveObject(int id) {
 	if (id == DxScript::ID_INVALID) return nullptr;
 
@@ -571,6 +610,20 @@ StgMovePattern_Angle::StgMovePattern_Angle(StgMoveObject* target) : StgMovePatte
 	angularMaxVelocity_ = 0;
 	objRelative_ = ref_unsync_weak_ptr<StgMoveObject>();
 }
+
+void StgMovePattern_Angle::CopyFrom(StgMovePattern* _src) {
+	StgMovePattern::CopyFrom(_src);
+	auto src = (StgMovePattern_Angle*)_src;
+
+	speed_ = src->speed_;
+	acceleration_ = src->acceleration_;
+	maxSpeed_ = src->maxSpeed_;
+	angularVelocity_ = src->angularVelocity_;
+	angularAcceleration_ = src->angularAcceleration_;
+	angularMaxVelocity_ = src->angularMaxVelocity_;
+	objRelative_ = src->objRelative_;
+}
+
 void StgMovePattern_Angle::Move() {
 	double angle = angDirection_;
 
@@ -738,6 +791,17 @@ StgMovePattern_XY::StgMovePattern_XY(StgMoveObject* target) : StgMovePattern(tar
 	maxSpeedX_ = 0;
 	maxSpeedY_ = 0;
 }
+
+void StgMovePattern_XY::CopyFrom(StgMovePattern* _src) {
+	StgMovePattern::CopyFrom(_src);
+	auto src = (StgMovePattern_XY*)_src;
+
+	accelerationX_ = src->accelerationX_;
+	accelerationY_ = src->accelerationY_;
+	maxSpeedX_ = src->maxSpeedX_;
+	maxSpeedY_ = src->maxSpeedY_;
+}
+
 void StgMovePattern_XY::Move() {
 	if (accelerationX_ != 0) {
 		c_ += accelerationX_;
@@ -866,6 +930,21 @@ StgMovePattern_XY_Angle::StgMovePattern_XY_Angle(StgMoveObject* target) : StgMov
 	angOffAcceleration_ = 0;
 	angOffMaxVelocity_ = 0;
 }
+
+void StgMovePattern_XY_Angle::CopyFrom(StgMovePattern* _src) {
+	StgMovePattern::CopyFrom(_src);
+	auto src = (StgMovePattern_XY_Angle*)_src;
+
+	accelerationX_ = src->accelerationX_;
+	accelerationY_ = src->accelerationY_;
+	maxSpeedX_ = src->maxSpeedX_;
+	maxSpeedY_ = src->maxSpeedY_;
+	angOff_ = src->angOff_;
+	angOffVelocity_ = src->angOffVelocity_;
+	angOffAcceleration_ = src->angOffAcceleration_;
+	angOffMaxVelocity_ = src->angOffMaxVelocity_;
+}
+
 void StgMovePattern_XY_Angle::Move() {
 	if (accelerationX_ != 0) {
 		c_ += accelerationX_;
@@ -1015,9 +1094,21 @@ StgMovePattern_Line::StgMovePattern_Line(StgMoveObject* target) : StgMovePattern
 	maxFrame_ = -1;
 	speed_ = 0;
 	angDirection_ = 0;
-	memset(iniPos_, 0x00, sizeof(iniPos_));
-	memset(targetPos_, 0x00, sizeof(targetPos_));
+	iniPos_ = { 0, 0 };
+	targetPos_ = { 0, 0 };
 }
+
+void StgMovePattern_Line::CopyFrom(StgMovePattern* _src) {
+	StgMovePattern::CopyFrom(_src);
+	auto src = (StgMovePattern_Line*)_src;
+
+	typeLine_ = src->typeLine_;
+	maxFrame_ = src->maxFrame_;
+	speed_ = src->speed_;
+	iniPos_ = src->iniPos_;
+	targetPos_ = src->targetPos_;
+}
+
 void StgMovePattern_Line::Move() {
 	if (frameWork_ < maxFrame_) {
 		target_->SetPositionX(fma(speed_, c_, target_->GetPositionX()));
@@ -1112,6 +1203,14 @@ StgMovePattern_Line_Frame::StgMovePattern_Line_Frame(StgMoveObject* target) : St
 	moveLerpFunc = Math::Lerp::Linear<double, double>;
 	diffLerpFunc = Math::Lerp::DifferentialLinear<double>;
 }
+void StgMovePattern_Line_Frame::CopyFrom(StgMovePattern* _src) {
+	StgMovePattern_Line::CopyFrom(_src);
+	auto src = (StgMovePattern_Line_Frame*)_src;
+
+	speedRate_ = src->speedRate_;
+	moveLerpFunc = src->moveLerpFunc;
+	diffLerpFunc = src->diffLerpFunc;
+}
 void StgMovePattern_Line_Frame::SetAtFrame(double tx, double ty, uint32_t frame, lerp_func lerpFunc, lerp_diff_func diffFunc) {
 	iniPos_[0] = target_->GetPositionX();
 	iniPos_[1] = target_->GetPositionY();
@@ -1158,6 +1257,14 @@ StgMovePattern_Line_Weight::StgMovePattern_Line_Weight(StgMoveObject* target) : 
 	dist_ = 0;
 	weight_ = 0;
 	maxSpeed_ = 0;
+}
+void StgMovePattern_Line_Weight::CopyFrom(StgMovePattern* _src) {
+	StgMovePattern_Line::CopyFrom(_src);
+	auto src = (StgMovePattern_Line_Weight*)_src;
+
+	dist_ = src->dist_;
+	weight_ = src->weight_;
+	maxSpeed_ = src->maxSpeed_;
 }
 void StgMovePattern_Line_Weight::SetAtWeight(double tx, double ty, double weight, double maxSpeed) {
 	iniPos_[0] = target_->GetPositionX();

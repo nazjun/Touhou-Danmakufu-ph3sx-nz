@@ -429,7 +429,6 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjMoveParent_GetChildren", StgStageScript::Func_ObjMoveParent_GetChildren, 1 },
 	{ "ObjMoveParent_RemoveChildren", StgStageScript::Func_ObjMoveParent_RemoveChildren, 1 },
 	{ "ObjMoveParent_TransferChildren", StgStageScript::Func_ObjMoveParent_TransferChildren, 2 },
-	{ "ObjMoveParent_SwapChildren", StgStageScript::Func_ObjMoveParent_SwapChildren, 2 },
 	{ "ObjMoveParent_SetPositionOffset", StgStageScript::Func_ObjMoveParent_SetPositionOffset, 3 },
 	{ "ObjMoveParent_SetPositionOffsetCircle", StgStageScript::Func_ObjMoveParent_SetPositionOffsetCircle, 3 },
 	{ "ObjMoveParent_SetTransformScale", StgStageScript::Func_ObjMoveParent_SetTransformScale, 3 },
@@ -443,14 +442,12 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjMoveParent_GetTransformScaleX", StgStageScript::Func_ObjMoveParent_GetTransformScaleX, 1 },
 	{ "ObjMoveParent_GetTransformScaleY", StgStageScript::Func_ObjMoveParent_GetTransformScaleY, 1 },
 	{ "ObjMoveParent_GetTransformAngle", StgStageScript::Func_ObjMoveParent_GetTransformAngle , 1 },
-	{ "ObjMoveParent_SetChildAngleMode", StgStageScript::Func_ObjMoveParent_SetChildAngleMode, 2 },
+	{ "ObjMoveParent_SetChildAngleMode", StgStageScript::Func_ObjMoveParent_SetChildAngleMode, 3 },
 	{ "ObjMoveParent_SetChildMotionEnable", StgStageScript::Func_ObjMoveParent_SetChildMotionEnable, 2 },
-	{ "ObjMoveParent_SetChildAdditionTransformEnable", StgStageScript::Func_ObjMoveParent_SetChildAdditionTransformEnable, 2 },
 	{ "ObjMoveParent_SetLaserRotationEnable", StgStageScript::Func_ObjMoveParent_SetLaserRotationEnable, 2 },
 	{ "ObjMoveParent_SetTransformOrder", StgStageScript::Func_ObjMoveParent_SetTransformOrder, 2 },
 	{ "ObjMoveParent_ApplyTransformation", StgStageScript::Func_ObjMoveParent_ApplyTransformation, 1 },
 	{ "ObjMoveParent_ResetTransformation", StgStageScript::Func_ObjMoveParent_ResetTransformation, 1 },
-	{ "ObjMoveParent_CopySettings", StgStageScript::Func_ObjMoveParent_CopySettings, 2 },
 
 	//STG共通関数：敵オブジェクト操作
 	{ "ObjEnemy_Create", StgStageScript::Func_ObjEnemy_Create, 1 },
@@ -462,6 +459,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjEnemy_AddLife", StgStageScript::Func_ObjEnemy_AddLife<false>, 2 },
 	{ "ObjEnemy_AddLifeEx", StgStageScript::Func_ObjEnemy_AddLife<true>, 2 },
 	{ "ObjEnemy_SetDamageRate", StgStageScript::Func_ObjEnemy_SetDamageRate, 3 },
+	{ "ObjEnemy_SetDamageRateByShotDataID", StgStageScript::Func_ObjEnemy_SetDamageRateByShotDataID, 3 },
 	{ "ObjEnemy_SetMaximumDamage", StgStageScript::Func_ObjEnemy_SetMaximumDamage, 2 },
 	{ "ObjEnemy_AddIntersectionCircleA", StgStageScript::Func_ObjEnemy_AddIntersectionCircleA, 4 },
 	{ "ObjEnemy_SetIntersectionCircleToShot", StgStageScript::Func_ObjEnemy_SetIntersectionCircleToShot, 4 },
@@ -489,6 +487,7 @@ static const std::vector<function> stgStageFunction = {
 	{ "ObjShot_SetAutoDelete", StgStageScript::Func_ObjShot_SetAutoDelete, 2 },
 	{ "ObjShot_FadeDelete", StgStageScript::Func_ObjShot_FadeDelete, 1 },
 	{ "ObjShot_SetDeleteFrame", StgStageScript::Func_ObjShot_SetDeleteFrame, 2 },
+	{ "ObjShot_SetFrameDeleteType", StgStageScript::Func_ObjShot_SetFrameDeleteType, 2 },
 	{ "ObjShot_SetDelay", StgStageScript::Func_ObjShot_SetDelay, 2 },
 	{ "ObjShot_SetSpellResist", StgStageScript::Func_ObjShot_SetSpellResist, 2 },
 	{ "ObjShot_SetGraphic", StgStageScript::Func_ObjShot_SetGraphic, 2 },
@@ -596,7 +595,6 @@ static const std::vector<function> stgStageFunction = {
 	//{ "ObjPatternShot_SetDelayMotion", StgStageScript::Func_ObjPatternShot_SetDelayMotion, 2 },
 	{ "ObjPatternShot_SetGraphic", StgStageScript::Func_ObjPatternShot_SetGraphic, 2 },
 	{ "ObjPatternShot_SetLaserParameter", StgStageScript::Func_ObjPatternShot_SetLaserParameter, 3 },
-	{ "ObjPatternShot_CopySettings", StgStageScript::Func_ObjPatternShot_CopySettings, 2 },
 	{ "ObjPatternShot_AddTransform", StgStageScript::Func_ObjPatternShot_AddTransform, -4 },	//2 fixed + ... -> 3 minimum
 	{ "ObjPatternShot_SetTransform", StgStageScript::Func_ObjPatternShot_SetTransform, -5 },	//3 fixed + ... -> 4 minimum
 
@@ -646,39 +644,39 @@ static const std::vector<constant> stgStageConstant = {
 	constant("DELAY_LERP", StgShotObject::DelayParameter::DELAY_LERP),
 
 	//Pattern shot pattern types
-	constant("PATTERN_FAN", StgPatternShotObjectGenerator::PATTERN_TYPE_FAN),
-	constant("PATTERN_FAN_AIMED", StgPatternShotObjectGenerator::PATTERN_TYPE_FAN_AIMED),
-	constant("PATTERN_RING", StgPatternShotObjectGenerator::PATTERN_TYPE_RING),
-	constant("PATTERN_RING_AIMED", StgPatternShotObjectGenerator::PATTERN_TYPE_RING_AIMED),
-	constant("PATTERN_ARROW", StgPatternShotObjectGenerator::PATTERN_TYPE_ARROW),
-	constant("PATTERN_ARROW_AIMED", StgPatternShotObjectGenerator::PATTERN_TYPE_ARROW_AIMED),
-	constant("PATTERN_POLYGON", StgPatternShotObjectGenerator::PATTERN_TYPE_POLYGON),
-	constant("PATTERN_POLYGON_AIMED", StgPatternShotObjectGenerator::PATTERN_TYPE_POLYGON_AIMED),
-	constant("PATTERN_ELLIPSE", StgPatternShotObjectGenerator::PATTERN_TYPE_ELLIPSE),
-	constant("PATTERN_ELLIPSE_AIMED", StgPatternShotObjectGenerator::PATTERN_TYPE_ELLIPSE_AIMED),
-	constant("PATTERN_SCATTER_ANGLE", StgPatternShotObjectGenerator::PATTERN_TYPE_SCATTER_ANGLE),
-	constant("PATTERN_SCATTER_SPEED", StgPatternShotObjectGenerator::PATTERN_TYPE_SCATTER_SPEED),
-	constant("PATTERN_SCATTER", StgPatternShotObjectGenerator::PATTERN_TYPE_SCATTER),
-	constant("PATTERN_LINE", StgPatternShotObjectGenerator::PATTERN_TYPE_LINE),
-	constant("PATTERN_LINE_AIMED", StgPatternShotObjectGenerator::PATTERN_TYPE_LINE_AIMED),
-	constant("PATTERN_ROSE", StgPatternShotObjectGenerator::PATTERN_TYPE_ROSE),
-	constant("PATTERN_ROSE_AIMED", StgPatternShotObjectGenerator::PATTERN_TYPE_ROSE_AIMED),
-	constant("PATTERN_BASEPOINT_RESET", StgPatternShotObjectGenerator::BASEPOINT_RESET),
+	constant("PATTERN_FAN", StgShotPatternGeneratorObject::PATTERN_TYPE_FAN),
+	constant("PATTERN_FAN_AIMED", StgShotPatternGeneratorObject::PATTERN_TYPE_FAN_AIMED),
+	constant("PATTERN_RING", StgShotPatternGeneratorObject::PATTERN_TYPE_RING),
+	constant("PATTERN_RING_AIMED", StgShotPatternGeneratorObject::PATTERN_TYPE_RING_AIMED),
+	constant("PATTERN_ARROW", StgShotPatternGeneratorObject::PATTERN_TYPE_ARROW),
+	constant("PATTERN_ARROW_AIMED", StgShotPatternGeneratorObject::PATTERN_TYPE_ARROW_AIMED),
+	constant("PATTERN_POLYGON", StgShotPatternGeneratorObject::PATTERN_TYPE_POLYGON),
+	constant("PATTERN_POLYGON_AIMED", StgShotPatternGeneratorObject::PATTERN_TYPE_POLYGON_AIMED),
+	constant("PATTERN_ELLIPSE", StgShotPatternGeneratorObject::PATTERN_TYPE_ELLIPSE),
+	constant("PATTERN_ELLIPSE_AIMED", StgShotPatternGeneratorObject::PATTERN_TYPE_ELLIPSE_AIMED),
+	constant("PATTERN_SCATTER_ANGLE", StgShotPatternGeneratorObject::PATTERN_TYPE_SCATTER_ANGLE),
+	constant("PATTERN_SCATTER_SPEED", StgShotPatternGeneratorObject::PATTERN_TYPE_SCATTER_SPEED),
+	constant("PATTERN_SCATTER", StgShotPatternGeneratorObject::PATTERN_TYPE_SCATTER),
+	constant("PATTERN_LINE", StgShotPatternGeneratorObject::PATTERN_TYPE_LINE),
+	constant("PATTERN_LINE_AIMED", StgShotPatternGeneratorObject::PATTERN_TYPE_LINE_AIMED),
+	constant("PATTERN_ROSE", StgShotPatternGeneratorObject::PATTERN_TYPE_ROSE),
+	constant("PATTERN_ROSE_AIMED", StgShotPatternGeneratorObject::PATTERN_TYPE_ROSE_AIMED),
+	constant("PATTERN_BASEPOINT_RESET", StgShotPatternGeneratorObject::BASEPOINT_RESET),
 
 	//Pattern shot transforms
-	constant("TRANSFORM_WAIT", StgPatternShotTransform::TRANSFORM_WAIT),
-	constant("TRANSFORM_ADD_SPEED_ANGLE", StgPatternShotTransform::TRANSFORM_ADD_SPEED_ANGLE),
-	constant("TRANSFORM_ANGULAR_MOVE", StgPatternShotTransform::TRANSFORM_ANGULAR_MOVE),
-	constant("TRANSFORM_N_DECEL_CHANGE", StgPatternShotTransform::TRANSFORM_N_DECEL_CHANGE),
-	constant("TRANSFORM_GRAPHIC_CHANGE", StgPatternShotTransform::TRANSFORM_GRAPHIC_CHANGE),
-	constant("TRANSFORM_BLEND_CHANGE", StgPatternShotTransform::TRANSFORM_BLEND_CHANGE),
-	constant("TRANSFORM_TO_SPEED_ANGLE", StgPatternShotTransform::TRANSFORM_TO_SPEED_ANGLE),
-	constant("TRANSFORM_ADDPATTERN_A1", StgPatternShotTransform::TRANSFORM_ADDPATTERN_A1),
-	constant("TRANSFORM_ADDPATTERN_A2", StgPatternShotTransform::TRANSFORM_ADDPATTERN_A2),
-	constant("TRANSFORM_ADDPATTERN_B1", StgPatternShotTransform::TRANSFORM_ADDPATTERN_B1),
-	constant("TRANSFORM_ADDPATTERN_B2", StgPatternShotTransform::TRANSFORM_ADDPATTERN_B2),
-	constant("TRANSFORM_ADDPATTERN_C1", StgPatternShotTransform::TRANSFORM_ADDPATTERN_C1),
-	constant("TRANSFORM_ADDPATTERN_C2", StgPatternShotTransform::TRANSFORM_ADDPATTERN_C2),
+	constant("TRANSFORM_WAIT", StgShotPatternTransform::TRANSFORM_WAIT),
+	constant("TRANSFORM_ADD_SPEED_ANGLE", StgShotPatternTransform::TRANSFORM_ADD_SPEED_ANGLE),
+	constant("TRANSFORM_ANGULAR_MOVE", StgShotPatternTransform::TRANSFORM_ANGULAR_MOVE),
+	constant("TRANSFORM_N_DECEL_CHANGE", StgShotPatternTransform::TRANSFORM_N_DECEL_CHANGE),
+	constant("TRANSFORM_GRAPHIC_CHANGE", StgShotPatternTransform::TRANSFORM_GRAPHIC_CHANGE),
+	constant("TRANSFORM_BLEND_CHANGE", StgShotPatternTransform::TRANSFORM_BLEND_CHANGE),
+	constant("TRANSFORM_TO_SPEED_ANGLE", StgShotPatternTransform::TRANSFORM_TO_SPEED_ANGLE),
+	constant("TRANSFORM_ADDPATTERN_A1", StgShotPatternTransform::TRANSFORM_ADDPATTERN_A1),
+	constant("TRANSFORM_ADDPATTERN_A2", StgShotPatternTransform::TRANSFORM_ADDPATTERN_A2),
+	constant("TRANSFORM_ADDPATTERN_B1", StgShotPatternTransform::TRANSFORM_ADDPATTERN_B1),
+	constant("TRANSFORM_ADDPATTERN_B2", StgShotPatternTransform::TRANSFORM_ADDPATTERN_B2),
+	constant("TRANSFORM_ADDPATTERN_C1", StgShotPatternTransform::TRANSFORM_ADDPATTERN_C1),
+	constant("TRANSFORM_ADDPATTERN_C2", StgShotPatternTransform::TRANSFORM_ADDPATTERN_C2),
 
 	//Player states
 	constant("STATE_NORMAL", StgPlayerObject::STATE_NORMAL),
@@ -815,11 +813,11 @@ static const std::vector<constant> stgStageConstant = {
 	//Move parent constants
 	constant("ANGLE_FIXED", StgMoveParent::ANGLE_FIXED),
 	constant("ANGLE_ROTATE", StgMoveParent::ANGLE_ROTATE),
+	constant("ANGLE_CENTER", StgMoveParent::ANGLE_CENTER),
 	constant("ANGLE_FOLLOW", StgMoveParent::ANGLE_FOLLOW),
 	constant("ANGLE_ABSOLUTE", StgMoveParent::ANGLE_ABSOLUTE),
 	constant("ANGLE_RELATIVE", StgMoveParent::ANGLE_RELATIVE),
-	constant("ANGLE_OUTWARD", StgMoveParent::ANGLE_OUTWARD),
-	constant("ANGLE_INWARD", StgMoveParent::ANGLE_INWARD),
+	
 	constant("ORDER_ANGLE_SCALE", StgMoveParent::ORDER_ANGLE_SCALE),
 	constant("ORDER_SCALE_ANGLE", StgMoveParent::ORDER_SCALE_ANGLE),
 };
@@ -3901,19 +3899,6 @@ gstd::value StgStageScript::Func_ObjMoveParent_TransferChildren(gstd::script_mac
 		
 	return value();
 }
-gstd::value StgStageScript::Func_ObjMoveParent_SwapChildren(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	StgStageScript* script = (StgStageScript*)machine->data;
-	int id = argv[0].as_int();
-	int idT = argv[1].as_int();
-	auto obj = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(id));
-	if (obj) {
-		auto objT = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(idT));
-		if (objT)
-			obj->SwapChildren(obj, objT);
-	}
-
-	return value();
-}
 gstd::value StgStageScript::Func_ObjMoveParent_SetPositionOffset(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
@@ -4046,9 +4031,10 @@ gstd::value StgStageScript::Func_ObjMoveParent_SetChildAngleMode(gstd::script_ma
 	StgStageScript* script = (StgStageScript*)machine->data;
 	int id = argv[0].as_int();
 	int mode = argv[1].as_int();
+	double arg = argv[2].as_float();
 	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
 	if (obj)
-		obj->SetChildAngleMode(mode);
+		obj->SetChildAngleMode(mode, arg);
 
 	return value();
 }
@@ -4059,16 +4045,6 @@ gstd::value StgStageScript::Func_ObjMoveParent_SetChildMotionEnable(gstd::script
 	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
 	if (obj)
 		obj->SetChildMotionEnable(enable);
-
-	return value();
-}
-gstd::value StgStageScript::Func_ObjMoveParent_SetChildAdditionTransformEnable(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	StgStageScript* script = (StgStageScript*)machine->data;
-	int id = argv[0].as_int();
-	bool enable = argv[1].as_boolean();
-	StgMoveParent* obj = script->GetObjectPointerAs<StgMoveParent>(id);
-	if (obj)
-		obj->SetChildAdditionTransformEnable(enable);
 
 	return value();
 }
@@ -4108,19 +4084,6 @@ gstd::value StgStageScript::Func_ObjMoveParent_ResetTransformation(gstd::script_
 	if (obj)
 		obj->ResetTransformation();
 
-	return value();
-}
-gstd::value StgStageScript::Func_ObjMoveParent_CopySettings(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	StgStageScript* script = (StgStageScript*)machine->data;
-
-	int idDst = argv[0].as_int();
-	auto objDst = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(idDst));
-	if (objDst) {
-		int idSrc = argv[1].as_int();
-		auto objSrc = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(idSrc));
-		if (objSrc)
-			objDst->CopyFrom(objDst, objSrc);
-	}
 	return value();
 }
 
@@ -4257,6 +4220,17 @@ gstd::value StgStageScript::Func_ObjEnemy_SetDamageRate(gstd::script_machine* ma
 		double rateShot = argv[1].as_float();
 		double rateSpell = argv[2].as_float();
 		obj->SetDamageRate(rateShot, rateSpell);
+	}
+	return value();
+}
+gstd::value StgStageScript::Func_ObjEnemy_SetDamageRateByShotDataID(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	StgEnemyObject* obj = script->GetObjectPointerAs<StgEnemyObject>(id);
+	if (obj) {
+		int gr = argv[1].as_int();
+		double rate = argv[2].as_float();
+		obj->SetShotDamageRateByShotDataID(gr, rate);
 	}
 	return value();
 }
@@ -4746,6 +4720,27 @@ gstd::value StgStageScript::Func_ObjShot_SetDeleteFrame(gstd::script_machine* ma
 	if (obj) {
 		int frame = argv[1].as_int();
 		obj->SetAutoDeleteFrame(frame);
+	}
+	return value();
+}
+gstd::value StgStageScript::Func_ObjShot_SetFrameDeleteType(gstd::script_machine* machine, int argc, const gstd::value* argv) {
+	StgStageScript* script = (StgStageScript*)machine->data;
+	int id = argv[0].as_int();
+	StgShotObject* obj = script->GetObjectPointerAs<StgShotObject>(id);
+	if (obj) {
+		int type = argv[1].as_int();
+		switch (type) {
+		case TYPE_IMMEDIATE:
+			type = StgShotManager::TO_TYPE_IMMEDIATE;
+			break;
+		case TYPE_FADE:
+			type = StgShotManager::TO_TYPE_FADE;
+			break;
+		case TYPE_ITEM:
+			type = StgShotManager::TO_TYPE_ITEM;
+			break;
+		}
+		obj->SetAutoDeleteType(type);
 	}
 	return value();
 }
@@ -5696,7 +5691,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_Create(gstd::script_machine* mac
 	int typeOwner = script->GetScriptType() == TYPE_PLAYER ?
 		StgShotObject::OWNER_PLAYER : StgShotObject::OWNER_ENEMY;
 
-	ref_unsync_ptr<StgPatternShotObjectGenerator> obj = new StgPatternShotObjectGenerator(stageController);
+	ref_unsync_ptr<StgShotPatternGeneratorObject> obj = new StgShotPatternGeneratorObject(stageController);
 	obj->SetTypeOwner(typeOwner);
 
 	int id = script->AddObject(obj);
@@ -5707,7 +5702,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_Fire(gstd::script_machine* machi
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj)
 		obj->FireSet(machine->data, stageController, nullptr);
 	return value();
@@ -5717,7 +5712,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_FireReturn(gstd::script_machine*
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 
 	std::vector<int> res;
 	if (obj) 
@@ -5730,7 +5725,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetParentObject(gstd::script_mac
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		int idParent = argv[1].as_int();
 		ref_unsync_ptr<StgMoveObject> objParent = ref_unsync_ptr<StgMoveObject>::Cast(script->GetObject(idParent));
@@ -5744,7 +5739,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetShotParent(gstd::script_machi
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		int idParent = argv[1].as_int();
 		ref_unsync_ptr<StgMoveParent> objParent = ref_unsync_ptr<StgMoveParent>::Cast(script->GetObject(idParent));
@@ -5758,7 +5753,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetAutoDelete(gstd::script_machi
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		bool enable = argv[1].as_boolean();
 		obj->SetAutoDelete(enable);
@@ -5770,7 +5765,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetPatternType(gstd::script_mach
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj)
 		obj->SetTypePattern(argv[1].as_int());
 	return value();
@@ -5780,7 +5775,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetShotType(gstd::script_machine
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		TypeObject type = (TypeObject)argv[1].as_int();
 		obj->SetTypeShot(type);
@@ -5792,7 +5787,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetInitialBlendMode(gstd::script
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj)
 		obj->SetBlendType((BlendMode)argv[1].as_int());
 	return value();
@@ -5802,7 +5797,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetShotCount(gstd::script_machin
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		int way = argv[1].as_int();
 		int stack = argv[2].as_int();
@@ -5815,7 +5810,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetSpeed(gstd::script_machine* m
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		float base = argv[1].as_float();
 		float arg = argv[2].as_float();
@@ -5828,7 +5823,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetAngle(gstd::script_machine* m
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		float base = Math::DegreeToRadian(argv[1].as_float());
 		float arg = Math::DegreeToRadian(argv[2].as_float());
@@ -5841,7 +5836,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetExtraData(gstd::script_machin
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		obj->SetExtraData(argv[1].as_float());
 	}
@@ -5852,7 +5847,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetBasePoint(gstd::script_machin
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		float x = argv[1].as_float();
 		float y = argv[2].as_float();
@@ -5865,7 +5860,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetBasePointOffset(gstd::script_
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		float x = argv[1].as_float();
 		float y = argv[2].as_float();
@@ -5878,7 +5873,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetBasePointOffsetCircle(gstd::s
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		float angle = Math::DegreeToRadian(argv[1].as_float());
 		float radius = argv[2].as_float();
@@ -5891,7 +5886,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetShootRadius(gstd::script_mach
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		float r = argv[1].as_float();
 		obj->SetRadiusFromFirePoint(r);
@@ -5903,7 +5898,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetDelay(gstd::script_machine* m
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		int delay = argv[1].as_int();
 		obj->SetDelay(delay);
@@ -5916,7 +5911,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetDelayMotion(gstd::script_mach
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj)
 		obj->SetDelayMotion(argv[1].as_boolean());
 	return value();
@@ -5927,7 +5922,7 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetGraphic(gstd::script_machine*
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		int graphic = argv[1].as_int();
 		obj->SetGraphic(graphic);
@@ -5939,25 +5934,11 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetLaserParameter(gstd::script_m
 	StgStageController* stageController = script->stageController_;
 
 	int id = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(id);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(id);
 	if (obj) {
 		int width = argv[1].as_int();
 		int length = argv[2].as_int();
 		obj->SetLaserArgument(width, length);
-	}
-	return value();
-}
-gstd::value StgStageScript::Func_ObjPatternShot_CopySettings(gstd::script_machine* machine, int argc, const gstd::value* argv) {
-	StgStageScript* script = (StgStageScript*)machine->data;
-	StgStageController* stageController = script->stageController_;
-
-	int idDst = argv[0].as_int();
-	StgPatternShotObjectGenerator* objDst = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(idDst);
-	if (objDst) {
-		int idSrc = argv[1].as_int();
-		StgPatternShotObjectGenerator* objSrc = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(idSrc);
-		if (objSrc)
-			objDst->CopyFrom(objSrc);
 	}
 	return value();
 }
@@ -5966,11 +5947,11 @@ gstd::value StgStageScript::Func_ObjPatternShot_AddTransform(gstd::script_machin
 	StgStageController* stageController = script->stageController_;
 
 	int idDst = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(idDst);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(idDst);
 	if (obj) {
 		int typeAct = argv[1].as_int();
 
-		StgPatternShotTransform transform;
+		StgShotPatternTransform transform;
 		transform.act = (uint8_t)typeAct;
 
 		ZeroMemory(transform.param, sizeof(transform.param));
@@ -5986,12 +5967,12 @@ gstd::value StgStageScript::Func_ObjPatternShot_SetTransform(gstd::script_machin
 	StgStageController* stageController = script->stageController_;
 
 	int idDst = argv[0].as_int();
-	StgPatternShotObjectGenerator* obj = script->GetObjectPointerAs<StgPatternShotObjectGenerator>(idDst);
+	StgShotPatternGeneratorObject* obj = script->GetObjectPointerAs<StgShotPatternGeneratorObject>(idDst);
 	if (obj) {
 		int slot = argv[1].as_int();
 		int typeAct = argv[2].as_int();
 
-		StgPatternShotTransform transform;
+		StgShotPatternTransform transform;
 		transform.act = (uint8_t)typeAct;
 
 		ZeroMemory(transform.param, sizeof(transform.param));

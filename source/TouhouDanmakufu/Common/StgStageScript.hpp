@@ -167,6 +167,7 @@ public:
 	StgStageScript(StgStageController* stageController);
 	virtual ~StgStageScript();
 
+	StgStageController* GetStageController() { return stageController_; }
 	std::shared_ptr<StgStageScriptObjectManager> GetStgObjectManager();
 
 	//STG共通関数：共通データ
@@ -375,7 +376,6 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetChildren);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_RemoveChildren);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_TransferChildren);
-	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SwapChildren);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetPositionOffset);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetPositionOffsetCircle);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformScale);
@@ -390,13 +390,10 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_GetTransformAngle);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildAngleMode);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildMotionEnable);
-	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildAdditionTransformEnable);
-	// DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetChildMotionTransformEnable);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetLaserRotationEnable);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_SetTransformOrder);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_ApplyTransformation);
 	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_ResetTransformation);
-	DNH_FUNCAPI_DECL_(Func_ObjMoveParent_CopySettings);
 
 	//STG共通関数：敵オブジェクト操作
 	static gstd::value Func_ObjEnemy_Create(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -408,6 +405,7 @@ public:
 	template<bool CHECK_MAX_DMG>
 	static gstd::value Func_ObjEnemy_AddLife(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjEnemy_SetDamageRate(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	DNH_FUNCAPI_DECL_(Func_ObjEnemy_SetDamageRateByShotDataID);
 	DNH_FUNCAPI_DECL_(Func_ObjEnemy_SetMaximumDamage);
 	static gstd::value Func_ObjEnemy_AddIntersectionCircleA(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjEnemy_SetIntersectionCircleToShot(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -433,6 +431,7 @@ public:
 	DNH_FUNCAPI_DECL_(Func_ObjShot_SetOwnerType);
 	static gstd::value Func_ObjShot_SetAutoDelete(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjShot_SetDeleteFrame(gstd::script_machine* machine, int argc, const gstd::value* argv);
+	DNH_FUNCAPI_DECL_(Func_ObjShot_SetFrameDeleteType);
 	static gstd::value Func_ObjShot_FadeDelete(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjShot_SetDelay(gstd::script_machine* machine, int argc, const gstd::value* argv);
 	static gstd::value Func_ObjShot_SetSpellResist(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -537,7 +536,6 @@ public:
 	//DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetDelayMotion);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetGraphic);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetLaserParameter);
-	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_CopySettings);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_AddTransform);
 	DNH_FUNCAPI_DECL_(Func_ObjPatternShot_SetTransform);
 

@@ -209,6 +209,15 @@
     <ClCompile Include="source\GcLib\directx\DxUtilityIntersection.cpp">
       <Filter>source\GcLib\directx</Filter>
     </ClCompile>
+    <ClCompile Include="source\GcLib\directx\DxScriptObjClone.cpp">
+      <Filter>source\GcLib\directx</Filter>
+    </ClCompile>
+    <ClCompile Include="DnhConfiguration.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\TouhouDanmakufu\Common\DnhConfiguration.cpp">
+      <Filter>source\Common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\GcLib\gstd\Application.hpp">
@@ -423,6 +432,13 @@
     </ClInclude>
     <ClInclude Include="source\GcLib\gstd\GstdConstant.hpp">
       <Filter>source\GcLib\gstd</Filter>
+    </ClInclude>
+    <ClInclude Include="source\TouhouDanmakufu\Common\StgObjectBase.hpp">
+      <Filter>source\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="DnhConfiguration.hpp" />
+    <ClInclude Include="source\TouhouDanmakufu\Common\DnhConfiguration.hpp">
+      <Filter>source\Common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

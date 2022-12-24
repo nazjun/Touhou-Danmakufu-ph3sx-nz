@@ -274,6 +274,7 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_Obj_GetExistFrame);
 		DNH_FUNCAPI_DECL_(Func_Obj_GetParentScriptID);
 		DNH_FUNCAPI_DECL_(Func_Obj_SetParentScriptID);
+		DNH_FUNCAPI_DECL_(Func_Obj_Clone);
 
 		//DxScriptSplineObject
 		DNH_FUNCAPI_DECL_(Func_ObjSpline_Create);
@@ -303,7 +304,7 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_ObjSpring_SetPlane);
 		DNH_FUNCAPI_DECL_(Func_ObjSpring_GetPlane);
 		DNH_FUNCAPI_DECL_(Func_ObjSpring_RemovePlane);
-
+		
 		//Dx関数：オブジェクト操作(RenderObject)
 		static gstd::value Func_ObjRender_SetX(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		static gstd::value Func_ObjRender_SetY(gstd::script_machine* machine, int argc, const gstd::value* argv);
@@ -399,6 +400,21 @@ namespace directx {
 		DNH_FUNCAPI_DECL_(Func_ObjPrimitive_GetVertexAlpha);
 		static gstd::value Func_ObjPrimitive_GetVertexPosition(gstd::script_machine* machine, int argc, const gstd::value* argv);
 		DNH_FUNCAPI_DECL_(Func_ObjPrimitive_SetVertexIndex);
+
+		//DxScriptSpriteAnimation
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_StartAnimation);
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_PauseAnimation);
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_ResumeAnimation);
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_StopAnimation);
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_ClearAnimation);
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_ClearAllAnimation);
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_GetAnimationID);
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_IsReversedAnimation);
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_AddAnimationFrame);
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_IsCompleteAnimation);
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_IsCompleteLoop);
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_IsCompleteFrame);
+		DNH_FUNCAPI_DECL_(Func_ObjSpriteAnim_IsAnimating);
 		
 
 		//Dx関数：オブジェクト操作(Sprite2D)

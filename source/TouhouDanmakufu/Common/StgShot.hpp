@@ -25,12 +25,15 @@ public:
 		TO_TYPE_ITEM,
 	};
 
-	enum {
-		BIT_EV_DELETE_IMMEDIATE = 1,
-		BIT_EV_DELETE_TO_ITEM,
-		BIT_EV_DELETE_FADE,
-		BIT_EV_DELETE_COUNT,
+	enum class TypeDelete {
+		Immediate,
+		Fade,
+		Item,
+
+		_Max,
 	};
+	static inline int _TypeDeleteToEventType(TypeDelete type);
+	static inline TypeDelete _EventTypeToTypeDelete(int type);
 
 	enum {
 		SHOT_MAX = 10000,
@@ -53,7 +56,7 @@ protected:
 	std::vector<RenderQueue> listRenderQueuePlayer_;		//one for each render pri
 	std::vector<RenderQueue> listRenderQueueEnemy_;			//one for each render pri
 
-	std::bitset<BIT_EV_DELETE_COUNT> listDeleteEventEnable_;
+	std::bitset<(int)TypeDelete::_Max> listDeleteEventEnable_;
 
 	DxRect<LONG> rcDeleteClip_;
 
@@ -102,7 +105,7 @@ public:
 	size_t GetShotCountAll() { return listObj_.size(); }
 
 	void SetDeleteEventEnableByType(int type, bool bEnable);
-	bool IsDeleteEventEnable(int bit) { return listDeleteEventEnable_[bit]; }
+	bool IsDeleteEventEnable(TypeDelete bit) { return listDeleteEventEnable_[(int)bit]; }
 };
 
 //*******************************************************************
@@ -234,9 +237,10 @@ public:
 //*******************************************************************
 //StgShotObject
 //*******************************************************************
-struct StgPatternShotTransform;
+struct StgShotPatternTransform;
 class StgShotObject : public DxScriptShaderObject, public StgMoveObject, public StgIntersectionObject {
-	friend StgPatternShotTransform;
+protected:
+	using TypeDelete = StgShotManager::TypeDelete;
 public:
 	enum {
 		OWNER_PLAYER = 0,
@@ -292,8 +296,6 @@ public:
 
 	};
 protected:
-	StgStageController* stageController_;
-
 	ref_unsync_weak_ptr<StgShotObject> pOwnReference_;
 
 	int frameWork_;
@@ -333,6 +335,7 @@ public:
 	bool bSpellFactor_;
 	bool bSpellResist_;
 	int frameAutoDelete_;
+	int typeAutoDelete_;
 	
 	IntersectionListType listIntersectionTarget_;
 	bool bUserIntersectionMode_;
@@ -358,12 +361,12 @@ protected:
 
 	virtual void _Move();
 
-	virtual void _SendDeleteEvent(int type) {}
+	virtual void _SendDeleteEvent(TypeDelete type) {}
 	void _RequestPlayerDeleteEvent(int hitObjectID);
 
 	inline void _DefaultShotRender(StgShotData* shotData, StgShotDataFrame* shotFrame, const D3DXMATRIX& matWorld, D3DCOLOR color);
 protected:
-	std::list<StgPatternShotTransform> listTransformationShotAct_;
+	std::list<StgShotPatternTransform> listTransformationShotAct_;
 	int timerTransform_;
 	int timerTransformNext_;
 
@@ -371,6 +374,8 @@ protected:
 public:
 	StgShotObject(StgStageController* stageController);
 	virtual ~StgShotObject();
+
+	virtual void Clone(DxScriptObjectBase* src);
 
 	virtual bool HasNormalRendering() { return false; }
 
@@ -395,7 +400,7 @@ public:
 	virtual void SetAlpha(int alpha);
 	virtual void SetRenderState() {}
 
-	void SetTransformList(const std::list<StgPatternShotTransform>& listTransform) {
+	void SetTransformList(const std::list<StgShotPatternTransform>& listTransform) {
 		listTransformationShotAct_ = listTransform;
 	}
 
@@ -440,6 +445,7 @@ public:
 	bool IsAutoDelete() { return bAutoDelete_; }
 	void SetAutoDelete(bool b) { bAutoDelete_ = b; }
 	void SetAutoDeleteFrame(int frame) { frameAutoDelete_ = frame; }
+	void SetAutoDeleteType(int type) { typeAutoDelete_ = type; }
 	bool IsEraseShot() { return bEraseShot_; }
 	void SetEraseShot(bool bErase) { bEraseShot_ = bErase; }
 	bool IsSpellFactor() { return bSpellFactor_; }
@@ -472,10 +478,12 @@ protected:
 	bool bFixedAngle_;
 
 	void _AddIntersectionRelativeTarget();
-	virtual void _SendDeleteEvent(int type);
+	virtual void _SendDeleteEvent(TypeDelete type);
 public:
 	StgNormalShotObject(StgStageController* stageController);
 	virtual ~StgNormalShotObject();
+
+	virtual void Clone(DxScriptObjectBase* src);
 
 	virtual void Work();
 	virtual void Render(BlendMode targetBlend);
@@ -519,6 +527,8 @@ protected:
 public:
 	StgLaserObject(StgStageController* stageController);
 
+	virtual void Clone(DxScriptObjectBase* src);
+
 	virtual void ClearShotObject() {
 		ClearIntersectionRelativeTarget();
 	}
@@ -560,9 +570,11 @@ protected:
 
 	virtual void _DeleteInAutoClip();
 	virtual void _Move();
-	virtual void _SendDeleteEvent(int type);
+	virtual void _SendDeleteEvent(TypeDelete type);
 public:
 	StgLooseLaserObject(StgStageController* stageController);
+
+	virtual void Clone(DxScriptObjectBase* src);
 
 	virtual void Work();
 	virtual void Render(BlendMode targetBlend);
@@ -592,9 +604,11 @@ protected:
 	bool bLaserExpand_;
 
 	virtual void _DeleteInAutoClip();
-	virtual void _SendDeleteEvent(int type);
+	virtual void _SendDeleteEvent(TypeDelete type);
 public:
 	StgStraightLaserObject(StgStageController* stageController);
+
+	virtual void Clone(DxScriptObjectBase* src);
 
 	virtual void Work();
 	virtual void Render(BlendMode targetBlend);
@@ -665,10 +679,12 @@ protected:
 
 	virtual void _DeleteInAutoClip();
 	virtual void _Move();
-	virtual void _SendDeleteEvent(int type);
+	virtual void _SendDeleteEvent(TypeDelete type);
 	void _UpdateConnectedPositionList();
 public:
 	StgCurveLaserObject(StgStageController* stageController);
+
+	virtual void Clone(DxScriptObjectBase* src);
 
 	virtual void Work();
 	virtual void Render(BlendMode targetBlend);
@@ -689,9 +705,9 @@ public:
 
 
 //*******************************************************************
-//StgPatternShotObjectGenerator (ECL-style bullets firing)
+//StgShotPatternGeneratorObject (ECL-style bullets firing)
 //*******************************************************************
-class StgPatternShotObjectGenerator : public DxScriptObjectBase {
+class StgShotPatternGeneratorObject : public DxScriptObjectBase, public StgObjectBase {
 public:
 	enum {
 		PATTERN_TYPE_FAN = 0,
@@ -715,7 +731,6 @@ public:
 		BASEPOINT_RESET = -256 * 256,
 	};
 private:
-	StgStageController* stageController_;
 	ref_unsync_weak_ptr<StgMoveObject> parent_;
 	ref_unsync_weak_ptr<StgMoveParent> shotParent_;
 	bool bAutoDelete_;
@@ -753,22 +768,18 @@ private:
 	int laserWidth_;
 	int laserLength_;
 
-	std::vector<StgPatternShotTransform> listTransformation_;
+	std::vector<StgShotPatternTransform> listTransformation_;
 public:
-	StgPatternShotObjectGenerator(StgStageController* stageController);
-	~StgPatternShotObjectGenerator();
+	StgShotPatternGeneratorObject(StgStageController* stageController);
+
+	virtual void Clone(DxScriptObjectBase* src);
 
 	virtual void Render() {}
 	virtual void SetRenderState() {}
 	virtual void CleanUp();
 
-	void CopyFrom(ref_unsync_ptr<StgPatternShotObjectGenerator> other) {
-		StgPatternShotObjectGenerator::CopyFrom(other.get());
-	}
-	void CopyFrom(StgPatternShotObjectGenerator* other);
-
-	void AddTransformation(StgPatternShotTransform& entry) { listTransformation_.push_back(entry); }
-	void SetTransformation(size_t off, StgPatternShotTransform& entry);
+	void AddTransformation(StgShotPatternTransform& entry) { listTransformation_.push_back(entry); }
+	void SetTransformation(size_t off, StgShotPatternTransform& entry);
 	void ClearTransformation() { listTransformation_.clear(); }
 
 	void SetParent(ref_unsync_ptr<StgMoveObject> obj) { parent_ = obj; }
@@ -817,7 +828,7 @@ public:
 		laserLength_ = length;
 	}
 };
-struct StgPatternShotTransform {
+struct StgShotPatternTransform {
 	enum : uint8_t {
 		TRANSFORM_WAIT,
 		TRANSFORM_ADD_SPEED_ANGLE,

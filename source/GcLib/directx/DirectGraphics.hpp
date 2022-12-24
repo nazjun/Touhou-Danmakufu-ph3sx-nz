@@ -21,65 +21,103 @@ namespace directx {
 	//*******************************************************************
 	class DirectGraphicsConfig {
 	public:
-		bool bShowWindow_;
-		bool bShowCursor_;
+		bool bShowWindow;
+		bool bShowCursor;
 
-		bool bWindowed_;
-		bool bBorderlessFullscreen_;
+		bool bWindowed;
+		bool bBorderlessFullscreen;
 
-		POINT sizeScreen_;
-		POINT sizeScreenDisplay_;
+		std::array<size_t, 2> sizeScreen;
+		std::array<size_t, 2> sizeScreenDisplay;
 
-		ColorMode colorMode_;
-		D3DMULTISAMPLE_TYPE typeMultiSample_;
+		ColorMode colorMode;
+		D3DMULTISAMPLE_TYPE typeMultiSample;
 
-		bool bUseRef_;
-		bool bUseTripleBuffer_;
-		bool bVSync_;
+		bool bUseRef;
+		bool bUseTripleBuffer;
+		bool bVSync;
 
-		bool bCheckDeviceCaps_;
+		bool bCheckDeviceCaps;
 	public:
 		DirectGraphicsConfig();
 	};
 
-#if defined(DNH_PROJ_EXECUTOR)
-	struct DxModules {
-		HMODULE hLibrary_d3d9;
-		HMODULE hLibrary_d3dx9;
-		HMODULE hLibrary_d3dcompiler;
-		HMODULE hLibrary_dinput8;
-		HMODULE hLibrary_dsound;
-	};
-	struct DisplaySettings {
-		D3DXMATRIX matDisplay;
-		shared_ptr<Shader> shader;
-	};
-
-	class DirectGraphics {
-		static DirectGraphics* thisBase_;
-	public:
-		static float g_dxCoordsMul_;
+	//*******************************************************************
+	//DirectGraphicsBase
+	//*******************************************************************
+	class DirectGraphicsBase {
 	protected:
-		DxModules dxModules_;
+		std::map<std::wstring, HMODULE> mapDxModules_;
 
 		IDirect3D9* pDirect3D_;
 		IDirect3DDevice9* pDevice_;
-		D3DPRESENT_PARAMETERS d3dppFull_;
-		D3DPRESENT_PARAMETERS d3dppWin_;
 		IDirect3DSurface9* pBackSurf_;
 		IDirect3DSurface9* pZBuffer_;
 
 		D3DCAPS9 deviceCaps_;
 		HRESULT deviceStatus_;
 
-		DirectGraphicsConfig config_;
 		HWND hAttachedWindow_;
+	protected:
+		std::list<DirectGraphicsListener*> listListener_;
+
+		D3DVIEWPORT9 viewPort_;
+		D3DXMATRIX matViewPort_;
+	protected:
+		virtual void _ReleaseDxResource();
+		virtual void _RestoreDxResource();
+		virtual bool _Restore() = 0;
+
+		virtual void _VerifyDeviceCaps();
+		void _VerifyDeviceCaps_Result(const std::vector<std::string>& err, const std::vector<std::string>& warn);
+
+		virtual std::vector<std::wstring> _GetRequiredModules();
+		void _LoadModules();
+		void _FreeModules();
+	public:
+		DirectGraphicsBase();
+		virtual ~DirectGraphicsBase();
+
+		virtual bool Initialize(HWND hWnd) = 0;
+		virtual void Release();
+
+		void AddDirectGraphicsListener(DirectGraphicsListener* listener);
+		void RemoveDirectGraphicsListener(DirectGraphicsListener* listener);
+
+		IDirect3DDevice9* GetDevice() { return pDevice_; }
+		IDirect3DSurface9* GetBaseSurface() { return pBackSurf_; }
+		IDirect3DSurface9* GetZBufferSurface() { return pZBuffer_; }
+		HWND GetAttachedWindowHandle() { return hAttachedWindow_; }
+
+		D3DCAPS9* GetDeviceCaps() { return &deviceCaps_; }
+		HRESULT GetDeviceStatus() { return deviceStatus_; }
+
+		virtual bool BeginScene(bool bClear);
+		virtual void EndScene(bool bPresent);
+
+		virtual void ResetDeviceState() = 0;
+	};
+
+#if defined(DNH_PROJ_EXECUTOR)
+	struct DisplaySettings {
+		D3DXMATRIX matDisplay;
+		shared_ptr<Shader> shader;
+	};
+
+	class DirectGraphics : public DirectGraphicsBase {
+		static DirectGraphics* thisBase_;
+	public:
+		static float g_dxCoordsMul_;
+	protected:
+		D3DPRESENT_PARAMETERS d3dppFull_;
+		D3DPRESENT_PARAMETERS d3dppWin_;
+
+		DirectGraphicsConfig config_;
 	protected:
 		static constexpr DWORD wndStyleFull_ = WS_POPUP;
 		static constexpr DWORD wndStyleWin_ = WS_OVERLAPPEDWINDOW - WS_SIZEBOX;
 	protected:
 		ScreenMode modeScreen_;
-		std::list<DirectGraphicsListener*> listListener_;
 
 		std::map<D3DMULTISAMPLE_TYPE, std::pair<bool, DWORD*>> mapSupportMultisamples_;
 
@@ -93,55 +131,51 @@ namespace directx {
 		D3DVIEWPORT9 viewPort_;
 		D3DXMATRIX matViewPort_;
 
+		//-----------------------------------------------------------
+
 		shared_ptr<TextureData> defaultBackBufferRenderTarget_;
 		shared_ptr<Texture> currentRenderTarget_;
-		UINT defaultRenderTargetSize_[2];
+
+		size_t defaultRenderTargetSize_[2];
 
 		DisplaySettings displaySettingsWindowed_;
 		DisplaySettings displaySettingsFullscreen_;
 
+		//-----------------------------------------------------------
+
 		VertexBufferManager* bufferManager_;
 		VertexFogState stateFog_;
 
-		void _ReleaseDxResource();
-		void _RestoreDxResource();
-		bool _Restore();
+		//-----------------------------------------------------------
 
-		void _VerifyDeviceCaps();
+		virtual void _RestoreDxResource();
+		virtual bool _Restore();
 
-		void _LoadModules();
-		void _FreeModules();
+		virtual void _VerifyDeviceCaps();
 	public:
 		DirectGraphics();
 		virtual ~DirectGraphics();
 
-		static DirectGraphics* GetBase() { return thisBase_; }
-
-		HWND GetAttachedWindowHandle() { return hAttachedWindow_; }
-
 		virtual bool Initialize(HWND hWnd);
 		virtual bool Initialize(HWND hWnd, const DirectGraphicsConfig& config);
+		virtual void Release();
 
-		void AddDirectGraphicsListener(DirectGraphicsListener* listener);
-		void RemoveDirectGraphicsListener(DirectGraphicsListener* listener);
+		static DirectGraphics* GetBase() { return thisBase_; }
+
 		ScreenMode GetScreenMode() { return modeScreen_; }
 		D3DPRESENT_PARAMETERS GetFullScreenPresentParameter() { return d3dppFull_; }
 		D3DPRESENT_PARAMETERS GetWindowPresentParameter() { return d3dppWin_; }
 
-		const DirectGraphicsConfig& GetConfigData() { return config_; }
-		IDirect3DDevice9* GetDevice() { return pDevice_; }
-
-		IDirect3DSurface9* GetBaseSurface() { return pBackSurf_; }
-
-		D3DCAPS9* GetDeviceCaps() { return &deviceCaps_; }
-		HRESULT GetDeviceStatus() { return deviceStatus_; }
+		const DirectGraphicsConfig& GetGraphicsConfig() { return config_; }
 
 		void ResetCamera();
 		void ResetDeviceState();
 		void ResetDisplaySettings();
 
-		void BeginScene(bool bMainRender = true, bool bClear = true);
-		void EndScene(bool bPresent = true);
+		bool BeginScene(bool bMainRender, bool bClear);
+		virtual bool BeginScene(bool bClear);
+
+		//-----------------------------------------------------------
 
 		void ClearRenderTarget();
 		void ClearRenderTarget(DxRect<LONG>* rect);
@@ -156,10 +190,14 @@ namespace directx {
 
 		DisplaySettings* GetDisplaySettingsWindowed() { return &displaySettingsWindowed_; }
 		DisplaySettings* GetDisplaySettingsFullscreen() { return &displaySettingsFullscreen_; }
-		DisplaySettings* GetDisplaySettings() { 
-			return GetScreenMode() == ScreenMode::SCREENMODE_WINDOW ? 
+		DisplaySettings* GetDisplaySettings() {
+			return GetScreenMode() == ScreenMode::SCREENMODE_WINDOW ?
 				&displaySettingsWindowed_ : &displaySettingsFullscreen_;
 		}
+
+		void UpdateDefaultRenderTargetSize();
+
+		//-----------------------------------------------------------
 
 		//Render states
 		void SetLightingEnable(bool bEnable);
@@ -177,9 +215,9 @@ namespace directx {
 		void SetVertexFog(bool bEnable, D3DCOLOR color, float start, float end);
 		void SetPixelFog(bool bEnable, D3DCOLOR color, float start, float end);
 
-		void SetTextureFilter(D3DTEXTUREFILTERTYPE fMin, D3DTEXTUREFILTERTYPE fMag, 
+		void SetTextureFilter(D3DTEXTUREFILTERTYPE fMin, D3DTEXTUREFILTERTYPE fMag,
 			D3DTEXTUREFILTERTYPE fMip, int stage = 0);
-		DWORD GetTextureFilter(D3DTEXTUREFILTERTYPE* fMin, D3DTEXTUREFILTERTYPE* fMag, 
+		DWORD GetTextureFilter(D3DTEXTUREFILTERTYPE* fMin, D3DTEXTUREFILTERTYPE* fMag,
 			D3DTEXTUREFILTERTYPE* fMip, int stage = 0);
 
 		bool IsMainRenderLoop() { return bMainRender_; }
@@ -193,7 +231,7 @@ namespace directx {
 		D3DMULTISAMPLE_TYPE GetMultiSampleType();
 		void SetMultiSampleQuality(DWORD* quality);
 		DWORD* GetMultiSampleQuality();
-		HRESULT SetFullscreenAntiAliasing(bool bEnable);
+		HRESULT SetAntiAliasing(bool bEnable);
 		bool IsSupportMultiSample(D3DMULTISAMPLE_TYPE type);
 
 		//because D3DXMatrixOrthoOffCenterRH is broken for some reason
@@ -202,13 +240,13 @@ namespace directx {
 		void ResetViewPort();
 		const D3DXMATRIX& GetViewPortMatrix() { return matViewPort_; }
 
-		size_t GetScreenWidth() { return config_.sizeScreen_.x; }
-		size_t GetScreenHeight() { return config_.sizeScreen_.y; }
+		size_t GetScreenWidth() { return config_.sizeScreen[0]; }
+		size_t GetScreenHeight() { return config_.sizeScreen[1]; }
 		size_t GetRenderScreenWidth() {
-			return config_.sizeScreenDisplay_.x;
+			return config_.sizeScreenDisplay[0];
 		}
 		size_t GetRenderScreenHeight() {
-			return config_.sizeScreenDisplay_.y;
+			return config_.sizeScreenDisplay[1];
 		}
 
 		double GetScreenWidthRatio();
@@ -220,8 +258,6 @@ namespace directx {
 		gstd::ref_count_ptr<DxCamera2D> GetCamera2D() { return camera2D_; }
 
 		void SaveBackSurfaceToFile(const std::wstring& path);
-
-		void UpdateDefaultRenderTargetSize();
 	};
 
 	//-----------------------------------------------------------------------------------------------
@@ -243,7 +279,7 @@ namespace directx {
 		POINT cPosOffset_;
 	protected:
 		virtual LRESULT _WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-		
+
 		void _PauseDrawing();
 		void _RestartDrawing();
 
@@ -252,7 +288,7 @@ namespace directx {
 		void _WindowMove();
 	public:
 		DirectGraphicsPrimaryWindow();
-		~DirectGraphicsPrimaryWindow();
+		virtual ~DirectGraphicsPrimaryWindow();
 
 		virtual bool Initialize();
 		virtual bool Initialize(DirectGraphicsConfig& config);

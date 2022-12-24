@@ -828,7 +828,7 @@ ALL ARGUMENTS ARE FLOATS UNLESS STATED OTHERWISE
 			3) x
 			4) (int) interpolation type
 		Returns:
-			(int[]) result array
+			(int) result
 		Description:
 			Divides a and b (both 8-byte ints) into eight 1-byte chunks, performs interpolation on each pair, and recombines them to return the result.
 			
@@ -4985,6 +4985,263 @@ ALL ARGUMENTS ARE FLOATS UNLESS STATED OTHERWISE
 			2) (bool) enable
 		Description:
 			If set to true, will cause the item object to only render in non-floating point coordinates.
+
+	-------------------------------->  Spline Object Functions <--------------------------------
+	
+	ObjSpline_Create
+		Description:
+			Creates a spline object and returns its object ID.
+			Can be used for complex motion paths in both 2D and 3D.
+
+	ObjSpline_AddNode
+		Arguments:
+			1) (int) object ID
+			2) (float) posX
+			3) (float) posY
+		Description:
+			Adds a node to the spline object with the values (posX, posY, 0, 0, 0, 0).
+
+	ObjSpline_AddNode (overload)
+		Arguments:
+			1) (int) object ID
+			2) (float) posX
+			3) (float) posY
+			4) (float) posZ
+		Description:
+			Adds a node to the spline object with the values (posX, posY, posZ, 0, 0, 0).
+
+	ObjSpline_AddNode (overload)
+		Arguments:
+			1) (int) object ID
+			2) (float) posX
+			3) (float) posY
+			4) (float) velX
+			5) (float) velY
+		Description:
+			Adds a node to the spline object with the values (posX, posY, 0, velX, velY, 0).
+
+	ObjSpline_AddNode (overload)
+		Arguments:
+			1) (int) object ID
+			2) (float) posX
+			3) (float) posY
+			4) (float) posZ
+			5) (float) velX
+			6) (float) velY
+			7) (float) velZ
+		Description:
+			Adds a node to the spline object with the values (posX, posY, posZ, velX, velY, velZ).
+
+	ObjSpline_SetNode
+		Arguments:
+			1) (int) object ID
+			2) (int) index
+			3) (float) posX
+			4) (float) posY
+			5) (float) posZ
+			6) (float) velX
+			7) (float) velY
+			8) (float) velZ
+		Description:
+			Sets the node at the specified index in the spline object to the values specified.
+
+	ObjSpline_GetNode
+		Arguments:
+			1) (int) object ID
+			2) (int) index
+		Returns:
+			(float[]) result
+		Description:
+			Returns the node at the specified index in the spline object, formatted as [posX, posY, posZ, velX, velY, velZ].
+
+	ObjSpline_GetNodeCount
+		Arguments:
+			1) (int) object ID
+		Returns:
+			(int) node count
+		Description:
+			Returns the node count of the spline object.
+
+	ObjSpline_GetArcLength
+		Arguments:
+			1) (int) object ID
+			2) (float) fraction (range: [0, 1])
+		Returns:
+			(float) arc length
+		Description:
+			Returns the arc length of the spline object when traversing it by the fraction.
+			When fraction = 1, the value returned is that of the whole spline.
+
+	ObjSpline_Align
+		Arguments:
+			1) (int) object ID
+		Description:
+			Performs Catmull-Rom initialization of the spline object, creating a smooth and optimal path between nodes.
+
+	ObjSpline_Lerp
+		Arguments:
+			1) (int) object ID
+			2) (float) fraction (range: [0, 1])
+		Returns:
+			(float[]) result
+		Description:
+			Returns the position and tangent of spline object when linearly interpolating along it by the fraction.
+			Use this one if you want dynamic speed of traversal (slow around bends, fast along straights) along the spline.
+			Return value is formatted as [posX, posY, posZ, velX, velY, velZ].
+
+	ObjSpline_LerpArc
+		Arguments:
+			1) (int) object ID
+			2) (float) fraction (range: [0, 1])
+		Returns:
+			(float[]) result
+		Description:
+			Returns the position and tangent of spline object when linearly interpolating along its arc length by the fraction.
+			Use this one if you want constant speed of traversal along the spline.
+			Return value is formatted as [posX, posY, posZ, velX, velY, velZ].
+
+	-------------------------------->  Spring Object Functions <--------------------------------
+	
+	ObjSpring_Create
+		Description:
+			Creates a spring object and returns its object ID.
+			Can be used to simulate a spring mass system in both 2D and 3D.
+
+	ObjSpring_AddNode
+		Arguments:
+			1) (int) object ID
+			2) (float) posX
+			3) (float) posY
+			4) (float) posZ
+			5) (float) velX
+			6) (float) velY
+			7) (float) velZ
+			8) (float) mass
+			9) (bool) canMove
+		Description:
+			Adds a node to the spring object with the values specified.
+			The flag "canMove" when set to false will lock the node in place, and it can only be moved manually.
+
+	ObjSpring_SetNode
+		Arguments:
+			1) (int) object ID
+			2) (int) index
+			2) (float) posX
+			3) (float) posY
+			4) (float) posZ
+			5) (float) velX
+			6) (float) velY
+			7) (float) velZ
+			8) (float) mass
+			9) (bool) canMove
+		Description:
+			Sets the node at the specified index in the spring object to the values specified.
+
+	ObjSpring_GetNode
+		Arguments:
+			1) (int) object ID
+			2) (int) index
+		Returns:
+			(float[]) result
+		Description:
+			Returns the node at the specified index in the spring object, formatted as [posX, posY, posZ, velX, velY, velZ, mass].
+
+	ObjSpring_RemoveNode
+		Arguments:
+			1) (int) object ID
+			2) (int) index
+		Description:
+			Removes the node at the specified index from the spring object.
+			Any springs that contained this node at one of their ends will also be removed.
+
+	ObjSpring_AddSpring
+		Arguments:
+			1) (int) object ID
+			2) (int) node index 1
+			3) (int) node index 2
+			4) (float) ks
+			5) (float) kd
+			6) (float) rest length
+		Description:
+			Adds a spring to the spring object, attaching the two nodes specified by arguments 2 and 3.
+			The values ks and kd correspond to the magnitude of the force the spring applies to the two nodes,
+			where ks is used to bring the distance of the two nodes back to the rest length, and kd is the drag.
+
+	ObjSpring_SetSpring
+		Arguments:
+			1) (int) object ID
+			2) (int) index
+			3) (int) node index 1
+			4) (int) node index 2
+			5) (float) ks
+			6) (float) kd
+			7) (float) rest length
+		Description:
+			Sets the spring at the specified index in the spring object to the values specified.
+
+	ObjSpring_RemoveSpring
+		Arguments:
+			1) (int) object ID
+			2) (int) index
+		Description:
+			Removes the spring at the specified index from the spring object.
+			The two nodes that were connected by the spring will still remain.
+
+	ObjSpring_AddPlane
+		Arguments:
+			1) (int) object ID
+			2) (float) posX
+			3) (float) posY
+			4) (float) posZ
+			5) (float) normalX
+			6) (float) normalY
+			7) (float) normalZ
+			8) (float) ks
+			9) (float) kd
+			10) (float) epsilon
+		Description:
+			Adds a plane to the spring object, creating a collision boundary that will affect all nodes in the spring object.
+			The values normalX/Y/Z correspond to the normal of the plane (doesn't have to be normalized).
+			The value epsilon corresponds to the distance a node must be away from the plane before it will start colliding.
+			Higher values of epsilon mean collision will occur farther away from the plane surface.
+			Collsion is handled using penalty forces, meaning sufficiently low values of ks and kd will allow nodes to breach planes.
+			For more elastic collision, use low ks. For more rigid collision, use high ks.
+
+	ObjSpring_SetPlane
+		Arguments:
+			1) (int) object ID
+			2) (int) index
+			3) (float) posX
+			4) (float) posY
+			5) (float) posZ
+			6) (float) normalX
+			7) (float) normalY
+			8) (float) normalZ
+		Description:
+			Sets the plane in the spring object to the specified values.
+
+	ObjSpring_SetPlane (overload)
+		Arguments:
+			1) (int) object ID
+			2) (int) index
+			3) (float) posX
+			4) (float) posY
+			5) (float) posZ
+			6) (float) normalX
+			7) (float) normalY
+			8) (float) normalZ
+			9) (float) ks
+			10) (float) kd
+			11) (float) epsilon
+		Description:
+			Sets the plane in the spring object to the specified values.
+
+	ObjSpring_RemovePlane
+		Arguments:
+			1) (int) object ID
+			2) (int) index
+		Description:
+			Removes the plane at the specified index from the spring object.
 	
 ---------------------------------------------->	[Item Script] <----------------------------------------------
 	

@@ -183,6 +183,7 @@ class StgItemObject : public DxScriptShaderObject, public StgMoveObject, public 
 	friend class StgItemManager;
 public:
 	enum {
+		//Default item IDs
 		ITEM_1UP = -256 * 256,
 		ITEM_1UP_S,
 		ITEM_SPELL,
@@ -192,17 +193,19 @@ public:
 		ITEM_POINT,
 		ITEM_POINT_S,
 
-		ITEM_SCORE,
-		ITEM_BONUS,
+		ITEM_SCORE_TEXT,	//Default score text objects
+		ITEM_BONUS,			//Default bullet cancel items
 
 		ITEM_USER = 0,
 
+		//Collection types
 		COLLECT_PLAYER_SCOPE = 0,
 		COLLECT_PLAYER_LINE,
 		COLLECT_IN_CIRCLE,
 		COLLECT_ALL,
 		COLLECT_SINGLE,
 
+		//Collection cancel types
 		CANCEL_PLAYER_DOWN = 0,
 		CANCEL_ALL,
 		CANCEL_SINGLE,
@@ -242,6 +245,8 @@ protected:
 	void _NotifyEventToItemScript(gstd::value* listValue, size_t count);
 public:
 	StgItemObject(StgStageController* stageController);
+
+	virtual void Clone(DxScriptObjectBase* src);
 
 	virtual bool HasNormalRendering() { return false; }
 
@@ -342,7 +347,6 @@ public:
 };
 
 class StgItemObject_User : public StgItemObject {
-	int frameWork_;
 	int idImage_;
 
 	weak_ptr<Texture> renderTarget_;
@@ -350,6 +354,8 @@ protected:
 	inline StgItemData* _GetItemData();
 public:
 	StgItemObject_User(StgStageController* stageController);
+
+	virtual void Clone(DxScriptObjectBase* src);
 
 	virtual void Work();
 
@@ -385,6 +391,11 @@ protected:
 	D3DXVECTOR2 posTo_;
 public:
 	StgMovePattern_Item(StgMoveObject* target);
+
+	virtual void CopyFrom(StgMovePattern* src);
+	virtual StgMovePattern* CreateCopy(StgMoveObject* target) {
+		return new StgMovePattern_Item(target);
+	}
 
 	virtual void Move();
 

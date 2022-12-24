@@ -125,7 +125,7 @@ static const std::vector<function> dxFunction = {
 
 	{ "IsPixelShaderSupported", DxScript::Func_IsPixelShaderSupported, 2 },
 	{ "IsVertexShaderSupported", DxScript::Func_IsVertexShaderSupported, 2 },
-	//{ "SetAntiAliasing", DxScript::Func_SetEnableAntiAliasing, 1 },
+	{ "SetEnableAntiAliasing", DxScript::Func_SetEnableAntiAliasing, 1 },
 
 	//Fog
 	{ "SetFogEnable", DxScript::Func_SetFogEnable, 1 },
@@ -247,6 +247,7 @@ static const std::vector<function> dxFunction = {
 	{ "Obj_SetRenderPriorityI", DxScript::Func_Obj_SetRenderPriorityI, 2 },
 	{ "Obj_GetRenderPriority", DxScript::Func_Obj_GetRenderPriority, 1 },
 	{ "Obj_GetRenderPriorityI", DxScript::Func_Obj_GetRenderPriorityI, 1 },
+	{ "Obj_Clone", DxScript::Func_Obj_Clone, 1 },
 
 	{ "Obj_GetValue", DxScript::Func_Obj_GetValue, 2 },
 	{ "Obj_GetValue", DxScript::Func_Obj_GetValue, 3 },
@@ -288,17 +289,7 @@ static const std::vector<function> dxFunction = {
 	{ "ObjSpring_Step", DxScript::Func_ObjSpring_Step, 1 },
 	{ "ObjSpring_SetGravity", DxScript::Func_ObjSpring_SetGravity, 4 },
 	{ "ObjSpring_SetGlobalDrag", DxScript::Func_ObjSpring_SetGlobalDrag, 2 },
-	{ "ObjSpring_AddNode", DxScript::Func_ObjSpring_AddNode, 3 }, // x, y
-	{ "ObjSpring_AddNode", DxScript::Func_ObjSpring_AddNode, 4 }, // x, y, z
-	{ "ObjSpring_AddNode", DxScript::Func_ObjSpring_AddNode, 5 }, // x, y, vx, vy
-	{ "ObjSpring_AddNode", DxScript::Func_ObjSpring_AddNode, 7 }, // x, y, z, vx, vy, vz
-	{ "ObjSpring_AddNode", DxScript::Func_ObjSpring_AddNode, 8 }, // x, y, z, vx, vy, vz, mass
 	{ "ObjSpring_AddNode", DxScript::Func_ObjSpring_AddNode, 9 }, // x, y, z, vx, vy, vz, mass, bMove
-	{ "ObjSpring_SetNode", DxScript::Func_ObjSpring_SetNode, 4 }, // x, y
-	{ "ObjSpring_SetNode", DxScript::Func_ObjSpring_SetNode, 5 }, // x, y, z
-	{ "ObjSpring_SetNode", DxScript::Func_ObjSpring_SetNode, 6 }, // x, y, vx, vy
-	{ "ObjSpring_SetNode", DxScript::Func_ObjSpring_SetNode, 8 }, // x, y, z, vx, vy, vz
-	{ "ObjSpring_SetNode", DxScript::Func_ObjSpring_SetNode, 9 }, // x, y, z, vx, vy, vz, mass
 	{ "ObjSpring_SetNode", DxScript::Func_ObjSpring_SetNode, 10 }, // x, y, z, vx, vy, vz, mass, bMove
 	{ "ObjSpring_GetNode", DxScript::Func_ObjSpring_GetNode, 2 },
 	{ "ObjSpring_RemoveNode", DxScript::Func_ObjSpring_RemoveNode, 2 },
@@ -311,6 +302,8 @@ static const std::vector<function> dxFunction = {
 	{ "ObjSpring_SetPlane", DxScript::Func_ObjSpring_SetPlane, 11 }, // x, y, z, nx, ny, nz, ks, kd, epsilon
 	{ "ObjSpring_GetPlane", DxScript::Func_ObjSpring_GetPlane, 2 },
 	{ "ObjSpring_RemovePlane", DxScript::Func_ObjSpring_RemovePlane, 2 },
+
+
 
 	//Render object functions
 	{ "ObjRender_SetX", DxScript::Func_ObjRender_SetX, 2 },
@@ -413,6 +406,23 @@ static const std::vector<function> dxFunction = {
 	{ "ObjPrim_GetVertexAlpha", DxScript::Func_ObjPrimitive_GetVertexAlpha, 2 },
 	{ "ObjPrim_GetVertexPosition", DxScript::Func_ObjPrimitive_GetVertexPosition, 2 },
 	{ "ObjPrim_SetVertexIndex", DxScript::Func_ObjPrimitive_SetVertexIndex, 2 },
+
+	//Sprite animation functions
+	{ "ObjSpriteAnim_StartAnimation", DxScript::Func_ObjSpriteAnim_StartAnimation, 4 },
+	{ "ObjSpriteAnim_StartAnimation", DxScript::Func_ObjSpriteAnim_StartAnimation, 3 }, // Overloaded
+	{ "ObjSpriteAnim_PauseAnimation", DxScript::Func_ObjSpriteAnim_PauseAnimation, 1},
+	{ "ObjSpriteAnim_ResumeAnimation", DxScript::Func_ObjSpriteAnim_ResumeAnimation, 1 },
+	{ "ObjSpriteAnim_StopAnimation", DxScript::Func_ObjSpriteAnim_StopAnimation, 1 },
+	{ "ObjSpriteAnim_ClearAnimation", DxScript::Func_ObjSpriteAnim_ClearAnimation, 2 },
+	{ "ObjSpriteAnim_ClearAllAnimation", DxScript::Func_ObjSpriteAnim_ClearAllAnimation, 1 },
+	{ "ObjSpriteAnim_GetAnimationID", DxScript::Func_ObjSpriteAnim_GetAnimationID, 1 },
+	{ "ObjSpriteAnim_IsReversedAnimation", DxScript::Func_ObjSpriteAnim_IsReversedAnimation, 1 },
+	{ "ObjSpriteAnim_AddAnimationFrame", DxScript::Func_ObjSpriteAnim_AddAnimationFrame, 7 },
+	{ "ObjSpriteAnim_AddAnimationFrame", DxScript::Func_ObjSpriteAnim_AddAnimationFrame, 4 }, // Overloaded
+	{ "ObjSpriteAnim_IsCompleteAnimation", DxScript::Func_ObjSpriteAnim_IsCompleteAnimation, 1 },
+	{ "ObjSpriteAnim_IsCompleteLoop", DxScript::Func_ObjSpriteAnim_IsCompleteLoop, 1 },
+	{ "ObjSpriteAnim_IsCompleteFrame", DxScript::Func_ObjSpriteAnim_IsCompleteFrame, 1 },
+	{ "ObjSpriteAnim_IsAnimating", DxScript::Func_ObjSpriteAnim_IsAnimating, 1 },
 	
 	//2D sprite object functions
 	{ "ObjSprite2D_SetSourceRect", DxScript::Func_ObjSprite2D_SetSourceRect, 5 },
@@ -638,6 +648,12 @@ static const std::vector<constant> dxConstant = {
 	//Camera modes
 	constant("CAMERA_NORMAL", DxCamera::MODE_NORMAL),
 	constant("CAMERA_LOOKAT", DxCamera::MODE_LOOKAT),
+
+	//Animation loop modes
+	constant("LOOP_FORWARD", DxScriptSpriteAnimation::LOOP_FORWARD),
+	constant("LOOP_BACKWARD", DxScriptSpriteAnimation::LOOP_BACKWARD),
+	constant("LOOP_FORWARD_BACKWARD", DxScriptSpriteAnimation::LOOP_FORWARD_BACKWARD),
+	constant("LOOP_BACKWARD_FORWARD", DxScriptSpriteAnimation::LOOP_BACKWARD_FORWARD),
 
 	//Primitive types
 	constant("PRIMITIVE_POINT_LIST", D3DPT_POINTLIST),
@@ -1295,12 +1311,12 @@ gstd::value DxScript::Func_GetScreenHeight(gstd::script_machine* machine, int ar
 }
 gstd::value DxScript::Func_GetWindowedWidth(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-	LONG res = graphics->GetConfigData().sizeScreenDisplay_.x;
+	LONG res = graphics->GetRenderScreenWidth();
 	return DxScript::CreateIntValue(res);
 }
 gstd::value DxScript::Func_GetWindowedHeight(gstd::script_machine* machine, int argc, const gstd::value* argv) {
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-	LONG res = graphics->GetConfigData().sizeScreenDisplay_.y;
+	LONG res = graphics->GetRenderScreenHeight();
 	return DxScript::CreateIntValue(res);
 }
 gstd::value DxScript::Func_IsFullscreenMode(gstd::script_machine* machine, int argc, const gstd::value* argv) {
@@ -1755,7 +1771,7 @@ gstd::value DxScript::Func_SetEnableAntiAliasing(gstd::script_machine* machine, 
 	bool enable = argv[0].as_boolean();
 
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-	bool res = SUCCEEDED(graphics->SetFullscreenAntiAliasing(enable));
+	bool res = SUCCEEDED(graphics->SetAntiAliasing(enable));
 
 	return DxScript::CreateBooleanValue(res);
 }
@@ -2976,41 +2992,11 @@ value DxScript::Func_ObjSpring_AddNode(gstd::script_machine* machine, int argc, 
 	int id = argv[0].as_int();
 	DxSpringMassSystemObject* obj = script->GetObjectPointerAs<DxSpringMassSystemObject>(id);
 	if (obj) {
-		DxSpringMassSystemObjectParticle p;
-		switch (argc) {
-		case 9:
-			p = DxSpringMassSystemObjectParticle(
-				DxVector3::DxVec3{ argv[1].as_float(), argv[2].as_float(), argv[3].as_float() },
-				DxVector3::DxVec3{ argv[4].as_float(), argv[5].as_float(), argv[6].as_float() },
-				argv[7].as_float(), argv[8].as_boolean()
-			);
-			break;
-		case 8:
-			p = DxSpringMassSystemObjectParticle(
-				DxVector3::DxVec3{ argv[1].as_float(), argv[2].as_float(), argv[3].as_float() },
-				DxVector3::DxVec3{ argv[4].as_float(), argv[5].as_float(), argv[6].as_float() },
-				argv[7].as_float()
-			);
-			break;
-		case 7:
-			p = DxSpringMassSystemObjectParticle(
-				DxVector3::DxVec3{ argv[1].as_float(), argv[2].as_float(), argv[3].as_float() },
-				DxVector3::DxVec3{ argv[4].as_float(), argv[5].as_float(), argv[6].as_float() }
-			);
-			break;
-		case 5:
-			p = DxSpringMassSystemObjectParticle(
-				DxVector3::DxVec3{ argv[1].as_float(), argv[2].as_float(), 0.0 },
-				DxVector3::DxVec3{ argv[3].as_float(), argv[4].as_float(), 0.0 }
-			);
-			break;
-		case 4:
-			p = DxSpringMassSystemObjectParticle(DxVector3::DxVec3{ argv[1].as_float(), argv[2].as_float(), argv[3].as_float() });
-			break;
-		case 3:
-			p = DxSpringMassSystemObjectParticle(DxVector3::DxVec3{ argv[1].as_float(), argv[2].as_float(), 0.0 });
-			break;
-		}
+		DxSpringMassSystemObjectParticle p = DxSpringMassSystemObjectParticle(
+			DxVector3::DxVec3{ argv[1].as_float(), argv[2].as_float(), argv[3].as_float() },
+			DxVector3::DxVec3{ argv[4].as_float(), argv[5].as_float(), argv[6].as_float() },
+			argv[7].as_float(), argv[8].as_boolean()
+		);
 		obj->AddParticle(p);
 	}
 	return value();
@@ -3021,53 +3007,11 @@ value DxScript::Func_ObjSpring_SetNode(gstd::script_machine* machine, int argc, 
 	DxSpringMassSystemObject* obj = script->GetObjectPointerAs<DxSpringMassSystemObject>(id);
 	if (obj) {
 		size_t index = argv[1].as_int();
-		DxSpringMassSystemObjectParticle p;
-		DxSpringMassSystemObjectParticle* r;
-		switch (argc) {
-		case 9:
-			p = DxSpringMassSystemObjectParticle(
-				DxVector3::DxVec3{ argv[2].as_float(), argv[3].as_float(), argv[4].as_float() },
-				DxVector3::DxVec3{ argv[5].as_float(), argv[6].as_float(), argv[7].as_float() },
-				argv[8].as_float(), argv[9].as_boolean()
-			);
-			break;
-		case 8:
-			r = &(obj->GetParticle(index));
-			p = DxSpringMassSystemObjectParticle(
-				DxVector3::DxVec3{ argv[2].as_float(), argv[3].as_float(), argv[4].as_float() },
-				DxVector3::DxVec3{ argv[5].as_float(), argv[6].as_float(), argv[7].as_float() },
-				argv[8].as_float(), r->bMove
-			);
-			break;
-		case 7:
-			r = &(obj->GetParticle(index));
-			p = DxSpringMassSystemObjectParticle(
-				DxVector3::DxVec3{ argv[2].as_float(), argv[3].as_float(), argv[4].as_float() },
-				DxVector3::DxVec3{ argv[5].as_float(), argv[6].as_float(), argv[7].as_float() },
-				r->mass, r->bMove
-			);
-			break;
-		case 5:
-			r = &(obj->GetParticle(index));
-			p = DxSpringMassSystemObjectParticle(
-				DxVector3::DxVec3{ argv[2].as_float(), argv[3].as_float(), r->pos[2] },
-				DxVector3::DxVec3{ argv[4].as_float(), argv[5].as_float(), r->vel[2] },
-				r->mass, r->bMove
-			);
-			break;
-		case 4:
-			r = &(obj->GetParticle(index));
-			p = DxSpringMassSystemObjectParticle(DxVector3::DxVec3{ argv[2].as_float(), argv[3].as_float(), argv[4].as_float() },
-				r->vel, r->mass, r->bMove
-			);
-			break;
-		case 3:
-			r = &(obj->GetParticle(index));
-			p = DxSpringMassSystemObjectParticle(DxVector3::DxVec3{ argv[2].as_float(), argv[3].as_float(), 0.0 },
-				r->vel, r->mass, r->bMove
-			);
-			break;
-		}
+		DxSpringMassSystemObjectParticle p = DxSpringMassSystemObjectParticle(
+			DxVector3::DxVec3{ argv[2].as_float(), argv[3].as_float(), argv[4].as_float() },
+			DxVector3::DxVec3{ argv[5].as_float(), argv[6].as_float(), argv[7].as_float() },
+			argv[8].as_float(), argv[9].as_boolean()
+		);
 		obj->SetParticle(p, index);
 	}
 	return value();
@@ -3198,6 +3142,170 @@ value DxScript::Func_ObjSpring_RemovePlane(gstd::script_machine* machine, int ar
 	return value();
 }
 
+
+//DxScriptAnimationObject
+value DxScript::Func_ObjSpriteAnim_StartAnimation(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj) {
+		int anim = argv[1].as_int();
+		bool bRev = argv[2].as_boolean();
+		int loop = (argc == 4) ? argv[3].as_int() : 0;
+		obj->Start(anim, bRev, loop);
+	}
+	return value();
+}
+value DxScript::Func_ObjSpriteAnim_PauseAnimation(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj) {
+		obj->Pause();
+	}
+	return value();
+}
+value DxScript::Func_ObjSpriteAnim_ResumeAnimation(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj) {
+		obj->Resume();
+	}
+	return value();
+}
+value DxScript::Func_ObjSpriteAnim_StopAnimation(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj) {
+		obj->Stop();
+	}
+	return value();
+}
+value DxScript::Func_ObjSpriteAnim_ClearAnimation(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj) {
+		int anim = argv[1].as_int();
+		obj->Clear(anim);
+	}
+	return value();
+}
+value DxScript::Func_ObjSpriteAnim_ClearAllAnimation(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj) {
+		obj->ClearAll();
+	}
+	return value();
+}
+value DxScript::Func_ObjSpriteAnim_GetAnimationID(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	int anim = 0;
+
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj)
+		anim = obj->GetID();
+
+	return CreateIntValue(anim);
+}
+value DxScript::Func_ObjSpriteAnim_IsReversedAnimation(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	bool bRev = false;
+
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj)
+		bRev = obj->IsReversed();
+
+	return CreateBooleanValue(bRev);
+}
+static inline bool _script_check_array(script_machine* machine, const value& v, size_t size) {
+	if (!v.has_data() || v.get_type()->get_kind() != type_data::tk_array || v.length_as_array() != size) {
+		std::string err = StringUtility::Format("Incorrect value type. (Expected array of size %d)", size);
+		machine->raise_error(err);
+		return false;
+	}
+	return true;
+}
+value DxScript::Func_ObjSpriteAnim_AddAnimationFrame(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj) {
+		int anim = argv[1].as_int();
+		int length = argv[2].as_int();
+		DxRect<int> rect;
+		if (argc == 7) {
+			rect = DxRect<int>(argv[3].as_int(), argv[4].as_int(),
+				argv[5].as_int(), argv[6].as_int());
+		}
+		else {
+			const value& v = argv[3];
+			if (_script_check_array(machine, v, 4)) {
+				rect = DxRect<int>(v[0].as_int(), v[1].as_int(),
+					v[2].as_int(), v[3].as_int());
+			}
+		}
+		obj->AddFrame(anim, length, rect);
+	}
+	return value();
+}
+value DxScript::Func_ObjSpriteAnim_IsCompleteAnimation(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	bool bDone = false;
+
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj)
+		bDone = obj->IsComplete();
+
+	return CreateBooleanValue(bDone);
+}
+value DxScript::Func_ObjSpriteAnim_IsCompleteLoop(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	bool bDone = false;
+
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj)
+		bDone = obj->IsCompleteLoop();
+
+	return CreateBooleanValue(bDone);
+}
+value DxScript::Func_ObjSpriteAnim_IsCompleteFrame(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	bool bDone = false;
+
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj)
+		bDone = obj->IsCompleteFrame();
+
+	return CreateBooleanValue(bDone);
+}
+value DxScript::Func_ObjSpriteAnim_IsAnimating(gstd::script_machine* machine, int argc, const value* argv) {
+	DxScript* script = (DxScript*)machine->data;
+	int id = argv[0].as_int();
+	bool bActive = false;
+
+	DxScriptSpriteAnimation* obj = script->GetObjectPointerAs<DxScriptSpriteAnimation>(id);
+	if (obj)
+		bActive = obj->IsActive();
+
+	return CreateBooleanValue(bActive);
+}
 
 //Dx関数：オブジェクト操作(RenderObject)
 value DxScript::Func_ObjRender_SetX(script_machine* machine, int argc, const value* argv) {
@@ -4451,19 +4559,12 @@ value DxScript::Func_ObjPrimitive_SetVertexIndex(script_machine* machine, int ar
 		for (size_t i = 0; i < valArr.length_as_array(); ++i) {
 			vecIndex[i] = (uint16_t)valArr[i].as_int();
 		}
-		obj->GetObjectPointer()->SetVertexIndices(vecIndex);
+		obj->GetRenderObject()->SetVertexIndices(vecIndex);
 	}
 	return value();
 }
 
-static inline bool _script_check_array(script_machine* machine, const value& v, size_t size) {
-	if (!v.has_data() || v.get_type()->get_kind() != type_data::tk_array || v.length_as_array() != size) {
-		std::string err = StringUtility::Format("Incorrect value type. (Expected array of size %d)", size);
-		machine->raise_error(err);
-		return false;
-	}
-	return true;
-}
+
 
 //Dx関数：オブジェクト操作(Sprite2D)
 value DxScript::Func_ObjSprite2D_SetSourceRect(script_machine* machine, int argc, const value* argv) {
@@ -4683,7 +4784,7 @@ value DxScript::Func_ObjTrajectory3D_SetInitialPoint(script_machine* machine, in
 	if (obj) {
 		D3DXVECTOR3 pos1(argv[1].as_float(), argv[2].as_float(), argv[3].as_float());
 		D3DXVECTOR3 pos2(argv[4].as_float(), argv[5].as_float(), argv[6].as_float());
-		obj->GetObjectPointer()->SetInitialLine(pos1, pos2);
+		obj->GetRenderObject()->SetInitialLine(pos1, pos2);
 	}
 	return value();
 }
@@ -4692,7 +4793,7 @@ value DxScript::Func_ObjTrajectory3D_SetAlphaVariation(script_machine* machine, 
 	int id = argv[0].as_int();
 	DxScriptTrajectoryObject3D* obj = script->GetObjectPointerAs<DxScriptTrajectoryObject3D>(id);
 	if (obj)
-		obj->GetObjectPointer()->SetAlphaVariation(argv[1].as_float());
+		obj->GetRenderObject()->SetAlphaVariation(argv[1].as_float());
 	return value();
 }
 value DxScript::Func_ObjTrajectory3D_SetComplementCount(script_machine* machine, int argc, const value* argv) {
@@ -4700,7 +4801,7 @@ value DxScript::Func_ObjTrajectory3D_SetComplementCount(script_machine* machine,
 	int id = argv[0].as_int();
 	DxScriptTrajectoryObject3D* obj = script->GetObjectPointerAs<DxScriptTrajectoryObject3D>(id);
 	if (obj)
-		obj->GetObjectPointer()->SetComplementCount(argv[1].as_int());
+		obj->GetRenderObject()->SetComplementCount(argv[1].as_int());
 	return value();
 }
 
@@ -4732,7 +4833,7 @@ value DxScript::Func_ObjParticleList_SetPosition(script_machine* machine, int ar
 
 	DxScriptPrimitiveObject* obj = script->GetObjectPointerAs<DxScriptPrimitiveObject>(id);
 	if (obj) {
-		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetObjectPointer());
+		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetRenderObject());
 		if (objParticle)
 			objParticle->SetInstancePosition(argv[1].as_float(), argv[2].as_float(), argv[3].as_float());
 	}
@@ -4745,7 +4846,7 @@ value DxScript::Func_ObjParticleList_SetScaleSingle(script_machine* machine, int
 
 	DxScriptPrimitiveObject* obj = script->GetObjectPointerAs<DxScriptPrimitiveObject>(id);
 	if (obj) {
-		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetObjectPointer());
+		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetRenderObject());
 		if (objParticle)
 			objParticle->SetInstanceScaleSingle(ID, argv[1].as_float());
 	}
@@ -4757,7 +4858,7 @@ value DxScript::Func_ObjParticleList_SetScaleXYZ(script_machine* machine, int ar
 
 	DxScriptPrimitiveObject* obj = script->GetObjectPointerAs<DxScriptPrimitiveObject>(id);
 	if (obj) {
-		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetObjectPointer());
+		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetRenderObject());
 		if (objParticle) {
 			if (argc == 4)
 				objParticle->SetInstanceScale(argv[1].as_float(), argv[2].as_float(), argv[3].as_float());
@@ -4777,7 +4878,7 @@ value DxScript::Func_ObjParticleList_SetAngleSingle(script_machine* machine, int
 
 	DxScriptPrimitiveObject* obj = script->GetObjectPointerAs<DxScriptPrimitiveObject>(id);
 	if (obj) {
-		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetObjectPointer());
+		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetRenderObject());
 		if (objParticle)
 			objParticle->SetInstanceAngleSingle(ID, argv[1].as_float());
 	}
@@ -4789,7 +4890,7 @@ value DxScript::Func_ObjParticleList_SetAngle(script_machine* machine, int argc,
 
 	DxScriptPrimitiveObject* obj = script->GetObjectPointerAs<DxScriptPrimitiveObject>(id);
 	if (obj) {
-		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetObjectPointer());
+		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetRenderObject());
 		if (objParticle)
 			objParticle->SetInstanceAngle(argv[1].as_float(), argv[2].as_float(), argv[3].as_float());
 	}
@@ -4801,7 +4902,7 @@ value DxScript::Func_ObjParticleList_SetColor(script_machine* machine, int argc,
 
 	DxScriptPrimitiveObject* obj = script->GetObjectPointerAs<DxScriptPrimitiveObject>(id);
 	if (obj) {
-		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetObjectPointer());
+		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetRenderObject());
 		if (objParticle) {
 			if (argc == 4) {
 				objParticle->SetInstanceColorRGB(argv[1].as_int(), argv[2].as_int(), argv[3].as_int());
@@ -4820,7 +4921,7 @@ value DxScript::Func_ObjParticleList_SetAlpha(script_machine* machine, int argc,
 
 	DxScriptPrimitiveObject* obj = script->GetObjectPointerAs<DxScriptPrimitiveObject>(id);
 	if (obj) {
-		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetObjectPointer());
+		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetRenderObject());
 		if (objParticle)
 			objParticle->SetInstanceAlpha(argv[1].as_int());
 	}
@@ -4832,7 +4933,7 @@ value DxScript::Func_ObjParticleList_SetExtraData(script_machine* machine, int a
 
 	DxScriptPrimitiveObject* obj = script->GetObjectPointerAs<DxScriptPrimitiveObject>(id);
 	if (obj) {
-		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetObjectPointer());
+		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetRenderObject());
 		if (objParticle)
 			objParticle->SetInstanceUserData(D3DXVECTOR3(argv[1].as_float(), argv[2].as_float(), argv[3].as_float()));
 	}
@@ -4844,7 +4945,7 @@ value DxScript::Func_ObjParticleList_AddInstance(script_machine* machine, int ar
 
 	DxScriptPrimitiveObject* obj = script->GetObjectPointerAs<DxScriptPrimitiveObject>(id);
 	if (obj) {
-		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetObjectPointer());
+		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetRenderObject());
 		if (objParticle)
 			objParticle->AddInstance();
 	}
@@ -4856,7 +4957,7 @@ value DxScript::Func_ObjParticleList_ClearInstance(script_machine* machine, int 
 
 	DxScriptPrimitiveObject* obj = script->GetObjectPointerAs<DxScriptPrimitiveObject>(id);
 	if (obj) {
-		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetObjectPointer());
+		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetRenderObject());
 		if (objParticle)
 			objParticle->ClearInstance();
 	}
@@ -4868,7 +4969,7 @@ value DxScript::Func_ObjParticleList_SetAutoClearInstance(script_machine* machin
 
 	DxScriptPrimitiveObject* obj = script->GetObjectPointerAs<DxScriptPrimitiveObject>(id);
 	if (obj) {
-		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetObjectPointer());
+		ParticleRendererBase* objParticle = dynamic_cast<ParticleRendererBase*>(obj->GetRenderObject());
 		if (objParticle)
 			objParticle->SetAutoClearInstance(argv[1].as_boolean());
 	}

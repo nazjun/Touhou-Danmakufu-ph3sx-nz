@@ -44,6 +44,7 @@ namespace directx {
 		D3DXVECTOR2 fogDist;
 	};
 
+#if defined(DNH_PROJ_EXECUTOR) || defined(DNH_PROJ_CONFIG)
 	//*******************************************************************
 	//DirectInput
 	//*******************************************************************
@@ -59,6 +60,7 @@ namespace directx {
 		KEY_PULL = 2,	 //Key was pressed in the previous frame, now free
 		KEY_HOLD = 3,	 //Key is being pressed, both in the previous and current frame
 	} DIKeyState;
+#endif
 
 #if defined(DNH_PROJ_EXECUTOR)
 	//*******************************************************************
@@ -89,6 +91,8 @@ namespace directx {
 	//DxObject
 	//*******************************************************************
 	enum class TypeObject : uint8_t {
+		Base,
+
 		Spline,
 		SpringMassSystem,
 
@@ -110,8 +114,6 @@ namespace directx {
 
 		FileText,
 		FileBinary,
-
-		Base,
 
 		//------------------------------
 
@@ -157,6 +159,7 @@ namespace directx {
 		Top,
 		Bottom,
 	};
+#endif
 
 	//*******************************************************************
 	//Rect
@@ -214,8 +217,10 @@ namespace directx {
 				|| other.top > bottom || other.bottom < top);
 		}
 
+#if defined(DNH_PROJ_EXECUTOR)
 		inline bool IsPointIntersected(const DxPoint* point) const;
 		inline bool IsPointIntersected(const gstd::Math::DVec2& point) const { return IsPointIntersected(point[0], point[1]); }
+#endif
 		inline bool IsPointIntersected(const float* point) const { return IsPointIntersected(point[0], point[1]); }
 		inline bool IsPointIntersected(const double* point) const { return IsPointIntersected(point[0], point[1]); }
 		inline bool IsPointIntersected(double x, double y) const {
@@ -225,6 +230,7 @@ namespace directx {
 		T left, top, right, bottom;
 	};
 
+#if defined(DNH_PROJ_EXECUTOR)
 	//*******************************************************************
 	//Shape collisions
 	//*******************************************************************

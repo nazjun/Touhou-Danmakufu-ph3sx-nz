@@ -32,6 +32,18 @@ DxScriptObjectBase::~DxScriptObjectBase() {
 	//	manager_->listUnusedIndex_.push_back(idObject_);
 }
 
+void DxScriptObjectBase::Clone(DxScriptObjectBase* src) {
+	idScript_ = src->idScript_;
+
+	bActive_ = src->bActive_;
+	bVisible_ = src->bVisible_;
+	priRender_ = src->priRender_;
+	frameExist_ = src->frameExist_;
+
+	mapObjectValue_ = src->mapObjectValue_;
+	mapObjectValueI_ = src->mapObjectValueI_;
+}
+
 void DxScriptObjectBase::SetRenderPriority(double pri) {
 	priRender_ = pri * (manager_->GetRenderBucketCapacity() - 1U);
 }
@@ -346,26 +358,26 @@ void DxSpringMassSystemObject::Integrate() {
 				DxVector3::DxVec3Sub(v, p->pos, q->pos);
 
 				DxVector3::DxVec3 dot;
-				DxVector3::DxVec3Dot(dot, v, q->normal);
+DxVector3::DxVec3Dot(dot, v, q->normal);
 
-				double signedDist = DxVector3::DxVec3Sum(dot);
+double signedDist = DxVector3::DxVec3Sum(dot);
 
-				if (signedDist < q->epsilon) {
-					DxVector3::DxVec3 projPos;
-					DxVector3::DxVec3Copy(projPos, p->pos);
+if (signedDist < q->epsilon) {
+	DxVector3::DxVec3 projPos;
+	DxVector3::DxVec3Copy(projPos, p->pos);
 
-					DxVector3::DxVec3 projTravel;
-					DxVector3::DxVec3Scale(projTravel, q->normal, -(signedDist - q->epsilon));
-					DxVector3::DxVec3Add(projPos, projPos, projTravel);
+	DxVector3::DxVec3 projTravel;
+	DxVector3::DxVec3Scale(projTravel, q->normal, -(signedDist - q->epsilon));
+	DxVector3::DxVec3Add(projPos, projPos, projTravel);
 
-					DxSpringMassSystemObjectParticle pPlane = DxSpringMassSystemObjectParticle(projPos, DxVector3::DxVec3{ 0.0, 0.0, 0.0 }, 1.0, false);
+	DxSpringMassSystemObjectParticle pPlane = DxSpringMassSystemObjectParticle(projPos, DxVector3::DxVec3{ 0.0, 0.0, 0.0 }, 1.0, false);
 
-					// Add penalty spring force against the plane
-					DxVector3::DxVec3 springForce;
-					SpringForce(springForce, p, &pPlane, q->ks, q->kd, 0.0);
-					DxVector3::DxVec3Scale(springForce, springForce, FRAME_STEP);
-					DxVector3::DxVec3Add(p->force, p->force, springForce);
-				}
+	// Add penalty spring force against the plane
+	DxVector3::DxVec3 springForce;
+	SpringForce(springForce, p, &pPlane, q->ks, q->kd, 0.0);
+	DxVector3::DxVec3Scale(springForce, springForce, FRAME_STEP);
+	DxVector3::DxVec3Add(p->force, p->force, springForce);
+}
 			}
 		}
 	}
@@ -416,6 +428,109 @@ void DxSpringMassSystemObject::Integrate() {
 }
 
 //****************************************************************************
+//DxScriptSpriteAnimation
+//****************************************************************************
+DxScriptSpriteAnimation::DxScriptSpriteAnimation() {
+	animation_ = ANIM_INVALID;
+	animFrame_ = 0;
+	frame_ = 0;
+	loopCount_ = 0;
+	loopMax_ = 0;
+	bReverse_ = false;
+	bActive_ = false;
+}
+void DxScriptSpriteAnimation::AddFrame(int id, int length, DxRect<int>& rect) {
+	if (id > ANIM_INVALID) {
+		if (listAnim_.count(id) == 0)
+			listAnim_[id] = AnimationSequence();
+
+		AnimationSequence& seq = listAnim_[id];
+		AnimationFrame frame;
+		frame.length = length;
+		frame.rect = rect;
+		seq.push_back(frame);
+	}
+}
+void DxScriptSpriteAnimation::Start(int id, bool bReverse, int loop) {
+	animFrame_ = 0;
+	frame_ = 0;
+	loopCount_ = 0;
+	bReverse_ = bReverse;
+	loopMax_ = loop;
+	if (listAnim_.count(id) > 0) {
+		animation_ = id;
+		bActive_ = true;
+	}
+	else {
+		animation_ = ANIM_INVALID;
+		bActive_ = false;
+	}	
+}
+void DxScriptSpriteAnimation::Stop() {
+	animation_ = ANIM_INVALID;
+	animFrame_ = 0;
+	frame_ = 0;
+	loopCount_ = 0;
+	loopMax_ = 0;
+	bReverse_ = false;
+	bActive_ = false;
+}
+void DxScriptSpriteAnimation::Resume() {
+	if (animation_ > ANIM_INVALID)
+		bActive_ = true;
+}
+void DxScriptSpriteAnimation::Clear(int id) {
+	if (id > ANIM_INVALID) {
+		if (animation_ == id) Stop();
+		listAnim_.erase(id);
+	}
+}
+void DxScriptSpriteAnimation::ClearAll() {
+	if (animation_ > ANIM_INVALID)
+		Stop();
+
+	listAnim_.clear();
+}
+void DxScriptSpriteAnimation::Animate() {
+	if (bActive_) {
+		RenderObject* sprite = sprite_.get();
+		AnimationSequence& sequence = listAnim_[animation_];
+		int frameCount = sequence.size();
+
+		// Adjust the "real" frame index used for accessing the correct rect
+		int index = bReverse_ ? (frameCount - animFrame_ - 1) : animFrame_;
+
+		AnimationFrame& frame = sequence[index];
+		int frameLength = frame.length;
+		DxRect<int>& frameRect = frame.rect;
+
+		if (Sprite2D* spr = dynamic_cast<Sprite2D*>(sprite))
+			spr->SetSourceRect(frameRect);
+		else if (Sprite3D* spr = dynamic_cast<Sprite3D*>(sprite))
+			spr->SetSourceRect(frameRect);
+
+		++frame_;
+
+		// Proceed to next animation frame
+		if (frame_ >= frameLength) {
+			frame_ = 0;
+			++animFrame_;
+
+			// Proceed to next loop
+			if (animFrame_ >= frameCount) {
+				animFrame_ = 0;
+				++loopCount_;
+
+				// If a loop limit is set and reached, exit from the animation and return to default if it exists
+				if (loopMax_ > 0 && loopCount_ >= loopMax_) {
+					bActive_ = false;
+				}
+			}
+		}
+	}
+}
+
+//****************************************************************************
 //DxScriptRenderObject
 //****************************************************************************
 DxScriptRenderObject::DxScriptRenderObject() {
@@ -437,11 +552,48 @@ DxScriptRenderObject::DxScriptRenderObject() {
 	bEnableMatrix_ = true;
 }
 
+void DxScriptRenderObject::Clone(DxScriptObjectBase* _src) {
+	DxScriptObjectBase::Clone(_src);
+
+	auto src = (DxScriptRenderObject*)_src;
+
+	bZWrite_ = src->bZWrite_;
+	bZTest_ = src->bZTest_;
+	bFogEnable_ = src->bFogEnable_;
+	modeCulling_ = src->modeCulling_;
+
+	position_ = src->position_;
+	angle_ = src->angle_;
+	scale_ = src->scale_;
+	typeBlend_ = src->typeBlend_;
+	color_ = src->color_;
+
+	filterMin_ = src->filterMin_;
+	filterMag_ = src->filterMag_;
+	filterMip_ = src->filterMip_;
+	bVertexShaderMode_ = src->bVertexShaderMode_;
+	bEnableMatrix_ = src->bEnableMatrix_;
+
+	objRelative_ = src->objRelative_;
+}
+
 //****************************************************************************
 //DxScriptShaderObject
 //****************************************************************************
 DxScriptShaderObject::DxScriptShaderObject() {
 	typeObject_ = TypeObject::Shader;
+}
+
+void DxScriptShaderObject::Clone(DxScriptObjectBase* _src) {
+	DxScriptRenderObject::Clone(_src);
+
+	auto src = (DxScriptShaderObject*)_src;
+
+	shader_ = nullptr;
+	if (src->shader_) {
+		ShaderManager* manager = ShaderManager::GetBase();
+		shader_ = manager->CreateFromData(src->shader_->GetData());
+	}
 }
 
 //****************************************************************************
@@ -451,6 +603,17 @@ DxScriptPrimitiveObject::DxScriptPrimitiveObject() {
 	angX_ = D3DXVECTOR2(1, 0);
 	angY_ = D3DXVECTOR2(1, 0);
 	angZ_ = D3DXVECTOR2(1, 0);
+}
+
+void DxScriptPrimitiveObject::Clone(DxScriptObjectBase* _src) {
+	DxScriptRenderObject::Clone(_src);
+
+	auto src = (DxScriptPrimitiveObject*)_src;
+
+	objRender_->Copy(src->objRender_.get());
+	angX_ = src->angX_;
+	angY_ = src->angY_;
+	angZ_ = src->angZ_;
 }
 
 void DxScriptPrimitiveObject::SetAngleX(float x) {
@@ -488,7 +651,7 @@ DxScriptPrimitiveObject2D::DxScriptPrimitiveObject2D() {
 }
 
 void DxScriptPrimitiveObject2D::Render() {
-	if (RenderObjectTLX* obj = GetObjectPointer()) {
+	if (RenderObjectTLX* obj = GetRenderObject()) {
 		DirectGraphics* graphics = DirectGraphics::GetBase();
 		DWORD bEnableFog = FALSE;
 		graphics->GetDevice()->GetRenderState(D3DRS_FOGENABLE, &bEnableFog);
@@ -504,7 +667,7 @@ void DxScriptPrimitiveObject2D::Render() {
 }
 void DxScriptPrimitiveObject2D::SetRenderState() {
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-	RenderObjectTLX* obj = GetObjectPointer();
+	RenderObjectTLX* obj = GetRenderObject();
 	obj->SetPosition(position_);
 	obj->SetAngle(angle_);
 	obj->SetScale(scale_);
@@ -519,47 +682,47 @@ void DxScriptPrimitiveObject2D::SetRenderState() {
 }
 
 void DxScriptPrimitiveObject2D::SetColor(int r, int g, int b) {
-	RenderObjectTLX* obj = GetObjectPointer();
+	RenderObjectTLX* obj = GetRenderObject();
 	__m128i c = Vectorize::Set(color_ >> 24, r, g, b);
 	color_ = ColorAccess::ToD3DCOLOR(ColorAccess::ClampColorPacked(c));
 	obj->SetColorRGB(color_);
 }
 void DxScriptPrimitiveObject2D::SetAlpha(int alpha) {
-	RenderObjectTLX* obj = GetObjectPointer();
+	RenderObjectTLX* obj = GetRenderObject();
 	ColorAccess::ClampColor(alpha);
 	obj->SetAlpha(alpha);
 	color_ = (color_ & 0x00ffffff) | ((byte)alpha << 24);
 }
 
 bool DxScriptPrimitiveObject2D::IsValidVertexIndex(size_t index) {
-	return index >= 0 && index < GetObjectPointer()->GetVertexCount();
+	return index >= 0 && index < GetRenderObject()->GetVertexCount();
 }
 void DxScriptPrimitiveObject2D::SetVertexPosition(size_t index, float x, float y, float z) {
-	RenderObjectTLX* obj = GetObjectPointer();
+	RenderObjectTLX* obj = GetRenderObject();
 	obj->SetVertexPosition(index, x, y, z);
 }
 void DxScriptPrimitiveObject2D::SetVertexUV(size_t index, float u, float v) {
-	RenderObjectTLX* obj = GetObjectPointer();
+	RenderObjectTLX* obj = GetRenderObject();
 	obj->SetVertexUV(index, u, v);
 }
 void DxScriptPrimitiveObject2D::SetVertexAlpha(size_t index, int alpha) {
-	RenderObjectTLX* obj = GetObjectPointer();
+	RenderObjectTLX* obj = GetRenderObject();
 	ColorAccess::ClampColor(alpha);
 	obj->SetVertexAlpha(index, alpha);
 }
 void DxScriptPrimitiveObject2D::SetVertexColor(size_t index, int r, int g, int b) {
-	RenderObjectTLX* obj = GetObjectPointer();
+	RenderObjectTLX* obj = GetRenderObject();
 	__m128i c = Vectorize::Set(0, r, g, b);
 	obj->SetVertexColorRGB(index, ColorAccess::ToD3DCOLOR(ColorAccess::ClampColorPackedM(c)));
 }
 D3DCOLOR DxScriptPrimitiveObject2D::GetVertexColor(size_t index) {
-	RenderObjectTLX* obj = GetObjectPointer();
+	RenderObjectTLX* obj = GetRenderObject();
 	return obj->GetVertexColor(index);
 }
 D3DXVECTOR3 DxScriptPrimitiveObject2D::GetVertexPosition(size_t index) {
 	D3DXVECTOR3 res(0, 0, 0);
 	if (!IsValidVertexIndex(index)) return res;
-	RenderObjectTLX* obj = GetObjectPointer();
+	RenderObjectTLX* obj = GetRenderObject();
 	VERTEX_TLX* vert = obj->GetVertex(index);
 
 	constexpr float bias = 0.5f;
@@ -571,7 +734,7 @@ D3DXVECTOR3 DxScriptPrimitiveObject2D::GetVertexPosition(size_t index) {
 }
 
 void DxScriptPrimitiveObject2D::SetPermitCamera(bool bPermit) {
-	RenderObjectTLX* obj = GetObjectPointer();
+	RenderObjectTLX* obj = GetRenderObject();
 	obj->SetPermitCamera(bPermit);
 }
 
@@ -582,23 +745,12 @@ DxScriptSpriteObject2D::DxScriptSpriteObject2D() {
 	typeObject_ = TypeObject::Sprite2D;
 	objRender_ = std::make_shared<Sprite2D>();
 	objRender_->SetDxObjectReference(this);
+	_AttachSpriteToAnimation(objRender_);
 }
 
-void DxScriptSpriteObject2D::Copy(DxScriptSpriteObject2D* src) {
-	priRender_ = src->priRender_;
-	bZWrite_ = src->bZWrite_;
-	bZTest_ = src->bZTest_;
-	modeCulling_ = src->modeCulling_;
-	bVisible_ = src->bVisible_;
-	manager_ = src->manager_;
-	position_ = src->position_;
-	angle_ = src->angle_;
-	scale_ = src->scale_;
-	typeBlend_ = src->typeBlend_;
-
-	Sprite2D* destSprite2D = (Sprite2D*)objRender_.get();
-	Sprite2D* srcSprite2D = (Sprite2D*)src->objRender_.get();
-	destSprite2D->Copy(srcSprite2D);
+void DxScriptSpriteObject2D::Render() {
+	Animate();
+	DxScriptPrimitiveObject2D::Render();
 }
 
 //****************************************************************************
@@ -663,7 +815,7 @@ DxScriptPrimitiveObject3D::DxScriptPrimitiveObject3D() {
 }
 
 void DxScriptPrimitiveObject3D::Render() {
-	if (RenderObjectLX* obj = GetObjectPointer()) {
+	if (RenderObjectLX* obj = GetRenderObject()) {
 		DirectGraphics* graphics = DirectGraphics::GetBase();
 		bool bEnvFogEnable = graphics->IsFogEnable();
 		SetRenderState();
@@ -683,11 +835,11 @@ void DxScriptPrimitiveObject3D::SetRenderState() {
 		shared_ptr<DxMesh> mesh = objMesh->GetMesh();
 		shared_ptr<D3DXMATRIX> mat = std::make_shared<D3DXMATRIX>();
 		*mat = mesh->GetAnimationMatrix(nameAnime, frameAnime);
-		objRender_->SetRalativeMatrix(mat);
+		objRender_->SetRelativeMatrix(mat);
 	}
 
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-	RenderObjectLX* obj = GetObjectPointer();
+	RenderObjectLX* obj = GetRenderObject();
 
 	bool bEnvFogEnable = graphics->IsFogEnable();
 	if (bEnvFogEnable)
@@ -707,48 +859,48 @@ void DxScriptPrimitiveObject3D::SetRenderState() {
 }
 
 void DxScriptPrimitiveObject3D::SetColor(int r, int g, int b) {
-	RenderObjectLX* obj = GetObjectPointer();
+	RenderObjectLX* obj = GetRenderObject();
 	__m128i c = Vectorize::Set(color_ >> 24, r, g, b);
 	color_ = ColorAccess::ToD3DCOLOR(ColorAccess::ClampColorPacked(c));
 	obj->SetColorRGB(color_);
 }
 void DxScriptPrimitiveObject3D::SetAlpha(int alpha) {
-	RenderObjectLX* obj = GetObjectPointer();
+	RenderObjectLX* obj = GetRenderObject();
 	ColorAccess::ClampColor(alpha);
 	obj->SetAlpha(alpha);
 	color_ = (color_ & 0x00ffffff) | ((byte)alpha << 24);
 }
 
 bool DxScriptPrimitiveObject3D::IsValidVertexIndex(size_t index) {
-	return index >= 0 && index < GetObjectPointer()->GetVertexCount();
+	return index >= 0 && index < GetRenderObject()->GetVertexCount();
 }
 void DxScriptPrimitiveObject3D::SetVertexPosition(size_t index, float x, float y, float z) {
-	RenderObjectLX* obj = GetObjectPointer();
+	RenderObjectLX* obj = GetRenderObject();
 	obj->SetVertexPosition(index, x, y, z);
 }
 void DxScriptPrimitiveObject3D::SetVertexUV(size_t index, float u, float v) {
-	RenderObjectLX* obj = GetObjectPointer();
+	RenderObjectLX* obj = GetRenderObject();
 	obj->SetVertexUV(index, u, v);
 }
 void DxScriptPrimitiveObject3D::SetVertexAlpha(size_t index, int alpha) {
-	RenderObjectLX* obj = GetObjectPointer();
+	RenderObjectLX* obj = GetRenderObject();
 	ColorAccess::ClampColor(alpha);
 	obj->SetVertexAlpha(index, alpha);
 }
 void DxScriptPrimitiveObject3D::SetVertexColor(size_t index, int r, int g, int b) {
 	if (!IsValidVertexIndex(index)) return;
-	RenderObjectLX* obj = GetObjectPointer();
+	RenderObjectLX* obj = GetRenderObject();
 	__m128i c = Vectorize::Set(0, r, g, b);
 	obj->SetVertexColorRGB(index, ColorAccess::ToD3DCOLOR(ColorAccess::ClampColorPackedM(c)));
 }
 D3DCOLOR DxScriptPrimitiveObject3D::GetVertexColor(size_t index) {
-	RenderObjectLX* obj = GetObjectPointer();
+	RenderObjectLX* obj = GetRenderObject();
 	return obj->GetVertexColor(index);
 }
 D3DXVECTOR3 DxScriptPrimitiveObject3D::GetVertexPosition(size_t index) {
 	D3DXVECTOR3 res(0, 0, 0);
 	if (!IsValidVertexIndex(index)) return res;
-	RenderObjectLX* obj = GetObjectPointer();
+	RenderObjectLX* obj = GetRenderObject();
 	VERTEX_LX* vert = obj->GetVertex(index);
 
 	res.x = vert->position.x;
@@ -765,6 +917,12 @@ DxScriptSpriteObject3D::DxScriptSpriteObject3D() {
 	typeObject_ = TypeObject::Sprite3D;
 	objRender_ = std::make_shared<Sprite3D>();
 	objRender_->SetDxObjectReference(this);
+	_AttachSpriteToAnimation(objRender_);
+}
+
+void DxScriptSpriteObject3D::Render() {
+	Animate();
+	DxScriptPrimitiveObject3D::Render();
 }
 
 //****************************************************************************
@@ -777,7 +935,7 @@ DxScriptTrajectoryObject3D::DxScriptTrajectoryObject3D() {
 }
 
 void DxScriptTrajectoryObject3D::Work() {
-	if (TrajectoryObject3D* obj = GetObjectPointer()) {
+	if (TrajectoryObject3D* obj = GetRenderObject()) {
 		if (DxScriptMeshObject* objMesh = dynamic_cast<DxScriptMeshObject*>(objRelative_.get())) {
 			objRelative_->SetRenderState();
 			int frameAnime = objMesh->GetAnimeFrame();
@@ -785,7 +943,7 @@ void DxScriptTrajectoryObject3D::Work() {
 			shared_ptr<DxMesh> mesh = objMesh->GetMesh();
 			D3DXMATRIX matAnime = mesh->GetAnimationMatrix(nameAnime, frameAnime);
 
-			TrajectoryObject3D* objRender = GetObjectPointer();
+			TrajectoryObject3D* objRender = GetRenderObject();
 			objRender->AddPoint(matAnime);
 		}
 
@@ -793,7 +951,7 @@ void DxScriptTrajectoryObject3D::Work() {
 	}
 }
 void DxScriptTrajectoryObject3D::Render() {
-	if (TrajectoryObject3D* obj = GetObjectPointer()) {
+	if (TrajectoryObject3D* obj = GetRenderObject()) {
 		SetRenderState();
 		//obj->Render();
 		obj->Render(angX_, angY_, angZ_);
@@ -801,7 +959,7 @@ void DxScriptTrajectoryObject3D::Render() {
 }
 void DxScriptTrajectoryObject3D::SetRenderState() {
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-	TrajectoryObject3D* obj = GetObjectPointer();
+	TrajectoryObject3D* obj = GetRenderObject();
 	graphics->SetLightingEnable(false);
 	graphics->SetZWriteEnable(bZWrite_);
 	graphics->SetZBufferEnable(bZTest_);
@@ -814,7 +972,7 @@ void DxScriptTrajectoryObject3D::SetRenderState() {
 
 void DxScriptTrajectoryObject3D::SetColor(int r, int g, int b) {
 	DirectGraphics* graphics = DirectGraphics::GetBase();
-	TrajectoryObject3D* obj = GetObjectPointer();
+	TrajectoryObject3D* obj = GetRenderObject();
 
 	__m128i c = Vectorize::Set(color_ >> 24, r, g, b);
 	color_ = ColorAccess::ToD3DCOLOR(ColorAccess::ClampColorPacked(c));
@@ -929,6 +1087,22 @@ DxScriptMeshObject::DxScriptMeshObject() {
 	angZ_ = D3DXVECTOR2(1, 0);
 }
 
+void DxScriptMeshObject::Clone(DxScriptObjectBase* _src) {
+	DxScriptRenderObject::Clone(_src);
+
+	auto src = (DxScriptMeshObject*)_src;
+
+	mesh_->Copy(src->mesh_.get());
+
+	time_ = src->time_;
+	anime_ = src->anime_;
+	bCoordinate2D_ = src->bCoordinate2D_;
+
+	angX_ = src->angX_;
+	angY_ = src->angY_;
+	angZ_ = src->angZ_;
+}
+
 void DxScriptMeshObject::Render() {
 	if (mesh_ == nullptr) return;
 	DirectGraphics* graphics = DirectGraphics::GetBase();
@@ -971,6 +1145,10 @@ void DxScriptMeshObject::SetAlpha(int alpha) {
 	ColorAccess::ClampColor(alpha);
 	color_ = (color_ & 0x00ffffff) | ((byte)alpha << 24);
 }
+shared_ptr<Shader> DxScriptMeshObject::GetShader() {
+	if (mesh_ == nullptr) return nullptr;
+	return mesh_->GetShader();
+}
 void DxScriptMeshObject::SetShader(shared_ptr<Shader> shader) {
 	if (mesh_ == nullptr) return;
 	mesh_->SetShader(shader);
@@ -1011,6 +1189,28 @@ DxScriptTextObject::DxScriptTextObject() {
 	angY_ = D3DXVECTOR2(1, 0);
 	angZ_ = D3DXVECTOR2(1, 0);
 }
+
+void DxScriptTextObject::Clone(DxScriptObjectBase* _src) {
+	DxScriptRenderObject::Clone(_src);
+
+	auto src = (DxScriptTextObject*)_src;
+
+	change_ = CHANGE_ALL;
+
+	text_.Copy(src->text_);
+
+	textInfo_ = nullptr;
+	objRender_ = nullptr;
+	_UpdateRenderer();
+
+	center_ = src->center_;
+	bAutoCenter_ = src->bAutoCenter_;
+	charSet_ = src->charSet_;
+	angX_ = src->angX_;
+	angY_ = src->angY_;
+	angZ_ = src->angZ_;
+}
+
 void DxScriptTextObject::Render() {
 	//Save fog state, text objects don't fucking get fogged
 	DirectGraphics* graphics = DirectGraphics::GetBase();
@@ -1155,43 +1355,54 @@ DxSoundObject::~DxSoundObject() {
 		player_->Delete();
 }
 
+void DxSoundObject::Clone(DxScriptObjectBase* _src) {
+	DxScriptObjectBase::Clone(_src);
+
+	auto src = (DxSoundObject*)_src;
+
+	mapCachedPlayers_.clear();
+	Load(src->player_->GetSoundSource());
+
+	style_ = src->style_;
+}
+
 bool DxSoundObject::Load(const std::wstring& path) {
 	DirectSoundManager* manager = DirectSoundManager::GetBase();
 
-	{
-		Lock lock(manager->GetLock());
+	shared_ptr<SoundSourceData> newSource = manager->GetSoundSource(path, true);
 
-		shared_ptr<SoundSourceData> newSource = manager->GetSoundSource(path, true);
-		bool bFoundCached = false;
+	return Load(newSource);
+}
+bool DxSoundObject::Load(shared_ptr<SoundSourceData> source) {
+	DirectSoundManager* manager = DirectSoundManager::GetBase();
 
-		//A very ugly hack
-		player_ = nullptr;
-		if (newSource) {
-			for (auto itr = mapCachedPlayers_.begin(); itr != mapCachedPlayers_.end();) {
-				SoundSourceData* pSource = itr->first;
-				weak_ptr<SoundPlayer> pWeakPlayer = itr->second;
-				if (pWeakPlayer.expired()) {
-					itr = mapCachedPlayers_.erase(itr);
+	bool bFoundCached = false;
+
+	//A very ugly hack
+	player_ = nullptr;
+	if (source) {
+		for (auto itr = mapCachedPlayers_.begin(); itr != mapCachedPlayers_.end();) {
+			SoundSourceData* pSource = itr->first;
+			weak_ptr<SoundPlayer> pWeakPlayer = itr->second;
+			if (pWeakPlayer.expired()) {
+				itr = mapCachedPlayers_.erase(itr);
+			}
+			else {
+				if (pSource == source.get()) {
+					player_ = pWeakPlayer.lock();
+					bFoundCached = true;
+					break;
 				}
-				else {
-					if (pSource == newSource.get()) {
-						player_ = pWeakPlayer.lock();
-						bFoundCached = true;
-						break;
-					}
-					++itr;
-				}
+				++itr;
 			}
 		}
-
-		if (player_ == nullptr) {
-			player_ = manager->CreatePlayer(newSource);
-		}
-
-		if (player_ && !bFoundCached) {
-			mapCachedPlayers_[newSource.get()] = player_;
-		}
 	}
+
+	if (player_ == nullptr)
+		player_ = manager->CreatePlayer(source);
+	if (player_ && !bFoundCached)
+		mapCachedPlayers_[source.get()] = player_;
+
 	return player_ != nullptr;
 }
 void DxSoundObject::Play() {
@@ -1207,6 +1418,16 @@ DxFileObject::DxFileObject() {
 }
 DxFileObject::~DxFileObject() {
 	Close();
+}
+
+void DxFileObject::Clone(DxScriptObjectBase* _src) {
+	DxScriptObjectBase::Clone(_src);
+
+	auto src = (DxFileObject*)_src;
+
+	file_ = src->file_;
+	reader_ = src->reader_;
+	bWritable_ = src->bWritable_;
 }
 
 bool DxFileObject::OpenR(const std::wstring& path) {
@@ -1276,6 +1497,20 @@ DxTextFileObject::DxTextFileObject() {
 	bytePerChar_ = 2U;
 }
 DxTextFileObject::~DxTextFileObject() {
+}
+
+void DxTextFileObject::Clone(DxScriptObjectBase* _src) {
+	DxScriptObjectBase::Clone(_src);
+
+	auto src = (DxTextFileObject*)_src;
+
+	listLine_ = src->listLine_;
+	encoding_ = src->encoding_;
+	bomSize_ = src->bomSize_;
+	memcpy(bomHead_, src->bomHead_, sizeof(bomHead_));
+	bytePerChar_ = src->bytePerChar_;
+	memcpy(lineEnding_, src->lineEnding_, sizeof(lineEnding_));
+	lineEndingSize_ = src->lineEndingSize_;
 }
 
 bool DxTextFileObject::OpenR(const std::wstring& path) {
@@ -1602,6 +1837,20 @@ DxBinaryFileObject::DxBinaryFileObject() {
 }
 DxBinaryFileObject::~DxBinaryFileObject() {
 	ptr_delete(buffer_);
+}
+
+void DxBinaryFileObject::Clone(DxScriptObjectBase* _src) {
+	DxScriptObjectBase::Clone(_src);
+
+	auto src = (DxBinaryFileObject*)_src;
+
+	byteOrder_ = src->byteOrder_;
+	codePage_ = src->codePage_;
+
+	ptr_delete(buffer_);
+	buffer_ = new ByteBuffer(*src->buffer_);
+
+	lastRead_ = src->lastRead_;
 }
 
 bool DxBinaryFileObject::OpenR(const std::wstring& path) {
