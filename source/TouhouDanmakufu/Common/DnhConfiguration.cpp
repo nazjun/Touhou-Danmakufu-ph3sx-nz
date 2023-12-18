@@ -38,7 +38,7 @@ DnhConfiguration::DnhConfiguration() {
 	mapKey_[EDirectInput::KEY_BOMB] = new VirtualKey(DIK_X, 0, 6);
 	mapKey_[EDirectInput::KEY_SLOWMOVE] = new VirtualKey(DIK_LSHIFT, 0, 7);
 	mapKey_[EDirectInput::KEY_USER1] = new VirtualKey(DIK_C, 0, 8);
-	mapKey_[EDirectInput::KEY_USER2] = new VirtualKey(DIK_V, 0, 9);
+	mapKey_[EDirectInput::KEY_USER2] = new VirtualKey(DIK_LCONTROL, 0, 9);
 
 	mapKey_[EDirectInput::KEY_PAUSE] = new VirtualKey(DIK_ESCAPE, 0, 10);
 
